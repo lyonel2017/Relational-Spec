@@ -1,0 +1,14 @@
+###########
+# General #
+###########
+
+TAGS
+*~
+*.glob
+*.vo
+*.cache
+*.aux
+\#*
+.\#*
+.coqdeps.d
+*.conf
