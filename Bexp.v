@@ -20,7 +20,6 @@ Inductive bexp : Type :=
 
 (* Notations *)
 
-Declare Scope com_scope.
 Notation "'true'"  := true (at level 1).
 Notation "'true'"  := BTrue (in custom com at level 0).
 Notation "'false'"  := false (at level 1).
