@@ -6,6 +6,8 @@ TAGS
 *~
 *.glob
 *.vo
+*.vok
+*.vos
 *.cache
 *.aux
 \#*
