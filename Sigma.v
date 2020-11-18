@@ -1,25 +1,17 @@
-From Rela Require Import Var.
-Require Import FMapAVL.
-Require Import FMaps.
-From Coq Require Import OrderedTypeEx.
+From Rela Require Import Loc.
 
-Module Var_Map.
+(** A memory state (called sigma) maps variables to natural numbers **)
 
-  Module Map := FMapAVL.Make Nat_as_OT.
+Definition sigma : Type := Loc_Map.LocMap.t nat.
 
-  Module Facts := Facts Map.
+(** Function for handling memory states **)
 
-  Include Facts.
+Definition empty_sigma: sigma:= Loc_Map.LocMap.empty nat.
 
-End Var_Map.
+Definition update_sigma (s:sigma) (l:Loc.t) (n: nat) : sigma := Loc_Map.LocMap.add l n s.
 
-Definition sigma : Type := Var_Map.Map.t nat.
+Definition find_sigma (l : Loc.t) (s: sigma) := Loc_Map.LocMap.find l s.
 
-Definition empty_sigma: sigma:= Var_Map.Map.empty nat.
+(** Notation for memory states **)
 
-Definition update_sigma (s:sigma) (v:var) (n: nat) : sigma := Var_Map.Map.add v n s.
-
-Definition find_sigma (v : var) (s: sigma) := Var_Map.Map.find v s.
-
-(** Notation for a "singleton state" with just one variable bound to a value. *)
 Notation "x '!->' v" := (update_sigma empty_sigma x v) (at level 100).

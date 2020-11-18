@@ -1,5 +1,5 @@
 -R . Rela
-Var.v
+Loc.v
 Sigma.v
 Aexp.v
 Bexp.v
@@ -8,3 +8,4 @@ Lambda.v
 EAexp.v
 EBexp.v
 Proc.v
+ECom.v

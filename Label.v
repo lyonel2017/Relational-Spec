@@ -1,11 +1,34 @@
-Definition label : Type := nat.
+From Coq Require Import Arith.
+From Coq Require Import FMaps.
+From Coq Require Import MSets.
 
-(*Proof that label is an ordere type*)
+(** Labels are natural numbers **)
 
-(* Defining a few label names*)
+Module Label := Nat.
 
-Definition l1 : label:= 1.
-Definition l2 : label:= 2.
-Definition l3 : label:= 3.
-Definition l4 : label:= 4.
+(** Defining a few label names **)
 
+Definition Pre : Label.t := 1.
+Definition Post : Label.t := 2.
+Definition Here : Label.t := 3.
+Definition l1 : Label.t := 4.
+
+(** Defintion of label maps **)
+
+Module Label_Map.
+
+  Module LabelMap := FMapWeakList.Make Label.
+  Module LabelMapFacts := FMapFacts.Facts LabelMap.
+  Module LabelMapProps := FMapFacts.Properties LabelMap.
+  
+End Label_Map.
+
+(** Defintion of label sets **)
+
+Module Label_Set.
+
+  Module LabelSet := MSetAVL.Make Label.
+  Module LabelSetFacts := MSetFacts.Facts LabelSet.
+  Module LabelSetProps := MSetProperties.Properties LabelSet.
+
+End Label_Set.

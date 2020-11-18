@@ -1,26 +1,18 @@
 From Rela Require Import Label.
 From Rela Require Import Sigma.
-Require Import FMapAVL.
-Require Import FMaps.
-From Coq Require Import OrderedTypeEx.
 
-Module Label_Map.
+(** A map from label to memory states, called lambda**)
 
-  Module Map := FMapAVL.Make Nat_as_OT.
+Definition lambda : Type := Label_Map.LabelMap.t sigma.
 
-  Module Facts := Facts Map.
+(** Function for handling lambda **)
 
-  Include Facts.
+Definition empty_lambda : lambda := Label_Map.LabelMap.empty sigma.
 
-End Label_Map.
+Definition update_lambda (la: lambda) (l: Label.t) (s: sigma) : lambda := Label_Map.LabelMap.add l s la.
 
-Definition lambda : Type := Label_Map.Map.t sigma.
+Definition find_lambda (l: Label.t) (la: lambda) := Label_Map.LabelMap.find l la.
 
-Definition empty_lambda : lambda := Label_Map.Map.empty sigma.
+(** Notation for lambda **)
 
-Definition update_lambda (la: lambda) (l: label) (s: sigma) : lambda := Label_Map.Map.add l s la.
-
-Definition find_lambda (l: label) (la: lambda) := Label_Map.Map.find l la.
-
-(** Notation for a "singleton state" with just one variable bound to a value. *)
 Notation "x '|->' v" := (update_lambda empty_lambda x v) (at level 100).
