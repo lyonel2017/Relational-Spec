@@ -14,32 +14,13 @@ Inductive eaexp : Type :=
 
 (** Evaluation of extended arithmetic expression **)
 
-Fixpoint eaeval (la : lambda) (a : eaexp) : option nat :=
+Fixpoint eaeval (la : lambda) (a : eaexp) : nat :=
   match a with
-  | EANum n => Some n
-  | EAt x l => 
-     match (find_lambda l la) with
-     | None => None
-     | Some s => find_sigma x s
-     end
-  | EAPlus a1 a2 => 
-    match (eaeval la a1), (eaeval la a2) with
-    | None, _ => None
-    | _ , None => None
-    | Some a1, Some a2 => Some (a1 + a2)
-    end
-  | EAMinus a1 a2 => 
-     match (eaeval la a1), (eaeval la a2) with
-    | None, _ => None
-    | _ , None => None
-    | Some a1, Some a2 => Some (a1 - a2)
-    end
-  | EAMult a1 a2 => 
-     match (eaeval la a1), (eaeval la a2) with
-    | None, _ => None
-    | _ , None => None
-    | Some a1, Some a2 => Some (a1 * a2)
-    end
+  | EANum n => n
+  | EAt x l =>  (la l) x
+  | EAPlus a1 a2 => (eaeval la a1) + (eaeval la a2)
+  | EAMinus a1 a2 => (eaeval la a1) - (eaeval la a2)
+  | EAMult a1 a2 => (eaeval la a1) * (eaeval la a2)
   end.
 
 (** Helper function for extended arithmetic expression **)
@@ -70,7 +51,8 @@ Fixpoint clea (a : eaexp) : Label_Set.LabelSet.t :=
 Definition example_eaexp : eaexp := EAPlus (EANum 3) (EAMult (EAt EAX l1) (EANum 2)).
 
 Example aexp1 :
-    eaeval (l1 |-> (EAX !-> 5)) example_eaexp  = Some 13.
+forall la: lambda ,
+    eaeval (l1 |-> (EAX !-> 5 ; (la l1)) ; la) example_eaexp  = 13.
 Proof.
 reflexivity.
 Qed.

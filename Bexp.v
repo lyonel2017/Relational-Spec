@@ -20,39 +20,15 @@ Inductive bexp : Type :=
 
 (** Evaluation of boolean expression **)
 
-Fixpoint beval (s : sigma) (b : bexp) : option bool :=
+Fixpoint beval (s : sigma) (b : bexp) : bool :=
   match b with
-  | BTrue      => Some true
-  | BFalse     => Some false
-  | BEq a1 a2   => 
-    match (aeval s a1), (aeval s a2) with
-      | None, _=> None
-      | _, None => None
-      | Some a1, Some a2 => Some (a1 =? a2)
-    end
-  | BLe a1 a2  => 
-    match (aeval s a1), (aeval s a2) with
-      | None, _ => None
-      | _ , None => None
-      | Some a1, Some a2 => Some (a1 <=? a2)
-    end
-  | BNot b1      =>
-    match beval s b1 with
-     | None => None
-     | Some b1 => Some (negb b1)
-    end
-  | BAnd b1 b2  =>
-    match (beval s b1), (beval s b2) with
-     | None, _ => None
-     | _ , None => None
-     | Some b1, Some b2 => Some (andb b1 b2) 
-   end
-  | BOr b1 b2  =>
-    match (beval s b1), (beval s b2) with
-     | None, _ => None
-     | _ , None => None
-     | Some b1, Some b2 => Some (orb b1 b2) 
-    end
+  | BTrue      => true
+  | BFalse     => false
+  | BEq a1 a2  => (aeval s a1) =? (aeval s a2)
+  | BLe a1 a2  => (aeval s a1) <=? (aeval s a2)
+  | BNot b1    => negb (beval s b1)
+  | BAnd b1 b2 => andb (beval s b1)(beval s b2)
+  | BOr b1 b2  => orb (beval s b1) (beval s b2)
   end.
 
 (** Helper function for boolean expression **)
@@ -74,7 +50,8 @@ Fixpoint cvb (b : bexp) : Loc_Set.LocSet.t :=
 Definition example_bexp : bexp := BAnd BTrue (BNot (BLe (AId EAX) (ANum 4))).
 
 Example bexp1 :
-    beval (EAX !-> 5) example_bexp = Some true.
+forall st : sigma,
+    beval (EAX !-> 5 ; st) example_bexp = true.
 Proof. 
 reflexivity.
 Qed.

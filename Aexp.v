@@ -12,28 +12,13 @@ Inductive aexp : Type :=
 
 (** Evaluation of arithmetic expression **)
 
-Fixpoint aeval (st : sigma) (a : aexp) : option nat :=
+Fixpoint aeval (st : sigma) (a : aexp) : nat :=
   match a with
-  | ANum n => Some n
-  | AId x => find_sigma x st  (*Define a notation*)
-  | APlus a1 a2 => 
-    match (aeval st a1), (aeval st a2) with
-    | None, _ => None
-    | _ , None => None
-    | Some a1, Some a2 => Some (a1 + a2)
-    end
-  | AMinus a1 a2 => 
-     match (aeval st a1), (aeval st a2) with
-    | None, _ => None
-    | _ , None => None
-    | Some a1, Some a2 => Some (a1 - a2)
-    end
-  | AMult a1 a2 => 
-     match (aeval st a1), (aeval st a2) with
-    | None, _ => None
-    | _ , None => None
-    | Some a1, Some a2 => Some (a1 * a2)
-    end
+  | ANum n => n
+  | AId x => st x 
+  | APlus a1 a2 => (aeval st a1) + (aeval st a2)
+  | AMinus a1 a2 => (aeval st a1) - (aeval st a2)
+  | AMult a1 a2 => (aeval st a1) * (aeval st a2)
   end.
 
 (** Helper function for arithmetic expression**)
@@ -53,7 +38,8 @@ Fixpoint cva (a : aexp) : Loc_Set.LocSet.t :=
 Definition example_aexp : aexp := APlus (ANum 3) (AMult (AId EAX) (ANum 2)).
 
 Example aexp1 :
-    aeval (EAX !-> 5) example_aexp = Some 13.
+forall st : sigma,
+    aeval (EAX !-> 5 ; st) example_aexp = 13.
 Proof.
 reflexivity.
 Qed.

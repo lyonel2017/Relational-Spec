@@ -1,17 +1,18 @@
 From Rela Require Import Loc.
 
-(** A memory state (called sigma) maps variables to natural numbers **)
+From Coq Require Import Init.Nat.
+From Coq Require Import Arith.Arith.
+From Coq Require Import Arith.EqNat.
 
-Definition sigma : Type := Loc_Map.LocMap.t nat.
+(** A memory state (called sigma) maps locations to natural numbers **)
 
-(** Function for handling memory states **)
+Definition sigma : Type := Loc.t -> nat.
 
-Definition empty_sigma: sigma:= Loc_Map.LocMap.empty nat.
+(** Notation for updating  memory states **)
 
-Definition update_sigma (s:sigma) (l:Loc.t) (n: nat) : sigma := Loc_Map.LocMap.add l n s.
+Definition update_sigma (x:Loc.Loc.t) (v: nat) (l:sigma) : sigma :=  
+fun (x': Loc.t) => if Loc.eqb x' x then v else l x'. 
 
-Definition find_sigma (l : Loc.t) (s: sigma) := Loc_Map.LocMap.find l s.
+Notation "x '!->' v ; l" := (update_sigma x v l)(at level 100).
 
-(** Notation for memory states **)
-
-Notation "x '!->' v" := (update_sigma empty_sigma x v) (at level 100).
+(*Notation "x '!->' v ; s" := (fun (x':Loc.Loc.t) => if Loc.eqb x' x then v else s x') (at level 100).*)

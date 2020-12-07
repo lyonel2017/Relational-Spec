@@ -8,47 +8,57 @@ From Rela Require Import Proc.
 From Rela Require Import Sigma.
 From Rela Require Import Lambda.
 
-(** Defintion of command **)
+From Coq Require Export List.
 
-
-(** Sigma and Lambda are total function like for the verification condition generator : implies no option type **)
-
+(** Defintion of command and program **)
 
 Inductive com : Type :=
-| CSkip (l: Label.t)
-| CAss (l: Label.t) (x : Loc.t) (a : aexp)
-| CSeq (c1 c2 : com)
-| CAssert (l: Label.t) (b: ebexp)
-| CIf (l: Label.t) (b : bexp) (c1 c2 : com)
-| CWhile (l: Label.t) (b : bexp) (c : com)
-| CCall (l: Label.t) (p : Proc.t).
-
-Inductive com' : Type :=
-| CSkip' (l: Label.t)
-| CAss' (l: Label.t) (x : Loc.t) (a : aexp)
-| CAssert' (l: Label.t) (b: ebexp)
-| CIf' (l: Label.t) (b : bexp) (c1 c2 : prog')
-| CWhile' (l: Label.t) (b : bexp) (c : prog') (inv : ebexp) (ass : ( list nat))
-| CCall' (l: Label.t) (p : Proc.t)
-with prog' : Type := 
-| pnil : prog'
-| pconst: com' -> prog' -> prog'
+| CSkip
+| CAss (x : Loc.t) (a : aexp)
+| CAssert (b: ebexp)
+| CIf (b : bexp) (p1 p2 : prog)
+| CWhile (b : bexp) (p : prog) (inv : ebexp) (ass : (list nat))
+| CCall (f : Proc.t)
+with prog : Type := 
+| pnil : prog
+| pconst: Label.t -> com -> prog -> prog
 .
 
+Scheme com_prod_ind := Induction for com Sort Prop
+with prog_com_ind := Induction for prog Sort Prop.
+Combined Scheme com_prog_mutind from com_prod_ind, prog_com_ind.
 
 (** A map from procedure name to commands, called Psi*)
 
 Module Psi.
-  Definition psi : Type := Proc_Map.ProcMap.t com.
 
-  Definition empty_psi: psi:= Proc_Map.ProcMap.empty com.
+  (** The clause of the program that can be called **)
 
-  Definition update_psi (ps:psi) (p:Proc.t) (c: com) : psi := Proc_Map.ProcMap.add p c ps.
+  Definition clause : Type := (ebexp * ebexp * (list nat)).
 
-  Definition find_psi (p : Proc.t) (ps: psi) := Proc_Map.ProcMap.find p ps.
+  (** The programs that can be called is a maps from procedure to program **)
+
+  Definition psi : Type := Proc.t -> (prog * clause).
 
   (** Notation for a "singleton state" with just one variable bound to a value. *)
-  Notation "x '#->' v" := (update_psi empty_psi x v) (at level 100).
+
+  Definition update_psi (x:Proc.t) (v: (prog * clause)) (l:psi): psi :=
+  fun (x': Label.t) => if Proc.eqb x' x then v else l x'.
+
+  Notation "x '#->' v ; l" := (update_psi x v l)(at level 100).
+-
+(*  Notation "x '#->' v ; s" := (fun x' => if Proc.eqb x' x then v else s x') (at level 100).*)
+
+  Definition get_pre (an:clause) := 
+          let (cont,ass) := an in
+          let (pre,post) := cont in
+          pre.
+
+  Definition get_post (an:clause) := 
+          let (cont,ass) := an in
+          let (pre,post) := cont in
+          post.
+
 End Psi.
 
 (** Evaluation of command as a functional **)
@@ -76,82 +86,57 @@ Proof. reflexivity. Qed.
 End Play.
 
 
-(* The ceval_f function works on prop and return the set of prop from the assertion that must be verified
-  Is it required to check 
-*)
+(*supprimer acc*)
 
-Fixpoint ceval_f (s : sigma) (la: lambda) (ps: Psi.psi) (c : com) (i : nat) : (option sigma) * lambda :=
+Fixpoint ceval_com (s : sigma) (l: Label.t) (la: lambda) (ps: Psi.psi) (c : com) (i : nat) (acc : Prop): option (sigma*Prop) :=
   match i with
-  | O  => (None,empty_lambda)
+  | O  => None
   | S i' =>
     match c with
-    | CSkip l => (Some s, update_lambda la l s)
-    | CAss l x a1 =>
-      match aeval s a1 with
-      | None => (None, empty_lambda)
-      | Some a =>
-        match find_sigma x s with
-        | None => (None, empty_lambda)
-        | Some _ => (Some (update_sigma s x a) , update_lambda la l s)
-        end
-      end
-    | CAssert l b => 
-            match ebeval_bool la b with
-              | None  => (None, empty_lambda)
-              | Some false => (None, empty_lambda)
-              | Some true => (Some s, update_lambda la l s)
-             end
-  (* require a proof as parameter : function from la to bar prop *)
-      (*  let t := 
-             match ebeval la a  return bar (ebeval la a ) -> (option sigma) * lambda  with
-              | Some p => fun _ => (Some s, update_lambda la l s)
-              | None   => fun _ => (None, empty_lambda)
-             end
-       in t I*)
-    | CSeq c1 c2 =>
-      match (ceval_f s la ps c1 i') with
-      | (Some s',la') => ceval_f s' la' ps c2 i'
-      | (None,_)  => (None,empty_lambda)
-      end
-    | CIf l b c1 c2 =>
+    | CSkip => Some (s, acc)
+    | CAss x a1 => Some((x !-> (aeval s a1) ; s), acc)
+    | CAssert b  => Some(s,(acc /\ ebeval_prop la b))
+    | CIf b p1 p2 =>
       match (beval s b) with
-      | None => (None,empty_lambda)
-      | Some true =>
-        match ceval_f s (update_lambda la l s) ps c1 i' with
-        | (Some s' , _)  => (Some s', update_lambda la l s)
-        | (None, _) => (None,empty_lambda)
-        end
-      | Some false =>
-        match ceval_f s (update_lambda la l s) ps c2 i' with
-        | (Some s' , _)  => (Some s' ,update_lambda la l s)
-        | (None, _) => (None,empty_lambda)
-        end
+      | true => ceval_prog s (l |-> s ; la ) ps p1 i' acc
+      | false => ceval_prog s (l |-> s ; la ) ps p2 i' acc 
       end
-    | CWhile l b c =>
+   | CWhile b p1 inv ass =>
+   let acc := (acc /\ ebeval_prop (Here |-> s ; la ) inv) in
       match (beval s b) with
-      | None => (None,empty_lambda)
-      | Some true =>
-        match (ceval_f s (update_lambda la l s) ps (CSeq c (CWhile l b c)) i') with
-        | (Some s' , _)  => (Some s' ,update_lambda la l s)
-        | (None, _) => (None,empty_lambda)
+      | true =>
+        match ceval_prog s (l |-> s ; la ) ps p1 i' acc  with
+        | Some (s', acc')  => ceval_com s' l la  ps c i' acc'
+        | None => None
         end
-      | Some false => (Some s, (update_lambda la l s))
+      | false => Some(s, acc)
       end
-    | CCall l p =>
-      match (Psi.find_psi p ps) with
-      | None => (None,empty_lambda)
-      | Some c' =>
-        match (ceval_f s (update_lambda la l s) ps c' i') with
-        | (Some s' , _)  => (Some s' ,update_lambda la l s)
-        | (None, _) => (None,empty_lambda)
-        end
+    | CCall f =>
+    let (p,an) :=  ps f in
+        match ceval_prog s (l |-> s ; la ) ps p i' (acc /\ forall la : Lambda.lambda, ebeval_prop (Pre |-> s ; la ) (Psi.get_pre an))  with
+        | Some (s' , acc')  => Some( s', (acc' /\ forall la : Lambda.lambda, ebeval_prop (Post |-> s' ; (Pre |-> s ; la )) (Psi.get_post an)))
+        | None => None
       end
     end
-  end.
+  end
+  
+  with ceval_prog (s : sigma) (la: lambda) (ps: Psi.psi) (p : prog) (i : nat) (acc : Prop): option (sigma * Prop) :=
+    match i with
+      | O => None 
+      | S i' =>
+          match p with
+          | pnil  => Some (s, acc)
+          | pconst l c p' => 
+              match ceval_com s l la ps c i' acc with
+                | None => None
+                | Some (s',acc') => ceval_prog s' (l |-> s ; la ) ps p' i' acc'
+              end
+         end
+   end.
 
 (** Evaluation command as a relation **)
 
-Inductive ceval_r : com -> sigma -> lambda -> Psi.psi -> sigma * lambda -> Prop :=
+(*Inductive ceval_r : com -> sigma -> lambda -> Psi.psi -> sigma * lambda -> Prop :=
   | E_Skip : forall s la ps l, 
     ceval_r (CSkip l) s la ps (s,update_lambda la l s)
   | E_Ass : forall s la ps l a new x,
@@ -187,70 +172,78 @@ Inductive ceval_r : com -> sigma -> lambda -> Psi.psi -> sigma * lambda -> Prop 
   | E_Call : forall s la ps s' la' l p c,
     Psi.find_psi p ps = Some c ->
     ceval_r c s la ps (s',la') ->
-    ceval_r (CCall l p) s la ps (s',update_lambda la l s).
+    ceval_r (CCall l p) s la ps (s',update_lambda la l s).*)
 
-(* A proof of Determinisme of evalution as relation*)
+
+
+
+
+
 
 (** Helper function for command **)
 (* Collector function for locations *)
 
 Fixpoint cvc (c : com)  : Loc_Set.LocSet.t  :=
     match c with
-    | CSkip l         => Loc_Set.LocSet.empty
-    | CAss l x a      => 
-    Loc_Set.LocSet.union (Loc_Set.LocSet.singleton x) (cva a)
-    | CAssert l b     => cveb b
-    | CSeq c1 c2      => Loc_Set.LocSet.union (cvc c1) (cvc c2)
-    | CIf l b c1 c2   =>
-      Loc_Set.LocSet.union (cvb b) (Loc_Set.LocSet.union (cvc c1) (cvc c2))
-    | CWhile l b c    =>
-      Loc_Set.LocSet.union (cvb b) (cvc c)
-    | CCall l p       => Loc_Set.LocSet.empty
+    | CSkip  => Loc_Set.LocSet.empty
+    | CAss x a      =>  Loc_Set.LocSet.union (Loc_Set.LocSet.singleton x) (cva a)
+    | CAssert b     => cveb b
+    | CIf b c1 c2   => Loc_Set.LocSet.union (cvb b) (Loc_Set.LocSet.union (cvp c1) (cvp c2))
+    | CWhile b c _ _    => Loc_Set.LocSet.union (cvb b) (cvp c)
+    | CCall p       => Loc_Set.LocSet.empty
+    end
+with cvp (p : prog) : Loc_Set.LocSet.t :=
+  match p with
+  | pnil => Loc_Set.LocSet.empty
+  | pconst _ c q => Loc_Set.LocSet.union (cvc c) (cvp q) 
   end.
 
 (* Collector function for labels *)
 
 Fixpoint clc (c : com)  : Label_Set.LabelSet.t  :=
     match c with
-    | CSkip l         => Label_Set.LabelSet.singleton l
-    | CAss l x a      => Label_Set.LabelSet.singleton l
-    | CAssert l b     => Label_Set.LabelSet.singleton l
-    | CSeq c1 c2      => Label_Set.LabelSet.union (clc c1) (clc c2)
-    | CIf l b c1 c2   =>
-      Label_Set.LabelSet.union (Label_Set.LabelSet.singleton l) 
-      (Label_Set.LabelSet.union (clc c1) (clc c2))
-    | CWhile l b c    =>
-         Label_Set.LabelSet.union 
-         (Label_Set.LabelSet.singleton l) 
-         (clc c) 
-    | CCall l p       => Label_Set.LabelSet.singleton l
-  end.
+    | CSkip         => Label_Set.LabelSet.empty
+    | CAss x a      => Label_Set.LabelSet.empty
+    | CAssert b     => cleb b
+    | CIf b p1 p2   => Label_Set.LabelSet.union (clp p1) (clp p2)
+    | CWhile b c _ _  =>  clp c 
+    | CCall p       => Label_Set.LabelSet.empty
+  end
+with clp (p : prog) : Label_Set.LabelSet.t :=
+  match p with
+  | pnil => Label_Set.LabelSet.empty
+  | pconst l c q => Label_Set.LabelSet.union
+  (Label_Set.LabelSet.union (Label_Set.LabelSet.singleton l) (clc c)) (clp q) 
+ end.
 
 (* Collector function for procedure names *)
 
 Fixpoint cpc (c : com)  : Proc_Set.ProcSet.t  :=
     match c with
-    | CSkip l        => Proc_Set.ProcSet.empty
-    | CAss l x a     => Proc_Set.ProcSet.empty
-    | CAssert l b    => Proc_Set.ProcSet.empty
-    | CSeq c1 c2     => Proc_Set.ProcSet.union (cpc c1) (cpc c2)
-    | CIf l b c1 c2  =>
-      (Proc_Set.ProcSet.union (cpc c1) (cpc c2))
-    | CWhile l b c   => cpc c 
-    | CCall l p      => Proc_Set.ProcSet.singleton p
-  end.
+    | CSkip        => Proc_Set.ProcSet.empty
+    | CAss x a     => Proc_Set.ProcSet.empty
+    | CAssert b    => Proc_Set.ProcSet.empty
+    | CIf b c1 c2  => Proc_Set.ProcSet.union (cpp c1) (cpp c2)
+    | CWhile b c _ _   => cpp c 
+    | CCall p      => Proc_Set.ProcSet.singleton p
+  end
+with cpp (p : prog) : Proc_Set.ProcSet.t :=
+  match p with
+  | pnil => Proc_Set.ProcSet.empty
+  | pconst _ c q => Proc_Set.ProcSet.union (cpc c) (cpp q) 
+ end.
 
 (** Examples of commands **)
 
-Definition plus2 : com := CAss l1 EAX (APlus (AId EAX) (ANum 2)).
+Definition plus2 : prog := pconst l1 (CAss EAX (APlus (AId EAX) (ANum 2))) pnil.
 
-Definition assertcom : com := CAssert l1 (EBLe (EAt EAX l1) (EANum 6)).
+Definition assertcom : prog := pconst l1 (CAssert (EBLe (EAt EAX l1) (EANum 6))) pnil.
 
 Example ecom3 :
-    ceval_f (EAX !-> 5) (l1 |-> (EAX !-> 5)) Psi.empty_psi assertcom 1 =
-    (Some (EAX !-> 5),(l1 |-> (EAX !-> 5))).
+forall (s : sigma) (la : lambda),
+    ceval_prog (EAX !-> 5 ; s) la (fun _ => (pnil,(EBTrue,EBTrue,nil))) plus2 2 True =
+    Some ((EAX !-> 7 ; ((EAX !-> 5 ; s))),True).
 Proof.
-simpl.
-f_equal.
-unfold update_lambda.
-Abort.
+intros.
+reflexivity.
+Qed.

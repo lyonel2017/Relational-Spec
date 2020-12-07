@@ -2,9 +2,6 @@ From Coq Require Import Arith.
 From Coq Require Import FMaps.
 From Coq Require Import MSets.
 
-(* Rename into location *)
-
-
 (** Variable (also called locations) are natural numbers **)
 
 Module Loc := Nat.

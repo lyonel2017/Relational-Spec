@@ -23,88 +23,30 @@ Inductive ebexp : Type :=
 
 (* Evalution of extended boolean expression as option prop *)
 
-Fixpoint ebeval_prop (la : lambda) (b : ebexp) : option Prop :=
+Fixpoint ebeval_prop (la : lambda) (b : ebexp) : Prop :=
   match b with
-  | EBTrue      => Some True
-  | EBFalse     => Some False
-  | EBEq a1 a2   => 
-    match (eaeval la a1), (eaeval la a2) with
-      | None, _=> None
-      | _, None => None
-      | Some a1, Some a2 => Some (a1 = a2)
-    end
-  | EBLe a1 a2  => 
-    match (eaeval la a1), (eaeval la a2) with
-      | None, _ => None
-      | _ , None => None
-      | Some a1, Some a2 => Some (a1 <= a2)
-    end
-  | EBNot b1 =>
-    match ebeval_prop la b1 with
-     | None => None
-     | Some b1 => Some ( ~ b1)
-    end
-  | EBAnd b1 b2 =>
-    match (ebeval_prop la b1), (ebeval_prop la b2) with
-     | None, _ => None
-     | _ , None => None
-     | Some b1, Some b2 => Some (b1 /\ b2) 
-   end
-  | EBOr b1 b2  =>
-    match (ebeval_prop la b1), (ebeval_prop la b2) with
-     | None, _ => None
-     | _ , None => None
-     | Some b1, Some b2 => Some (b1 \/ b2) 
-    end
-  | EBImp b1 b2  =>
-    match (ebeval_prop la b1), (ebeval_prop la b2) with
-     | None, _ => None
-     | _ , None => None
-     | Some b1, Some b2 => Some (b1 -> b2) 
-    end
+  | EBTrue      => True
+  | EBFalse     => False
+  | EBEq a1 a2   => (eaeval la a1) = (eaeval la a2)
+  | EBLe a1 a2  => (eaeval la a1) <= (eaeval la a2)
+  | EBNot b1 => ~ (ebeval_prop la b1)
+  | EBAnd b1 b2 => (ebeval_prop la b1) /\ (ebeval_prop la b2)
+  | EBOr b1 b2  => (ebeval_prop la b1) \/ (ebeval_prop la b2)
+  | EBImp b1 b2  => (ebeval_prop la b1) -> (ebeval_prop la b2)
   end.
   
 (* Evaluation of extended booleand expression as option bool *)
 
-Fixpoint ebeval_bool (la : lambda) (b : ebexp) : option bool :=
+Fixpoint ebeval_bool (la : lambda) (b : ebexp) : bool :=
   match b with
-  | EBTrue      => Some true
-  | EBFalse     => Some false
-  | EBEq a1 a2 => 
-    match (eaeval la a1), (eaeval la a2) with
-      | None, _=> None
-      | _, None => None
-      | Some a1, Some a2 => Some (a1 =? a2)
-    end
-  | EBLe a1 a2 => 
-    match (eaeval la a1), (eaeval la a2) with
-      | None, _ => None
-      | _ , None => None
-      | Some a1, Some a2 => Some (a1 <=? a2)
-    end
-  | EBNot b1 =>
-    match ebeval_bool la b1 with
-     | None => None
-     | Some b1 => Some ( negb b1)
-    end
-  | EBAnd b1 b2 =>
-    match (ebeval_bool la b1), (ebeval_bool la b2) with
-     | None, _ => None
-     | _ , None => None
-     | Some b1, Some b2 => Some (andb b1 b2) 
-   end
-  | EBOr b1 b2 =>
-    match (ebeval_bool la b1), (ebeval_bool la b2) with
-     | None, _ => None
-     | _ , None => None
-     | Some b1, Some b2 => Some (orb b1 b2) 
-    end
-  | EBImp b1 b2 =>
-    match (ebeval_bool la b1), (ebeval_bool la b2) with
-     | None, _ => None
-     | _ , None => None
-     | Some b1, Some b2 => Some (orb (negb b1) b2) 
-    end 
+  | EBTrue      => true
+  | EBFalse     => false
+  | EBEq a1 a2 => (eaeval la a1) =? (eaeval la a2)
+  | EBLe a1 a2 => (eaeval la a1) <=? (eaeval la a2)
+  | EBNot b1 => negb (ebeval_bool la b1)
+  | EBAnd b1 b2 => andb (ebeval_bool la b1) (ebeval_bool la b2)
+  | EBOr b1 b2 => orb (ebeval_bool la b1) (ebeval_bool la b2)
+  | EBImp b1 b2 => orb (negb (ebeval_bool la b1)) (ebeval_bool la b2)
   end.
 
 (** Helper function for extended boolean expression **)
@@ -141,16 +83,17 @@ Fixpoint cleb (b : ebexp) : Label_Set.LabelSet.t :=
 Definition example_ebexp : ebexp := EBAnd EBTrue (EBEq (EAt EAX l1) (EANum 5)).
 
 Example bexp1 :
-    ebeval_bool (l1 |-> (EAX !-> 5)) example_ebexp = Some true.
+forall la: lambda ,
+    ebeval_bool (l1 |-> (EAX !-> 5 ; (la l1)); la) example_ebexp = true.
 Proof. reflexivity. Qed.
 
 Example bexp2 :
-    match ebeval_prop (l1 |-> (EAX !-> 5))  example_ebexp with
-    | Some p => p
-    | None => False
-    end.
+forall la: lambda ,
+    ebeval_prop 
+    (l1 |-> (EAX !-> 5 ; (la l1)) ; la) 
+    example_ebexp.
 Proof. 
-simpl. split.
+intro. simpl. split.
  * auto. 
  * reflexivity. 
 Qed.

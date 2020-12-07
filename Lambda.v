@@ -1,18 +1,19 @@
 From Rela Require Import Label.
 From Rela Require Import Sigma.
 
-(** A map from label to memory states, called lambda**)
+From Coq Require Import Init.Nat.
+From Coq Require Import Arith.Arith.
+From Coq Require Import Arith.EqNat.
 
-Definition lambda : Type := Label_Map.LabelMap.t sigma.
+(** A map from label to memory states, called lambda **)
 
-(** Function for handling lambda **)
+Definition lambda : Type := Label.t -> sigma.
 
-Definition empty_lambda : lambda := Label_Map.LabelMap.empty sigma.
+(** Notation for updating lambda **)
 
-Definition update_lambda (la: lambda) (l: Label.t) (s: sigma) : lambda := Label_Map.LabelMap.add l s la.
+Definition update_lambda (x:Label.Label.t) (v: sigma) (l:lambda): lambda :=  
+fun (x': Label.t) => if Label.eqb x' x then v else l x'. 
 
-Definition find_lambda (l: Label.t) (la: lambda) := Label_Map.LabelMap.find l la.
+Notation "x '|->' v ; l" := (update_lambda x v l)(at level 100).
 
-(** Notation for lambda **)
-
-Notation "x '|->' v" := (update_lambda empty_lambda x v) (at level 100).
+(*Notation "x '|->' v ; l" := (fun (x': Label.t) => if Label.eqb x' x then v else l x') (at level 100).*)
