@@ -44,43 +44,6 @@ split.
   * reflexivity.
 Qed.
 
-(* The first version without call and loop by using well define program : constructor for while and call implies false *)
-
-(*Fixpoint tc (c : prog') (s : Lambda.lambda) (m: Sigma.sigma)
-            (fin: Sigma.sigma -> Lambda.lambda -> Prop)
-            (annot: Xi.xi): Prop :=
-    match c with
-    | pnil => fin m s
-    | pconst (CSkip' l) p => 
-      tc p (fun l' => if Label.Label.eqb l' l then m else s l') m fin annot
-    | pconst (CAss' l x a) p =>
-      forall m' : nat -> nat , m' = (set m x (aeval m a)) ->
-      tc p (fun l' => if Label.Label.eqb l' l then m else s l') m' fin annot
-    | pconst (CAssert' l b) p =>
-      ebeval_prop (fun l' => if Label.Label.eqb l' l then m else s l') b -> 
-      tc p (fun l' => if Label.Label.eqb l' l then m else s l') m fin annot
-    | pconst (CIf' l b p1 p2) p =>
-      forall m': nat -> nat , 
-        ((beval m b = true -> tc p1 (fun l' => if Label.Label.eqb l' l then m else s l') m (fun m _ => m = m') annot)
-         /\
-        (beval m b = false -> tc p2 (fun l' => if Label.Label.eqb l' l then m else s l') m (fun m _ => m = m') annot))
-        -> tc p (fun l' => if Label.Label.eqb l' l then m else s l') m' fin annot
-    | pconst (CWhile' l b c inv ass) p => 
-          forall m': nat -> nat , 
-            ebeval_prop (fun l' => if Label.Label.eqb l' Label.Here then m else s l') inv ->
-            ebeval_prop (fun l' => if Label.Label.eqb l' Label.Here then m' else s l') inv ->
-            beval m' b = false ->
-            tc p (fun l' => if Label.Label.eqb l' l then m else s l') m' fin annot
-    | pconst (CCall' l proc) p => 
-          let s' := (fun l' => if Label.Label.eqb l' Label.Pre then m else s l') in 
-          forall m': nat -> nat , 
-            ebeval_prop s' (Xi.get_pre (annot proc)) ->
-            ebeval_prop (fun l' => if Label.Label.eqb l' Label.Post then m' else s' l') (Xi.get_post (annot proc)) ->
-            tc p (fun l' => if Label.Label.eqb l' l then m else s l') m' fin annot
-end.*)
-
-(*Use notation for updating s*)
-
 Fixpoint tc (c : com) (l: Label.t) (s : Lambda.lambda) (m m' : Sigma.sigma)
             (ps: Psi.psi): Prop :=
     match c with
@@ -137,7 +100,11 @@ end.
       vc_aux p (append (CCall' l proc) acc) s m annot
 end.*)
 
-(*Fixpoint vc_f (ps: Psi.psi) (annot: Proc.t ->  clause) : Prop := False*)
+(*Definition vc_f (ps: Psi.psi): Prop :=
+forall (f :Proc.t) la m m', 
+  (Psi.get_pre (Psi.get_an ps f)) (Pre |-> m ; la ) -> 
+  tp (Psi.get_proc f ps) la m (fun m _ => m = m') ps -> 
+  (Psi.get_post (Psi.get_an f ps)) (Post |-> m' ; (Pre |-> m ; la )).*)
 
 
 
