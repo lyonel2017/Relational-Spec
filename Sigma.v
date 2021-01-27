@@ -13,6 +13,5 @@ Definition sigma : Type := Loc.t -> nat.
 Definition update_sigma (x:Loc.Loc.t) (v: nat) (l:sigma) : sigma :=  
 fun (x': Loc.t) => if Loc.eqb x' x then v else l x'. 
 
-Notation "x '!->' v ; l" := (update_sigma x v l)(at level 100).
+Notation "x '!->' v ';' l" := (update_sigma x v l)(at level 100, v at next level, right associativity).
 
-(*Notation "x '!->' v ; s" := (fun (x':Loc.Loc.t) => if Loc.eqb x' x then v else s x') (at level 100).*)

@@ -12,6 +12,7 @@ Definition Pre : Label.t := 1.
 Definition Post : Label.t := 2.
 Definition Here : Label.t := 3.
 Definition l1 : Label.t := 4.
+Definition l2 : Label.t := 5.
 
 (** Defintion of label maps **)
 

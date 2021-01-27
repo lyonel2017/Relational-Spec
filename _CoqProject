@@ -8,5 +8,6 @@ Lambda.v
 EAexp.v
 EBexp.v
 Proc.v
-ECom.v
+Com.v
 Vcg.v
+Hoare_Triple.v
