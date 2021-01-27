@@ -3,11 +3,13 @@ Loc.v
 Sigma.v
 Aexp.v
 Bexp.v
-Label.v
-Lambda.v
-EAexp.v
-EBexp.v
 Proc.v
 Com.v
 Vcg.v
 Hoare_Triple.v
+
+
+Label.v
+Lambda.v
+EAexp.v
+EBexp.v

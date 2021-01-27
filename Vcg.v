@@ -3,15 +3,8 @@ From Rela Require Import Aexp.
 From Rela Require Import Bexp.
 From Rela Require Import Com.
 From Rela Require Import Proc.
-From Rela Require Import Label.
-From Rela Require Import Lambda.
 From Rela Require Import Sigma.
 From Rela Require Import Loc.
-
-From Coq Require Import Bool.Bool.
-From Coq Require Import Init.Nat.
-From Coq Require Import Arith.Arith.
-From Coq Require Import Arith.EqNat.
 
 From Coq Require Import Lia.
 
@@ -45,6 +38,18 @@ split.
 Qed.
 
 
+Lemma set''def:
+  forall (f: Loc.t -> nat ) (x: Loc.t) (v w:nat) (y: Loc.t),
+  (y = x -> v = w -> ((set f x v y) = w)).
+Proof.
+intros f x v w y H1 H2.
+unfold set.
+destruct (Loc.eq_dec x y).
+  * rewrite H2. reflexivity.
+  * contradiction n.
+    rewrite H1. reflexivity.
+Qed.
+
 (** Definition of Precondtion **)
 
 Definition precondition : Type := assertion.
@@ -70,7 +75,7 @@ Module Phi.
   Definition phi : Type := Proc.t -> clause.
 
   Definition update_psi (x:Proc.t) (v: clause) (l:phi): phi :=
-  fun (x': Label.t) => if Proc.eqb x' x then v else l x'.
+  fun (x': Proc.t) => if Proc.eqb x' x then v else l x'.
 
   Notation "x '#->' v ; l" := (update_psi x v l)(at level 100, v at next level, right associativity).
 
@@ -107,12 +112,10 @@ Fixpoint tc (c : com) (m : Sigma.sigma)
     | CAssert b => forall m', b m -> m = m' -> suite m'
     | CSeq p1 p2 => tc p1 m ps (fun m' => tc p2 m' ps suite)
     | CIf b p1 p2 =>
-        (* forall m1 m2, 
-         branch (bassn b m) (m = m1) (m = m2) ->
-                tp p1 m1 ps (fun m1' => 
-                tp p2 m2 ps (fun m2' => forall m',
-                branch (bassn b m) (m' = m1') (m' = m2') suite m'))*)
-   branch (bassn b m) (tc p1 m ps suite) (tc p2 m ps suite)
+                (*tc p1 m ps (fun m1' => 
+                tc p2 m ps (fun m2' => forall m',
+                branch (bassn b m) (m' = m1') (m' = m2') -> suite m'))*)
+    (bassn b m -> tc p1 m ps suite) /\  (~bassn b m  -> tc p2 m ps suite)
     (*| CWhile b p inv _ => inv m -> inv m' -> beval m b = false -> suite *)
     end.
 
@@ -146,72 +149,111 @@ Qed.
 
 Definition if2 : com := CIf (BEq (AId EAX) (ANum 4)) plus2 plus2.
 
-(*Lemma test3 : forall m, m EAX = 1 -> tc if2 m empty_phi (fun m' => m' EAX = 3).
+Lemma test3 : forall m, m EAX = 1 -> tc if2 m empty_phi (fun m' => m' EAX = 3).
 Proof.
+(* simpl.
+ intros.
+ destruct H2.
+ + rewrite H3.
+   rewrite H0.
+   rewrite H.
+   apply set'def.
+   reflexivity.
+ + rewrite H3.
+   rewrite H1.
+   rewrite H.
+   apply set'def.
+   reflexivity.
+*)
+
   simpl.
   intros.
-  destruct H0;destruct H6.
-  + rewrite <- H5.
-    rewrite H6.
-    rewrite <- H2.
-    rewrite H1.
-    rewrite <- H7.
+  split;intros.
+  + rewrite H1.
     rewrite H.
     apply set'def.
     reflexivity.
-  + rewrite <- H5.
-    rewrite H6.
-    rewrite <-  H4.
-    rewrite H3.
-    rewrite <- H7.
+  + rewrite H1.
     rewrite H.
     apply set'def.
     reflexivity.
-Qed.*)
+Qed.
 
 Definition if3 : com := CSeq (CAss EAX (APlus (AId EAX) (ANum 2)))
                             (CSeq (CIf (BEq (AId EAX) (ANum 4)) plus2 plus2) plus2).
 
-Lemma test4 : forall m, m EAX = 1 -> tc if3 m empty_phi (fun m' => m' EAX = 3).
+Lemma test4 : forall m, m EAX = 1 -> tc if3 m empty_phi (fun m' => m' EAX = 7).
 Proof.
-  simpl.
+ (* simpl.
   intros.
-Abort.
+  rewrite H4.
+  destruct H3.
+  * rewrite H5.
+    rewrite H1.
+    rewrite H0.
+    rewrite H.
+    apply set'def.
+    reflexivity.
+  * rewrite H5.
+    rewrite H2.
+    rewrite H0.
+    rewrite H.
+    apply set'def.
+    reflexivity.*)
+ simpl.
+ intros.
+ split.
+ * intros.
+   rewrite H3.
+   rewrite H2.
+   rewrite H0.
+   rewrite H.
+   apply set'def.
+   reflexivity.
+ * intros.
+   rewrite H3.
+   rewrite H2.
+   rewrite H0.
+   rewrite H.
+   apply set'def.
+   reflexivity.
+Qed.
 
 Lemma test5 : forall m1 m2, m1 EAX = m2 EAX -> 
                               tc plus2 m1 empty_phi ( fun m1' => tc plus2 m2 empty_phi (fun m2' => m1' EAX = m2' EAX)).
 Proof.
   simpl.
   intros.
-Abort.
+  rewrite H1.
+  rewrite H0.
+  rewrite H.
+  apply set'def.
+  reflexivity.
+Qed.
 
-(*Fixpoint tc' (c : com) (m m' : Sigma.sigma)
-            (ps: Phi.phi) (suite : Prop) : Prop :=
+Fixpoint tc' (c : com) (m : Sigma.sigma)
+            (ps: Phi.phi) (suite : Sigma.sigma -> Prop) : Prop :=
     match c with
-    | CSkip => tc c m m' ps suite
-    | CAss x a => tc c m m' ps suite
-    | CAssert b => b m /\ tc c m m' ps suite
+    | CSkip => tc c m ps suite
+    | CAss x a => tc c m ps suite
+    | CAssert b => b m /\ tc c m ps suite
+    | CSeq p1 p2 => tc' p1 m ps (fun m' => tc' p2 m' ps suite)
     | CIf b p1 p2 => 
-         (beval m b = true -> tp' p1 m ps) /\
-         (beval m b = false -> tp' p2 m ps) /\
-          tc c m m' ps suite
-    | CWhile b p inv _ => 
+         (bassn b m -> tc' p1 m ps (fun _ => True)) /\
+         (~bassn b m -> tc' p2 m ps (fun _ => True)) /\
+          tc c m ps suite
+    (*| CWhile b p inv _ => 
       (beval m b = true -> inv m ) /\ 
       (beval m b = true -> forall mi, inv mi -> 
                            tp p m ps (fun mf => inv mf)) /\ 
       (beval m b = true -> forall mi, inv mi -> tp' p m ps) /\ 
-      tc c m m' ps suite
-    end
- with tp' (p : prog) (m: Sigma.sigma)  (ps: Phi.phi) : Prop :=
-  match p with
-  | pnil => True
-  | pconst l c p' => forall m', tc' c m m' ps (tp' p' m' ps)
-end.*)
-(*
-Definition truc3 : prog := pconst l1 (CAssert (fun m => m EAX = 2))
-                          (pconst l2 (CAssert (fun m => m EAX = 2)) pnil).
-                          
-Lemma test4 : forall m, (m EAX = 2) -> tp' truc3 m  empty_phi .
+      tc c m m' ps suite*)
+    end.
+
+Definition truc3 : com := CSeq (CAssert (fun m => m EAX = 2))
+                          (CAssert (fun m => m EAX = 2)).
+
+Lemma test6 : forall m, (m EAX = 2) -> tc' truc3 m  empty_phi (fun _ => True).
 Proof.
 intros.
 simpl.
@@ -223,16 +265,15 @@ split.
     - intros. auto. 
 Qed.
 
-Definition if4 : prog := pconst l1 (CIf (BEq (AId EAX) (ANum 2)) (pconst l1 (CAssert (fun m => m EAX = 2)) pnil) pnil) pnil.
-*)
-(*Lemma test5 : forall m, (m EAX = 2) -> tp' if4 m  empty_phi .
+Definition if4 : com := CIf (BEq (AId EAX) (ANum 2)) (CAssert (fun m => m EAX = 2)) CSkip.
+
+Lemma test7 : forall m, (m EAX = 2) -> tc' if4 m  empty_phi (fun _ => True).
 Proof.
 intros.
 simpl.
-intros.
 split. 
-  * intros. split. all: try auto.
+  * split. all: try auto.
   * split.
     - auto.
-    - intros. auto. 
-Qed.*)
+    - split. all: try auto.
+Qed.

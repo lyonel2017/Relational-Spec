@@ -1,13 +1,9 @@
 From Rela Require Import Loc.
-From Rela Require Import Label.
 From Rela Require Import Aexp.
 From Rela Require Import Bexp.
 From Rela Require Import Proc.
 From Rela Require Import Sigma.
-From Rela Require Import Lambda.
 From Coq Require Import Lia.
-
-From Coq Require Export List.
 
 (** Definition of assertion **)
 
@@ -36,7 +32,7 @@ Module Psi.
   (** Notation for a "singleton state" with just one variable bound to a value. *)
 
   Definition update_psi (x:Proc.t) (v: com ) (l:psi): psi :=
-  fun (x': Label.t) => if Proc.eqb x' x then v else l x'.
+  fun (x': Proc.t) => if Proc.eqb x' x then v else l x'.
 
   Notation "x '#->' v ; l" := (update_psi x v l)(at level 100, v at next level, right associativity).
 End Psi.

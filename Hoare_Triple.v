@@ -1,17 +1,8 @@
 From Rela Require Import Vcg.
-
-Locate set.
-
 From Rela Require Import Com.
 From Rela Require Import Bexp.
-From Rela Require Import Lambda.
-From Rela Require Import Label.
 From Rela Require Import Sigma.
 
-From Coq Require Import Bool.Bool.
-From Coq Require Import Init.Nat.
-From Coq Require Import Arith.Arith.
-From Coq Require Import Arith.EqNat.
 
 Definition hoare_triple (P Q: assertion) (c : com) (ps : Psi.psi) : Prop :=
   forall s s',  P s -> ceval c s ps s' -> Q s'.
@@ -67,7 +58,7 @@ Proof.
 intros p ps pi well.
 induction p.
 * unfold hoare_triple. intros. eapply H. apply H0. inversion H1;subst. reflexivity.
-* contradiction well.
+* unfold hoare_triple. intros. eapply H. apply H0. inversion H1;subst. reflexivity.
 * contradiction well.
 * intros. eapply seq_hoare_triple.
   + apply IHp1.
@@ -80,30 +71,9 @@ induction p.
   +  apply IHp1.
     - simpl in well. destruct well. assumption.
     - intros. simpl in H. destruct H0. specialize (H m H0). destruct H.
-    ** apply H2.
-    ** apply bexp_eval_true in H1. contradiction H1.
+      apply H. apply bexp_eval_true. assumption.
   +  apply IHp2.
     - simpl in well. destruct well. assumption.
     - intros. simpl in H. destruct H0. specialize (H m H0). destruct H.
-    ** apply bexp_eval_false in H1. contradiction H1.
-    ** apply H2.
+    ** apply H2. apply bexp_eval_false. assumption.
  Qed.
-
-(************ TRASH **************************)
-
-(*Lemma seq_vc :
-forall c l p ps (P Q R: lambda -> Prop),
-forall la m m' m'',  
-((P (Pre |-> m ; la ) -> tc c l la m m'' ps -> R (Post |-> m'' ; (Pre |-> m ; (l |-> m ; la ) ))) /\ 
-(R (Post |-> m'' ; (Pre |-> m ; (l |-> m ; la ) )) -> tp p (l |-> m ; la ) m'' (fun (m0 : sigma) (_ : lambda) => m0 = m') ps -> Q (Post |-> m' ; (Pre |-> m ; la )))) ->
-(P (Pre |-> m; la) -> tp (pconst l c p) la m (fun (m0 : sigma) (_ : lambda) => m0 = m') ps -> Q (Post |-> m'; Pre |-> m; la)).
-Proof.
-intros c l p ps P Q R la m m' m'' H Pre H12.
-simpl in H12.
-specialize (H12 m'').
-destruct H12.
-destruct H.
-apply H2.
-apply H.
-all: try assumption.
-Abort.*)
