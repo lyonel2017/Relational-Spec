@@ -14,7 +14,7 @@ Definition assertion : Type := sigma -> Prop.
 Inductive com : Type :=
 | CSkip
 | CAss (x : Loc.t) (a : aexp)
-| CAssert (b: assertion )
+(*| CAssert (b: assertion )*)
 | CSeq (p1 : com) (p2 : com)
 | CIf (b : bexp) (p1 p2 : com)
 (*| CWhile (b : bexp) (p : prog) (inv : assertion) (ass : (list nat))*)
@@ -46,9 +46,9 @@ Inductive ceval : com -> sigma -> Psi.psi -> sigma -> Prop :=
   | E_Ass : forall s ps x a1 n,
     aeval s a1 = n ->
     ceval (CAss x a1) s ps (x !-> n ; s)
-  | E_Assert: forall s ps (b : assertion),
+(*  | E_Assert: forall s ps (b : assertion),
     b s ->
-    ceval (CAssert b) s ps s
+    ceval (CAssert b) s ps s*)
   | E_IfTrue : forall s s' ps b p1 p2,
       beval s b = true ->
       ceval p1 s ps s' ->

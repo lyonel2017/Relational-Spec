@@ -40,40 +40,24 @@ inversion HE;subst.
   + apply H6.
 Qed.
 
-Fixpoint well (c : com) : Prop :=
-match c with
-| CSkip => True
-| CSeq p1 p2 => well p1 /\ well p2
-| CIf _ p1 p2 => well p1 /\ well p2
-| _ => False
-end.
-
 Lemma correct :
 forall p ps pi,
-well p ->
 forall (P Q: assertion),
-(forall m, P m -> tc p m pi (fun m' => Q m')) -> 
+(forall m, P m -> tc p m pi Q) -> 
 hoare_triple P Q p ps.
 Proof.
-intros p ps pi well.
+intros p ps pi.
 induction p.
 * unfold hoare_triple. intros. eapply H. apply H0. inversion H1;subst. reflexivity.
 * unfold hoare_triple. intros. eapply H. apply H0. inversion H1;subst. reflexivity.
-* contradiction well.
 * intros. eapply seq_hoare_triple.
-  + apply IHp1.
-    - simpl in well. destruct well. assumption.
-    - simpl in H. apply H.
-   + apply IHp2.
-    - simpl in well. destruct well. assumption.
-    - eauto.
+  + apply IHp1. simpl in H. apply H.
+  + apply IHp2. eauto.
 * intros. apply if_hoare_triple.
   +  apply IHp1.
-    - simpl in well. destruct well. assumption.
-    - intros. simpl in H. destruct H0. specialize (H m H0). destruct H.
-      apply H. apply bexp_eval_true. assumption.
+    intros. simpl in H. destruct H0. specialize (H m H0). destruct H.
+    apply H. apply bexp_eval_true. assumption.
   +  apply IHp2.
-    - simpl in well. destruct well. assumption.
-    - intros. simpl in H. destruct H0. specialize (H m H0). destruct H.
-    ** apply H2. apply bexp_eval_false. assumption.
+    intros. simpl in H. destruct H0. specialize (H m H0). destruct H.
+    apply H2. apply bexp_eval_false. assumption.
  Qed.
