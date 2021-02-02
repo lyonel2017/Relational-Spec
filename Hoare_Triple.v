@@ -53,11 +53,27 @@ induction p.
 * intros. eapply seq_hoare_triple.
   + apply IHp1. simpl in H. apply H.
   + apply IHp2. eauto.
-* intros. apply if_hoare_triple.
-  +  apply IHp1.
+* intros. simpl in H. apply if_hoare_triple.
+  + apply IHp1.
+    intros.
+    destruct H0. specialize (H m H0).
+    apply bexp_eval_true in H1.
+    apply (opt_1_true p1 p2 b m pi Q H1) in H.
+    apply opt_2_true in H.
+    eapply consequence_tc_suite in H.
+      - apply H.
+      - intros. eapply siml_tc. apply H2.
+  + apply IHp2.
+    intros.
+    destruct H0. specialize (H m H0).
+    apply bexp_eval_false in H1.
+    apply (opt_1_false p1 p2 b m pi Q H1) in H.
+    apply opt_2_false in H.
+    apply siml_tc in H. apply H.
+(* + apply IHp1.
     intros. simpl in H. destruct H0. specialize (H m H0). destruct H.
     apply H. apply bexp_eval_true. assumption.
   +  apply IHp2.
     intros. simpl in H. destruct H0. specialize (H m H0). destruct H.
-    apply H2. apply bexp_eval_false. assumption.
+    apply H2. apply bexp_eval_false. assumption.*)
  Qed.
