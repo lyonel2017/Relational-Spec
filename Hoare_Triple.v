@@ -1,11 +1,17 @@
 From Rela Require Import Vcg.
 From Rela Require Import Com.
+From Rela Require Import Aexp.
 From Rela Require Import Bexp.
 From Rela Require Import Sigma.
+From Rela Require Import Loc.
+Import Why3_Set.
 
+(*Defintion of a Hoare Triple*)
 
 Definition hoare_triple (P Q: assertion) (c : com) (ps : Psi.psi) : Prop :=
   forall s s',  P s -> ceval c s ps s' -> Q s'.
+
+(* Some facts about Hoare Triples *)
 
 Lemma seq_hoare_triple :
 forall p1 p2 ps (P Q R: assertion),
@@ -40,40 +46,194 @@ inversion HE;subst.
   + apply H6.
 Qed.
 
-Lemma correct :
-forall p ps pi,
-forall (P Q: assertion),
-(forall m, P m -> tc p m pi Q) -> 
+Lemma consequence_hoare_pre :
+forall p ps (P P' Q: assertion),
+hoare_triple P' Q p ps ->
+(forall s, P s -> P' s)->
 hoare_triple P Q p ps.
 Proof.
-intros p ps pi.
+unfold hoare_triple.
+intros.
+eapply H.
+apply H0.
+apply H1.
+apply H2.
+Qed.
+
+Lemma consequence_hoare_post :
+forall p ps (P Q Q': assertion),
+hoare_triple P Q' p ps ->
+(forall s, Q' s -> Q s)->
+hoare_triple P Q p ps.
+Proof.
+unfold hoare_triple.
+intros.
+apply H0.
+eapply H.
+apply H1.
+apply H2.
+Qed.
+
+(* Proof that one can use a verification condition generator to proof Hoare Triples *)
+
+Lemma correct :
+forall p ps,
+forall (P Q: assertion),
+(forall m, P m -> tc' p m ps) ->
+(forall m, P m -> tc p m ps Q) ->
+hoare_triple P Q p ps.
+Proof.
+intros p ps.
 induction p.
-* unfold hoare_triple. intros. eapply H. apply H0. inversion H1;subst. reflexivity.
-* unfold hoare_triple. intros. eapply H. apply H0. inversion H1;subst. reflexivity.
+* unfold hoare_triple. intros. eapply H0. apply H1. inversion H2;subst. reflexivity.
+* unfold hoare_triple. intros. eapply H0. apply H1. inversion H2;subst. reflexivity.
+* unfold hoare_triple. intros. eapply H0. apply H1. 
+  apply H. apply H1. inversion H2;subst. reflexivity. 
 * intros. eapply seq_hoare_triple.
-  + apply IHp1. simpl in H. apply H.
-  + apply IHp2. eauto.
-* intros. simpl in H. apply if_hoare_triple.
   + apply IHp1.
-    intros.
-    destruct H0. specialize (H m H0).
-    apply bexp_eval_true in H1.
-    apply (opt_1_true p1 p2 b m pi Q H1) in H.
-    apply opt_2_true in H.
-    eapply consequence_tc_suite in H.
-      - apply H.
-      - intros. eapply siml_tc. apply H2.
+    - apply H.
+    - simpl in H0, H.
+     intros.
+     specialize (H m H1).
+     destruct H.
+     specialize (H0 m H1). 
+     specialize 
+     (tc_split p1 ps m (fun m' : sigma => tc' p2 m' ps) (fun m' : sigma => tc p2 m' ps Q)).
+     intros.
+     apply H3. assumption. assumption.
   + apply IHp2.
-    intros.
-    destruct H0. specialize (H m H0).
-    apply bexp_eval_false in H1.
-    apply (opt_1_false p1 p2 b m pi Q H1) in H.
-    apply opt_2_false in H.
-    apply siml_tc in H. apply H.
-(* + apply IHp1.
-    intros. simpl in H. destruct H0. specialize (H m H0). destruct H.
-    apply H. apply bexp_eval_true. assumption.
-  +  apply IHp2.
-    intros. simpl in H. destruct H0. specialize (H m H0). destruct H.
-    apply H2. apply bexp_eval_false. assumption.*)
+    - intros. destruct H1. assumption.
+    - intros. destruct H1. assumption.
+* intros. apply if_hoare_triple.
+  + apply IHp1.
+    - intros. apply H. apply H1. apply H1.
+    - intros. simpl in H. destruct H1. specialize (H0 m H1). destruct H0.
+      apply H0. apply bexp_eval_true. assumption.
+  + apply IHp2.
+    - intros. apply H. apply H1. destruct H1. apply bexp_eval_false in H2. apply H2.
+    - intros. simpl in H. destruct H1. specialize (H0 m H1). destruct H0.
+      apply H3. apply bexp_eval_false. assumption.
  Qed.
+
+(* Examples of proofs of Hoare Triples *)
+
+Example Hoare1 : hoare_triple (fun m => m EAX = 1) (fun m' => m' EAX = 3) plus2 Psi.empty_psi.
+Proof.
+apply correct.
++ simpl;intros. auto.
++ simpl;intros.
+  rewrite H0.
+  rewrite H.
+  simpl.
+  apply set'def.
+  reflexivity.
+Qed.
+
+Definition plus3 : com := CSeq (CAss EAX (APlus (AId EAX) (ANum 2)))
+                                (CAss EAX (APlus (AId EAX) (ANum 2))).
+
+Example Haore2 : hoare_triple (fun m => m EAX = 1) (fun m' => m' EAX = 5) plus3 Psi.empty_psi.
+Proof.
+apply correct.
++ simpl;intros. auto.
++ simpl;intros.
+  rewrite H1.
+  rewrite H0.
+  rewrite H.
+  simpl.
+  apply set'def.
+  reflexivity.
+Qed.
+
+Definition if2 : com := CIf (BEq (AId EAX) (ANum 4)) plus2 plus2.
+
+Example Hoare3 : hoare_triple (fun m => m EAX = 1) (fun m' => m' EAX = 3) if2 Psi.empty_psi .
+Proof.
+apply correct.
++ simpl; intros.
+  auto.
++ simpl;intros.
+  destruct (beval m (BEq (AId EAX) (ANum 4))) eqn:Hcond.
+  * split;intros.
+    - rewrite H1.
+      rewrite H.
+      apply set'def.
+      reflexivity.
+    - apply bexp_eval_true in Hcond.
+      contradiction H0.
+   * split;intros.
+    - apply bexp_eval_false in Hcond.
+      contradiction H0.
+    - rewrite H1.
+      rewrite H.
+      apply set'def.
+      reflexivity.
+Qed.
+
+Definition if3 : com := CSeq (CAss EAX (APlus (AId EAX) (ANum 2)))
+                            (CSeq (CIf (BEq (AId EAX) (ANum 4)) plus2 plus2) plus2).
+
+Example Hoare4 : hoare_triple (fun m => m EAX = 1) (fun m' => m' EAX = 7) if3 Psi.empty_psi.
+Proof.
+apply correct.
++ simpl;intros. auto.
++ simpl;intros.
+  destruct (beval m' (BEq (AId EAX) (ANum 4))) eqn:Hcond.
+  * split;intros.
+    - rewrite H3.
+      rewrite H2.
+      rewrite H0.
+      rewrite H.
+      apply set'def.
+      reflexivity.
+    - apply bexp_eval_true in Hcond.
+      contradiction H1.
+  * split;intros.
+    - apply bexp_eval_false in Hcond.
+      contradiction H1.
+    - rewrite H3.
+      rewrite H2.
+      rewrite H0.
+      rewrite H.
+      apply set'def.
+      reflexivity.
+Qed.
+
+Definition assert3 : com := CSeq (CAssert (fun m => m EAX = 2))
+                          (CAssert (fun m => m EAX = 2)).
+                          
+Example Hoare6 : hoare_triple (fun m => m EAX = 2) (fun _ => True) assert3 Psi.empty_psi.
+Proof.
+apply correct.
++ simpl;intros.
+  split.
+   * assumption.
+   * intros.
+      rewrite <- H1.
+      assumption.
++ simpl; intros. auto.
+Qed.
+
+Definition if4 : com := CIf (BEq (AId EAX) (ANum 2)) (CAssert (fun m => m EAX = 2)) CSkip.
+
+Example Hoare7 : hoare_triple (fun m => m EAX = 2) (fun m' => m' EAX = 2) if4 Psi.empty_psi.
+Proof.
+apply correct.
++ simpl;intros. 
+  split.
+    * intros.
+      assumption.
+    * auto.
++ simpl;intros.
+  destruct (beval m (BEq (AId EAX) (ANum 2))) eqn:Hcond.
+  * split;intros.
+    - rewrite <- H2.
+      assumption.
+    - apply bexp_eval_true in Hcond.
+      contradiction H0.
+  * split;intros.
+    - apply bexp_eval_false in Hcond.
+      contradiction H0.
+    - rewrite <- H1.
+      assumption.
+Qed.
