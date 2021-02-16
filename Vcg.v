@@ -75,11 +75,16 @@ Fixpoint tc (c : com) (m : Sigma.sigma)
     | CAss x a => forall m', (m' = set m x (aeval m a)) -> suite m'
     | CAssert b => forall m', b m -> m = m' -> suite m'
     | CSeq p1 p2 => tc p1 m ps (fun m' => tc p2 m' ps suite)
-    | CIf b p1 p2 => (bassn b m -> tc p1 m ps suite) /\  (~bassn b m  -> tc p2 m ps suite)
-    (*| CWhile b p inv _ => inv m -> inv m' -> beval m b = false -> suite *)
+    | CIf b p1 p2 => (bassn b m -> tc p1 m ps suite) /\ 
+                     (~bassn b m  -> tc p2 m ps suite)
+    | CWhile b p inv => inv m ->
+                        forall m', inv m' -> beval m' b = false -> suite m'
+    | CCall f => (get_pre (snd (ps f))) m ->
+                  forall m',  (get_post (snd (ps f))) m' -> suite m'
     end.
 
 (* Some facts about tc*)
+Scheme com_ind_max := Induction for com Sort Prop. 
 
 Lemma consequence_tc_suite :
 forall p ps m (suite1 suite2 : Sigma.sigma -> Prop),
@@ -104,14 +109,16 @@ induction p.
     apply H0.
     assumption.
     assumption.
-  * intros.  simpl. simpl in H0.
+  * intros.
+    simpl. simpl in H0.
     eapply IHp1.
     - intros.
       eapply IHp2.
        + apply H.
        + apply H1.
     - assumption.
-  * intros. simpl. simpl in H0.
+  * intros.
+    simpl. simpl in H0.
     intros. destruct H0.
     split.
     - intros.
@@ -120,6 +127,15 @@ induction p.
     -intros.
       eapply IHp2.
       apply H. apply H1. assumption.
+  * intros.
+    simpl. simpl in H0.
+    intros. apply H.
+    apply H0.
+    all : try assumption.
+  * intros. simpl. simpl in H0.
+    intros. apply H.
+    apply H0.
+    all : try assumption.
 Qed.
 
 Lemma tc_split :
@@ -156,6 +172,18 @@ induction p.
     apply IHp2.
     apply H. assumption.
     apply H0. assumption.
++ simpl. intros.
+  split. 
+    * apply H.
+      all: try assumption.
+    * apply H0.
+      all: try assumption.
++ simpl. intros.
+  split.
+    * apply H.
+      all: try assumption.
+    * apply H0.
+      all: try assumption.
 Qed.
 
 (* Definition of a verification condition generator for the auxiliary goals *)
@@ -169,5 +197,23 @@ Fixpoint tc' (c : com) (m : Sigma.sigma)
     | CSeq p1 p2 => tc' p1 m ps /\
                     tc p1 m ps (fun m' => tc' p2 m' ps)
     | CIf b p1 p2 => 
-      (bassn b m -> tc' p1 m ps) /\ (~bassn b m -> tc' p2 m ps)
+                    (bassn b m -> tc' p1 m ps) /\ 
+                    (~bassn b m -> tc' p2 m ps)
+    | CWhile b p inv => inv m /\
+                          (forall m', bassn b m' -> tc' p m' ps) /\
+                          (forall m', inv m'  -> tc p m' ps inv)
+    | CCall f => (get_pre (snd (ps f))) m
     end.
+
+Definition tc_p (ps : Psi.psi) : Prop :=
+    forall f m, (get_pre (snd (ps f))) m -> tc' (fst (ps f)) m ps /\
+                tc (fst (ps f)) m ps (get_post (snd (ps f))). 
+
+Lemma tc_p_empty_psi :  tc_p Psi.empty_psi.
+Proof.
+unfold tc_p.
+intros.
+split.
+* auto.
+* simpl. intros. unfold empty_postcondition. auto.
+Qed.

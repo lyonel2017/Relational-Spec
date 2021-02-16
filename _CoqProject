@@ -8,6 +8,7 @@ Com.v
 Vcg.v
 Hoare_Triple.v
 Rela.v
+Vcg_Opt.v
 
 Label.v
 Lambda.v

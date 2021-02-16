@@ -43,9 +43,8 @@ Inductive com : Type :=
 | CAssert (b: assertion )
 | CSeq (p1 : com) (p2 : com)
 | CIf (b : bexp) (p1 p2 : com)
-(*| CWhile (b : bexp) (p : prog) (inv : assertion) (ass : (list nat))*)
-(* | CCall (f : Proc.t)*)
-.
+| CWhile (b : bexp) (p : com) (inv : assertion)
+| CCall (f: Proc.t).
 
 (** A map from procedure name to commands and its clause, called Psi*)
 
@@ -84,15 +83,17 @@ Inductive ceval : com -> sigma -> Psi.psi -> sigma -> Prop :=
       ceval p1 s ps s' ->
       ceval p2 s' ps s'' ->
       ceval (CSeq p1 p2) s ps s''
-    
-(*  | E_WhileFalse : forall b s ps p inv ass,
+  | E_WhileFalse : forall b s ps p inv,
       beval s b = false ->
-      ceval_c (CWhile b p inv ass) s  ps s
-  | E_WhileTrue : forall b s s' s'' ps p inv ass,
+      ceval (CWhile b p inv) s  ps s
+  | E_WhileTrue : forall b s s' s'' ps p inv,
       beval s b = true ->
-      ceval_p p s ps s' ->
-      ceval_c (CWhile b p inv ass) s' ps s'' ->
-      ceval_c (CWhile b p inv ass) s  ps s''*)
+      ceval p s ps s' ->
+      ceval (CWhile b p inv) s' ps s'' ->
+      ceval (CWhile b p inv) s  ps s''
+  | E_Com : forall s s' f ps,
+      ceval (fst( ps f)) s ps s' ->
+      ceval (CCall f) s  ps s'
 .
 
 (** Examples of commands **)
@@ -118,4 +119,3 @@ intros.
 unfold assert2.
 apply E_Assert. apply get_sigma_same.
 Qed.
-

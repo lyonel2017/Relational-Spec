@@ -4,6 +4,10 @@ From Rela Require Import Loc.
 
 Definition sigma : Type := Loc.t -> nat.
 
+(** A default memory state **)
+
+Definition default_sigma : sigma := fun _ => 0. 
+
 (** Notation for updating  memory states **)
 
 Definition update_sigma (x:Loc.Loc.t) (v: nat) (l:sigma) : sigma :=  

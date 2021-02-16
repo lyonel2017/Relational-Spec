@@ -30,39 +30,6 @@ Definition relational_prop (P Q: r_assertion) (c : list com) (ps : Psi.psi) : Pr
  forall s s',  length s = length c -> length s' = length c ->
                P s -> rceval c s ps s' -> Q s'.
 
-(* A Hoare Triple is a Relational Property for one program *)
-
-Section play_ground.
-
-Lemma list_length_one:
-forall (A: Type) (h:A) (q : list A), length (h :: q) = 1 -> q = [].
-Proof.
-intros.
-simpl in H.
-apply eq_add_S in H.
-apply length_zero_iff_nil in H.
-assumption.
-Qed.
-
-Lemma rela_hoare :
-forall P Q c ps,
-hoare_triple (fun s => P [s]) (fun s => Q [s]) c ps ->
-relational_prop P Q [c] ps.
-Proof.
-unfold hoare_triple.
-unfold relational_prop.
-intros.
-inversion H3;subst.
-apply list_length_one in H0.
-apply list_length_one in H1.
-subst.
-eapply H.
-apply H2.
-assumption.
-Qed.
-
-End play_ground.
-
 (* Defintion of the verification condition generator for relational properties
    We use only the verification condition generator for Hoare Triples *)
 
@@ -211,15 +178,16 @@ Qed.
 (* Proof that one can use a verification condition generator to proof Relational Properties *)
 
 Lemma correct :
-forall ps,
-forall p (P Q: r_assertion),
+forall ps p,
+tc_p ps ->
+forall (P Q: r_assertion),
 (forall ml (hy:length p = length ml), 
 P ml -> rtc' p ml ps hy) ->
 (forall ml (hy:length p = length ml), 
 P ml -> rtc p ml ps Q hy) -> 
 relational_prop P Q p ps.
 Proof.
-intros ps p.
+intros ps p Hproc.
 unfold relational_prop.
 induction p.
 *  intros.
@@ -264,8 +232,9 @@ induction p.
        generalize H5.
        generalize s s1.
        rewrite hoare_rela.
-       eapply correct.
-       ++ intros.
+       eapply recursion_hoare_triple.
+       ++ eapply correct.
+       -- intros.
           assert (hy2: length (a ::p) = length (m::ml)).
           {intros. simpl. rewrite hy. reflexivity. }
           specialize (H (m :: ml) hy2 H8).
@@ -277,7 +246,7 @@ induction p.
           apply eq_proofs_unicity.
           intros.
           lia.
-       ++ intros.
+       -- intros.
           assert (hy2: length (a ::p) = length (m::ml)).
           {intros. simpl. rewrite hy. reflexivity. }
           destruct (mk_rtc_def Q a p ps m ml hy2) as (hyr & HYP).
@@ -289,6 +258,8 @@ induction p.
           apply eq_proofs_unicity.
           intros.
           lia.
+       ++ eapply correct_proc.
+          assumption.
 Qed.
 
 (* Examples of proofs of Relational Properties *)
@@ -309,6 +280,7 @@ Example Relation2 : relational_prop rela_pre2 rela_post2 (plus2 :: plus2 :: []) 
 Proof.
 apply correct.
 (* Extract auxiliary proofs and proof it*)
++ apply tc_p_empty_psi.
 + intros.
   destruct ml.
   * discriminate hy.
@@ -369,3 +341,55 @@ apply correct.
          apply Why3_Set.set'def.
          reflexivity.
 Qed.
+
+(* A Hoare Triple is a Relational Property for one program *)
+
+Section Single_Rela_Prop.
+
+Lemma list_length_one:
+forall (A: Type) (h:A) (q : list A), length (h :: q) = 1 -> q = [].
+Proof.
+intros.
+simpl in H.
+apply eq_add_S in H.
+apply length_zero_iff_nil in H.
+assumption.
+Qed.
+
+Lemma hoare_is_rela :
+forall P Q c ps,
+hoare_triple (fun s => P [s]) (fun s => Q [s]) c ps ->
+relational_prop P Q [c] ps.
+Proof.
+unfold hoare_triple.
+unfold relational_prop.
+intros.
+inversion H3;subst.
+apply list_length_one in H0.
+apply list_length_one in H1.
+subst.
+eapply H.
+apply H2.
+assumption.
+Qed.
+
+Lemma one_rela_is_hoare :
+forall (P Q: assertion) c ps,
+relational_prop (fun s: list sigma => P (hd default_sigma s)) (fun s => Q (hd default_sigma s)) [c] ps ->
+hoare_triple P Q c ps.
+Proof.
+unfold hoare_triple.
+unfold relational_prop.
+intros.
+specialize (H [s] [s']).
+simpl in H.
+apply H.
+reflexivity.
+reflexivity.
+assumption.
+apply E_Seq.
+assumption.
+apply E_Empty.
+Qed.
+
+End Single_Rela_Prop.
