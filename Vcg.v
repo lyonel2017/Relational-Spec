@@ -1,6 +1,7 @@
 From Rela Require Import Aexp.
 From Rela Require Import Bexp.
 From Rela Require Import Com.
+From Rela Require Import Hoare_Triple.
 From Rela Require Import Proc.
 From Rela Require Import Sigma.
 From Rela Require Import Loc.
@@ -53,7 +54,10 @@ Qed.
 End Why3_Set.
 
 Import Why3_Set.
+
 (* Boolean evaluation as Prop *)
+
+Module Assn_b.
 
 Definition bassn b :=
   fun st => (beval st b = true).
@@ -66,32 +70,33 @@ Lemma bexp_eval_false : forall b st,
   beval st b = false ->  ~((bassn b) st).
 Proof. congruence. Qed.
 
+End Assn_b.
+
+Import Assn_b.
+
 (* Defintion of a verification condition generator *)
 
 Fixpoint tc (c : com) (m : Sigma.sigma)
-            (ps: Psi.psi) (suite : Sigma.sigma -> Prop) : Prop :=
+            (cl: Phi.phi) (suite : Sigma.sigma -> Prop) : Prop :=
     match c with
     | CSkip => forall m', m = m' -> suite m'
     | CAss x a => forall m', (m' = set m x (aeval m a)) -> suite m'
     | CAssert b => forall m', b m -> m = m' -> suite m'
-    | CSeq p1 p2 => tc p1 m ps (fun m' => tc p2 m' ps suite)
-    | CIf b p1 p2 => (bassn b m -> tc p1 m ps suite) /\ 
-                     (~bassn b m  -> tc p2 m ps suite)
+    | CSeq p1 p2 => tc p1 m cl (fun m' => tc p2 m' cl suite)
+    | CIf b p1 p2 => (bassn b m -> tc p1 m cl suite) /\
+                     (~bassn b m  -> tc p2 m cl suite)
     | CWhile b p inv => inv m ->
                         forall m', inv m' -> beval m' b = false -> suite m'
-    | CCall f => (get_pre (snd (ps f))) m ->
-                  forall m',  (get_post (snd (ps f))) m' -> suite m'
+    | CCall f => (get_pre (cl f)) m ->
+                  forall m',  (get_post (cl f)) m' -> suite m'
     end.
 
-(* Some facts about tc*)
-Scheme com_ind_max := Induction for com Sort Prop. 
-
 Lemma consequence_tc_suite :
-forall p ps m (suite1 suite2 : Sigma.sigma -> Prop),
+forall p cl m (suite1 suite2 : Sigma.sigma -> Prop),
 (forall s, suite1 s -> suite2 s) ->
-tc p m ps suite1 -> tc p m ps suite2.
+tc p m cl suite1 -> tc p m cl suite2.
 Proof.
-intros p ps.
+intros p cl.
 induction p.
   * intros. simpl. simpl in H0.
     intros.
@@ -139,11 +144,11 @@ induction p.
 Qed.
 
 Lemma tc_split :
-forall p ps m (suite1 suite2 : Sigma.sigma -> Prop),
-tc p m ps suite1 -> tc p m ps suite2 ->
-tc p m ps (fun m' => suite1 m' /\ suite2 m').
+forall p cl m (suite1 suite2 : Sigma.sigma -> Prop),
+tc p m cl suite1 -> tc p m cl suite2 ->
+tc p m cl (fun m' => suite1 m' /\ suite2 m').
 Proof.
-intros p ps.
+intros p cl.
 induction p.
 + simpl. intros.
   split.
@@ -158,7 +163,7 @@ induction p.
   apply H. assumption. subst. reflexivity.
   apply H0. assumption. subst. reflexivity.
 + simpl. intros.
-  apply (consequence_tc_suite _ _ _ (fun m => tc p2 m ps suite1 /\ tc p2 m ps suite2)).
+  apply (consequence_tc_suite _ _ _ (fun m => tc p2 m cl suite1 /\ tc p2 m cl suite2)).
   * intros. destruct H1. apply IHp2. assumption. assumption.
   * apply IHp1. assumption. assumption.
 + intros.
@@ -189,31 +194,52 @@ Qed.
 (* Definition of a verification condition generator for the auxiliary goals *)
 
 Fixpoint tc' (c : com) (m : Sigma.sigma)
-            (ps: Psi.psi) : Prop :=
+            (cl: Phi.phi) : Prop :=
     match c with
     | CSkip => True
     | CAss x a => True
-    | CAssert b => b m 
-    | CSeq p1 p2 => tc' p1 m ps /\
-                    tc p1 m ps (fun m' => tc' p2 m' ps)
-    | CIf b p1 p2 => 
-                    (bassn b m -> tc' p1 m ps) /\ 
-                    (~bassn b m -> tc' p2 m ps)
+    | CAssert b => b m
+    | CSeq p1 p2 => tc' p1 m cl /\
+                    tc p1 m cl (fun m' => tc' p2 m' cl)
+    | CIf b p1 p2 =>
+                    (bassn b m -> tc' p1 m cl) /\
+                    (~bassn b m -> tc' p2 m cl)
     | CWhile b p inv => inv m /\
-                          (forall m', bassn b m' -> tc' p m' ps) /\
-                          (forall m', inv m'  -> tc p m' ps inv)
-    | CCall f => (get_pre (snd (ps f))) m
+                          (forall m', bassn b m' -> tc' p m' cl) /\
+                          (forall m', inv m'  -> tc p m' cl inv)
+    | CCall f => (get_pre (cl f)) m
     end.
 
-Definition tc_p (ps : Psi.psi) : Prop :=
-    forall f m, (get_pre (snd (ps f))) m -> tc' (fst (ps f)) m ps /\
-                tc (fst (ps f)) m ps (get_post (snd (ps f))). 
+Definition tc_p (ps: Psi.psi) (cl : Phi.phi) : Prop :=
+    forall f m, (get_pre (cl f)) m -> tc' (ps f) m cl /\
+                tc (ps f) m cl (get_post (cl f)).
 
-Lemma tc_p_empty_psi :  tc_p Psi.empty_psi.
+Lemma tc_p_empty_psi : tc_p Psi.empty_psi Phi.empty_phi.
 Proof.
 unfold tc_p.
 intros.
 split.
 * auto.
 * simpl. intros. unfold empty_postcondition. auto.
+Qed.
+
+Parameter f : Proc.t.
+Definition cli_1 (x': Proc.t) := 
+        if Proc.eqb x' f then CSkip else CSkip.
+
+Definition phi_1 (x': Proc.t) := 
+        if Proc.eqb x' f then empty_clause else empty_clause.
+
+Example tc_p_update : tc_p cli_1 phi_1.
+Proof.
+  unfold tc_p.
+  intros.
+  unfold cli_1, phi_1.
+  destruct (Proc.eqb f0 f).
+  - split.
+    * now auto.
+    * simpl. intros. unfold empty_postcondition. auto.
+  - split.
+    * now auto.
+    * simpl. intros. unfold empty_postcondition. auto.
 Qed.

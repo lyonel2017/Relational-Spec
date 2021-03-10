@@ -9,32 +9,6 @@ From Coq Require Import Lia.
 
 Definition assertion : Type := sigma -> Prop.
 
-(** Definition of Precondtion **)
-
-Definition precondition : Type := assertion.
-
-Definition empty_precondition : precondition := (fun _ => True).
-
-(** Defintion of Postcondtion **)
-
-Definition postcondition : Type := assertion.
-
-Definition empty_postcondition :  postcondition := (fun _ => True).
-
-(** Definition of a contract **)
-
-Definition clause : Type := precondition * postcondition.
-
-Definition empty_clause : clause := (empty_precondition, empty_postcondition).
-
-Definition get_pre (an:clause) := 
-          let (pre,post) := an in
-          pre.
-
-Definition get_post (an:clause) := 
-          let (pre,post) := an in
-          post.
-
 (** Defintion of command and program **)
 
 Inductive com : Type :=
@@ -46,24 +20,19 @@ Inductive com : Type :=
 | CWhile (b : bexp) (p : com) (inv : assertion)
 | CCall (f: Proc.t).
 
-(** A map from procedure name to commands and its clause, called Psi*)
+(** A map from procedure name to the associated commands *)
 
 Module Psi.
 
-  Definition psi : Type := Proc.t -> com * clause.
+  Definition psi : Type := Proc.t -> com.
 
-  Definition update_psi (x:Proc.t) (v: com ) (c: clause) (l:psi): psi :=
-  fun (x': Proc.t) => if Proc.eqb x' x then (v,c) else l x'.
-
-  Notation "x '#->' v ; l" := (update_psi x v l)(at level 100, v at next level, right associativity).
-
-  Definition empty_psi: psi := fun _ => (CSkip,empty_clause).
+  Definition empty_psi: psi := fun _ => CSkip.
 End Psi.
 
 (** Evaluation command as a relation **)
 
 Inductive ceval : com -> sigma -> Psi.psi -> sigma -> Prop :=
-  | E_Skip : forall s ps, 
+  | E_Skip : forall s ps,
     ceval CSkip s ps s
   | E_Ass : forall s ps x a1 n,
     aeval s a1 = n ->
@@ -91,10 +60,29 @@ Inductive ceval : com -> sigma -> Psi.psi -> sigma -> Prop :=
       ceval p s ps s' ->
       ceval (CWhile b p inv) s' ps s'' ->
       ceval (CWhile b p inv) s  ps s''
-  | E_Com : forall s s' f ps,
-      ceval (fst( ps f)) s ps s' ->
+  | E_Call : forall s s' f ps,
+      ceval ( ps f) s ps s' ->
       ceval (CCall f) s  ps s'
 .
+(** Facts about ceval **)
+
+Lemma ceval_inf_loop s ps s' :
+ceval (CWhile BTrue CSkip (fun _ => True)) s ps s' -> False.
+Proof.
+  intros Heval.
+  remember (CWhile BTrue CSkip (fun _ : Sigma.sigma => True)) as original_command eqn:Horig.
+  induction Heval.
+  * inversion Horig.
+  * inversion Horig.
+  * inversion Horig.
+  * inversion Horig.
+  * inversion Horig.
+  * inversion Horig.
+  * inversion Horig;subst. inversion H.
+  * inversion Horig;subst.
+    apply IHHeval2. reflexivity.
+  * inversion Horig.
+Qed.
 
 (** Examples of commands **)
 

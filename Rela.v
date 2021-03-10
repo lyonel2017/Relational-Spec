@@ -2,6 +2,7 @@ From Rela Require Import Vcg.
 From Rela Require Import Com.
 From Rela Require Import Sigma.
 From Rela Require Import Hoare_Triple.
+From Rela Require Import Correct.
 From Rela Require Import Loc.
 
 Require Import Program.
@@ -14,7 +15,7 @@ From Coq Require Import Lia.
 
 Definition r_assertion : Type := list sigma  -> Prop.
 
-(* Definition of the relational evaluation of program*)
+(** Definition of the relational evaluation of program **)
 
 Inductive rceval : list com -> list sigma -> Psi.psi -> list sigma -> Prop :=
   | E_Empty : forall ps,
@@ -24,22 +25,22 @@ Inductive rceval : list com -> list sigma -> Psi.psi -> list sigma -> Prop :=
       rceval qc q ps q' ->
       rceval (c::qc) (s::q) ps (s'::q').
 
-(* Definition of relational properties *)
+(** Definition of relational properties **)
 
-Definition relational_prop (P Q: r_assertion) (c : list com) (ps : Psi.psi) : Prop := 
+Definition relational_prop (P Q: r_assertion) (c : list com) (ps : Psi.psi) : Prop :=
  forall s s',  length s = length c -> length s' = length c ->
                P s -> rceval c s ps s' -> Q s'.
 
-(* Defintion of the verification condition generator for relational properties
-   We use only the verification condition generator for Hoare Triples *)
+(** Defintion of the verification condition generator for relational properties,
+   using the verification condition generator for Hoare Triples **)
 
 Program Fixpoint rtc (cl : list com) (ml: list Sigma.sigma)
-            (ps: Psi.psi) (suite : list Sigma .sigma -> Prop) 
+            (cls: Phi.phi) (suite : list Sigma .sigma -> Prop)
             (hy:length cl = length ml): Prop :=
  match cl ,ml with
  | [],[] => suite []
- | c :: qc, m :: qm => 
-   tc c m ps (fun m' => rtc qc qm ps (fun l => suite (m'::l))  _)
+ | c :: qc, m :: qm =>
+   tc c m cls (fun m' => rtc qc qm cls (fun l => suite (m'::l))  _)
  | _, _ => !
 end.
 
@@ -83,15 +84,15 @@ destruct contra as (contra & _).
 discriminate contra.
 Defined.
 
-(* Same as above but for the auxiliare goals*)
+(** Defintion of the generator of auxiliare goals for relational properties **)
 
 Program Fixpoint rtc' (cl : list com) (ml: list Sigma.sigma)
-            (ps: Psi.psi)  
+            (cls : Phi.phi)
             (hy:length cl = length ml): Prop :=
  match cl ,ml with
  | [],[] => True
- | c :: qc, m :: qm => 
-   tc' c m ps /\ rtc' qc qm ps _
+ | c :: qc, m :: qm =>
+   tc' c m cls /\ rtc' qc qm cls _
  | _, _ => !
 end.
 
@@ -135,7 +136,7 @@ destruct contra as (contra & _).
 discriminate contra.
 Defined.
 
-(* Facts about rtc and rtc' *)
+(** Facts about rtc and rtc' **)
 
 Lemma mk_rtc_def :
 forall P h q pi s sl (hy:length (h::q) = length (s::sl)),
@@ -159,14 +160,14 @@ eexists.
 program_simpl.
 Qed.
 
-(* Connect between Hoare Triple and Relational Properties *)
+(** Connect between Hoare Triple and Relational Properties **)
 
 Lemma hoare_rela :
-forall (P Q: r_assertion) h q ps pi sl (hy:length q = length sl), 
+forall (P Q: r_assertion) h q ps pi sl (hy:length q = length sl),
 (forall s2 s3 : sigma,
-P (s2 :: sl) -> ceval h s2 ps s3 -> 
+P (s2 :: sl) -> ceval h s2 ps s3 ->
 rtc q sl pi (fun sl : list sigma => Q (s3 :: sl)) hy) =
-hoare_triple (fun s => P (s:: sl) ) 
+hoare_triple (fun s => P (s:: sl) )
              (fun s' => rtc q sl pi (fun sl : list sigma => Q (s' :: sl)) hy)
               h ps.
 Proof.
@@ -175,19 +176,20 @@ unfold hoare_triple.
 reflexivity.
 Qed.
 
-(* Proof that one can use a verification condition generator to proof Relational Properties *)
+(** Proof that one can use a standard verification condition generator
+    to proof Relational Properties **)
 
-Lemma correct :
-forall ps p,
-tc_p ps ->
+Lemma rcorrect :
+forall cl ps p,
+tc_p ps cl ->
 forall (P Q: r_assertion),
-(forall ml (hy:length p = length ml), 
-P ml -> rtc' p ml ps hy) ->
-(forall ml (hy:length p = length ml), 
-P ml -> rtc p ml ps Q hy) -> 
+(forall ml (hy:length p = length ml),
+P ml -> rtc' p ml cl hy) ->
+(forall ml (hy:length p = length ml),
+P ml -> rtc p ml cl Q hy) ->
 relational_prop P Q p ps.
 Proof.
-intros ps p Hproc.
+intros cl ps p Hproc.
 unfold relational_prop.
 induction p.
 *  intros.
@@ -219,7 +221,7 @@ induction p.
        assert (hy2: length (a ::p) = length (s::ml)).
        {intros. simpl. rewrite hy. reflexivity. }
        specialize (H (s :: ml) hy2 H5).
-       destruct (mk_rtc'_def a p ps s ml hy2) as (hyr & HYP).
+       destruct (mk_rtc'_def a p cl s ml hy2) as (hyr & HYP).
        rewrite HYP in H.
        destruct H.
        replace hy with hyr.
@@ -233,12 +235,14 @@ induction p.
        generalize s s1.
        rewrite hoare_rela.
        eapply recursion_hoare_triple.
+       ++ eapply correct_proc.
+          apply Hproc.
        ++ eapply correct.
        -- intros.
           assert (hy2: length (a ::p) = length (m::ml)).
           {intros. simpl. rewrite hy. reflexivity. }
           specialize (H (m :: ml) hy2 H8).
-          destruct (mk_rtc'_def a p ps m ml hy2) as (hyr & HYP).
+          destruct (mk_rtc'_def a p cl m ml hy2) as (hyr & HYP).
           rewrite HYP in H.
           destruct H.
           replace hy with hyr.
@@ -249,7 +253,7 @@ induction p.
        -- intros.
           assert (hy2: length (a ::p) = length (m::ml)).
           {intros. simpl. rewrite hy. reflexivity. }
-          destruct (mk_rtc_def Q a p ps m ml hy2) as (hyr & HYP).
+          destruct (mk_rtc_def Q a p cl m ml hy2) as (hyr & HYP).
           specialize (H0 (m::ml) hy2).
           rewrite HYP in H0.
           replace hy with hyr.
@@ -258,19 +262,17 @@ induction p.
           apply eq_proofs_unicity.
           intros.
           lia.
-       ++ eapply correct_proc.
-          assumption.
 Qed.
 
-(* Examples of proofs of Relational Properties *)
+(** Examples of proofs of Relational Properties **)
 
-Definition rela_pre2 (l : list Sigma.sigma) : Prop := 
+Definition rela_pre2 (l : list Sigma.sigma) : Prop :=
   match l with
   | (m1 :: m2 :: []) => m1 EAX = m2 EAX
   | _ => False
   end.
-  
-Definition rela_post2 (l : list Sigma.sigma) : Prop := 
+
+Definition rela_post2 (l : list Sigma.sigma) : Prop :=
   match l with
   | (m1 :: m2 :: []) => m1 EAX = m2 EAX
   | _ => False
@@ -278,19 +280,20 @@ Definition rela_post2 (l : list Sigma.sigma) : Prop :=
 
 Example Relation2 : relational_prop rela_pre2 rela_post2 (plus2 :: plus2 :: []) Psi.empty_psi.
 Proof.
-apply correct.
-(* Extract auxiliary proofs and proof it*)
+apply rcorrect  with Phi.empty_phi.
+(* Verification of proofs proof obligation for procedure *)
 + apply tc_p_empty_psi.
+(* Extracting auxiliary proofs proof obligation *)
 + intros.
   destruct ml.
   * discriminate hy.
-  * destruct (mk_rtc'_def plus2 (plus2::[]) Psi.empty_psi s ml hy) as (hyr & HYP).
+  * destruct (mk_rtc'_def plus2 (plus2::[]) Phi.empty_phi s ml hy) as (hyr & HYP).
     rewrite HYP.
     split.
     - simpl. auto.
     - destruct ml.
       ++ discriminate hyr.
-      ++ destruct (mk_rtc'_def plus2 [] Psi.empty_psi s0 ml hyr) as (hyr2 & HYP2).
+      ++ destruct (mk_rtc'_def plus2 [] Phi.empty_phi s0 ml hyr) as (hyr2 & HYP2).
         rewrite HYP2.
         split.
         ** simpl. auto.
@@ -298,12 +301,14 @@ apply correct.
           symmetry in H1.
           apply length_zero_iff_nil in H1.
           subst.
-          simpl. auto.
-(* Extract main proof *)
+          simpl.
+          (* Verification of auxiliary proofs proof obligation *)
+           auto.
+(* Extracting main proof obligation *)
 + intros.
   destruct ml.
   * discriminate hy.
-  * destruct (mk_rtc_def rela_post2 plus2 (plus2::[]) Psi.empty_psi s ml hy) as (hyr & HYP).
+  * destruct (mk_rtc_def rela_post2 plus2 (plus2::[]) Phi.empty_phi s ml hy) as (hyr & HYP).
     rewrite HYP.
     destruct ml.
     - discriminate hyr.
@@ -311,7 +316,7 @@ apply correct.
       { inversion hyr. reflexivity. }
       eapply consequence_tc_suite.
       ++ intros.
-         destruct (mk_rtc_def (fun l : list sigma => rela_post2 (s1 :: l)) plus2 [] Psi.empty_psi s0 ml hyr) as (hyr2 & HYP2).
+         destruct (mk_rtc_def (fun l : list sigma => rela_post2 (s1 :: l)) plus2 [] Phi.empty_phi s0 ml hyr) as (hyr2 & HYP2).
          rewrite HYP2.
          replace hyr2 with H1.
          ** apply (consequence_tc_suite _ _ _ (fun m' => s1 EAX = m' EAX)).
@@ -324,15 +329,15 @@ apply correct.
                apply H2.
            -- apply H0.
          ** apply eq_proofs_unicity.
-           intros.
-           lia.
-      ++ (* Extract relational precondition *) 
+            intros.
+            lia.
+      ++ (* Extracting relational precondition *) 
          inversion H1.
          symmetry in H2.
          apply length_zero_iff_nil in H2.
          subst.
          simpl in H.
-         (* Proof on main goal *)
+         (* Proof on main proof obligation *)
          simpl.
          intros.
          rewrite H2.
@@ -342,7 +347,7 @@ apply correct.
          reflexivity.
 Qed.
 
-(* A Hoare Triple is a Relational Property for one program *)
+(** A Hoare Triple is a Relational Property for one program **)
 
 Section Single_Rela_Prop.
 

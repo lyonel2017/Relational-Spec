@@ -5,11 +5,14 @@ Aexp.v
 Bexp.v
 Proc.v
 Com.v
-Vcg.v
+Inliner.v
 Hoare_Triple.v
+Vcg.v
+Correct.v
 Rela.v
 Vcg_Opt.v
 
+# Remove
 Label.v
 Lambda.v
 EAexp.v

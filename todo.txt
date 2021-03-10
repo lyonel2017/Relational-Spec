@@ -1,0 +1,3 @@
+- optimitation of verification condition generator
+- frame rule
+- using of contruct at in the assertion
