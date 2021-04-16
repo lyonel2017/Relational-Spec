@@ -21,21 +21,40 @@ Fixpoint aeval (st : sigma) (a : aexp) : nat :=
   | AMult a1 a2 => (aeval st a1) * (aeval st a2)
   end.
 
-(** Helper function for arithmetic expression**)
-(* Collector function for locations *)
+(** Notations for arithmetic expression **)
 
-Fixpoint cva (a : aexp) : Loc_Set.LocSet.t :=
-  match a with
-  | ANum n => Loc_Set.LocSet.empty
-  | AId x => Loc_Set.LocSet.singleton x
-  | APlus a1 a2 =>  Loc_Set.LocSet.union (cva a1) (cva a2)
-  | AMinus a1 a2 => Loc_Set.LocSet.union (cva a1) (cva a2)
-  | AMult a1 a2 => Loc_Set.LocSet.union (cva a1) (cva a2)
-  end.
+Declare Scope aexp_scope.
+Open Scope aexp_scope.
+Declare Custom Entry aexp.
+
+Module AexpNotations.
+
+Coercion AId : Loc.t >-> aexp.
+Coercion ANum : nat >-> aexp.
+
+Notation "[ e ]" := (e) (e custom aexp at level 0) : aexp_scope.
+Notation "x" := x (in custom aexp at level 0, x constr at level 0) : aexp_scope.
+Notation "( x )" := x (in custom aexp, 
+                       x custom aexp at level 2) : aexp_scope.
+Notation "x + y" := (APlus x y) (in custom aexp at level 50, 
+                                 x custom aexp,
+                                 y custom aexp, 
+                                 left associativity) : aexp_scope.
+Notation "x - y" := (AMinus x y) (in custom aexp at level 50, 
+                                  x custom aexp,
+                                  y custom aexp, 
+                                  left associativity) : aexp_scope.
+Notation "x * y" := (AMult x y) (in custom aexp at level 40, 
+                                 x custom aexp,
+                                 y custom aexp, 
+                                 left associativity) : aexp_scope.
+End AexpNotations.
+
+Import AexpNotations.
 
 (** Example of arithmetic expression **)
 
-Definition example_aexp : aexp := APlus (ANum 3) (AMult (AId EAX) (ANum 2)).
+Definition example_aexp : aexp := [3 + (EAX * 2)].
 
 Example aexp1 :
 forall st : sigma,
@@ -43,6 +62,3 @@ forall st : sigma,
 Proof.
 reflexivity.
 Qed.
-
-
-

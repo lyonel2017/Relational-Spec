@@ -1,6 +1,7 @@
 From Rela Require Import Sigma.
 From Rela Require Import Loc.
 From Rela Require Import Aexp.
+Import AexpNotations.
 
 From Coq Require Import Bool.Bool.
 From Coq Require Import Init.Nat.
@@ -17,7 +18,7 @@ Inductive bexp : Type :=
   | BNot (b : bexp)
   | BAnd (b1 b2 : bexp)
   | BOr (b1 b2 : bexp).
-
+	
 (** Evaluation of boolean expression **)
 
 Fixpoint beval (s : sigma) (b : bexp) : bool :=
@@ -31,23 +32,50 @@ Fixpoint beval (s : sigma) (b : bexp) : bool :=
   | BOr b1 b2  => orb (beval s b1) (beval s b2)
   end.
 
-(** Helper function for boolean expression **)
-(* Collector function for locations *)
+(** Notations for boolean expression **)
 
-Fixpoint cvb (b : bexp) : Loc_Set.LocSet.t :=
-  match b with
-  | BTrue      => Loc_Set.LocSet.empty
-  | BFalse     => Loc_Set.LocSet.empty
-  | BEq a1 a2   => Loc_Set.LocSet.union (cva a1) (cva a2)  
-  | BLe a1 a2  => Loc_Set.LocSet.union (cva a1) (cva a2)
-  | BNot  b1      => cvb b1
-  | BAnd b1 b2  => Loc_Set.LocSet.union (cvb b1) (cvb b2)
-  | BOr b1 b2  => Loc_Set.LocSet.union (cvb b1) (cvb b2)
-  end.
+Declare Scope bexp_scope.
+Open Scope bexp_scope.
+Declare Custom Entry bexp.
+
+Module BexpNotations.
+
+Notation "[! e !]" := (e) (e custom bexp at level 0) : bexp_scope.
+Notation "{ x }" := x (in custom bexp at level 0, x constr) : bexp_scope.
+Notation "( x )" := x (in custom bexp, 
+                       x custom bexp at level 2) : bexp_scope.
+Notation "'true'" := true (at level 5).
+Notation "'true'" := (BTrue) (in custom bexp at level 4) : bexp_scope.
+Notation "'false'" := false (at level 5).
+Notation "'false'" := (BFalse) (in custom bexp at level 4) : bexp_scope.
+Notation "x '&&' y" := (BAnd x y) (in custom bexp at level 65, 
+                                  x custom bexp, 
+                                  y custom bexp,
+                                  left associativity) : bexp_scope.
+Notation "x '||' y" := (BOr x y) (in custom bexp at level 65,
+                                x custom bexp, 
+                                y custom bexp,
+                                left associativity) : bexp_scope.
+Notation "'~' b"  := (BNot b) (in custom bexp at level 80, 
+                               b custom bexp, 
+                               right associativity) : bexp_scope.
+Notation "x '<=' y" := (BLe x y) (in custom bexp at level 70,
+                      x custom aexp, 
+                      y custom aexp,
+                      no associativity) : bexp_scope.
+Notation "x = y"  := (BEq x y) (in custom bexp at level 70, 
+                      x custom aexp,
+                      y custom aexp, 
+                      no associativity) : bexp_scope.
+End BexpNotations.
+
+Import BexpNotations.
 
 (** Example of boolean expression **)
 
-Definition example_bexp : bexp := BAnd BTrue (BNot (BLe (AId EAX) (ANum 4))).
+Definition example_bexp : bexp := [! true && ~ EAX <= 4 !].
+
+Print Visibility.
 
 Example bexp1 :
 forall st : sigma,
@@ -55,5 +83,3 @@ forall st : sigma,
 Proof. 
 reflexivity.
 Qed.
-
-
