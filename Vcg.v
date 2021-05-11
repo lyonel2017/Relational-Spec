@@ -6,7 +6,7 @@ From Rela Require Import Proc.
 From Rela Require Import Sigma.
 From Rela Require Import Loc.
 
-(* Redefintion the definition of set from Why3 *)
+(* Redefinition of set from Why3 *)
 
 Module Why3_Set.
 
@@ -59,16 +59,24 @@ Import Why3_Set.
 
 Module Assn_b.
 
+Import Bool.Bool.
+
 Definition bassn b :=
-  fun st => (beval st b = true).
+  fun st => (Is_true (beval st b)).
 
 Lemma bexp_eval_true : forall b st,
   beval st b = true -> (bassn b) st.
-Proof. auto. Qed.
+Proof. 
+intros. unfold bassn. apply Is_true_eq_left. auto.
+Qed.
 
 Lemma bexp_eval_false : forall b st,
   beval st b = false ->  ~((bassn b) st).
-Proof. congruence. Qed.
+Proof.
+intros. unfold bassn. apply negb_prop_elim.
+apply Is_true_eq_left. 
+apply negb_true_iff. auto.
+Qed.
 
 End Assn_b.
 

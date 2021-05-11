@@ -44,7 +44,7 @@ Proof.
   - assumption.
     * intros P Q Htc' Htc Hproc. apply if_hoare_triple.
     + apply IHp1.
-  - intros. apply Htc'. apply H. apply H.
+  - intros. apply Htc'. apply H. apply bexp_eval_true. apply H.
   - intros. simpl in Htc. destruct H. specialize (Htc m H). destruct Htc.
     apply H1. apply bexp_eval_true. assumption.
   - assumption.
