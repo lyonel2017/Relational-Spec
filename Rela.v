@@ -1,4 +1,7 @@
 From Rela Require Import Vcg.
+From Rela Require Vcg_Opt.
+From Rela Require Import Aexp.
+From Rela Require Import Bexp.
 From Rela Require Import Com.
 From Rela Require Import Sigma.
 From Rela Require Import Hoare_Triple.
@@ -30,6 +33,58 @@ Inductive rceval : list com -> list sigma -> Psi.psi -> list sigma -> Prop :=
 Definition relational_prop (P Q: r_assertion) (c : list com) (ps : Psi.psi) : Prop :=
  forall s s',  length s = length c -> length s' = length c ->
                P s -> rceval c s ps s' -> Q s'.
+
+(** A Hoare Triple is a Relational Property for one program **)
+
+Section Single_Rela_Prop.
+
+Lemma list_length_one:
+forall (A: Type) (h:A) (q : list A), length (h :: q) = 1 -> q = [].
+Proof.
+intros.
+simpl in H.
+apply eq_add_S in H.
+apply length_zero_iff_nil in H.
+assumption.
+Qed.
+
+Lemma hoare_is_rela :
+forall P Q c ps,
+hoare_triple (fun s => P [s]) (fun s => Q [s]) c ps ->
+relational_prop P Q [c] ps.
+Proof.
+unfold hoare_triple.
+unfold relational_prop.
+intros.
+inversion H3;subst.
+apply list_length_one in H0.
+apply list_length_one in H1.
+subst.
+eapply H.
+apply H2.
+assumption.
+Qed.
+
+Lemma one_rela_is_hoare :
+forall (P Q: assertion) c ps,
+relational_prop (fun s: list sigma => P (hd default_sigma s)) (fun s => Q (hd default_sigma s)) [c] ps ->
+hoare_triple P Q c ps.
+Proof.
+unfold hoare_triple.
+unfold relational_prop.
+intros.
+specialize (H [s] [s']).
+simpl in H.
+apply H.
+reflexivity.
+reflexivity.
+assumption.
+apply E_Seq.
+assumption.
+apply E_Empty.
+Qed.
+
+End Single_Rela_Prop.
 
 (** Defintion of the verification condition generator for relational properties,
    using the verification condition generator for Hoare Triples **)
@@ -347,54 +402,146 @@ apply rcorrect  with Phi.empty_phi.
          reflexivity.
 Qed.
 
-(** A Hoare Triple is a Relational Property for one program **)
+Import Vcg.Why3_Set.
 
-Section Single_Rela_Prop.
+Definition X1 : Loc.t:= 1.
+Definition X2 : Loc.t:= 2.
+Definition ret : Loc.t := 3.
 
-Lemma list_length_one:
-forall (A: Type) (h:A) (q : list A), length (h :: q) = 1 -> q = [].
+Import ComNotations.
+Import AexpNotations.
+Import BexpNotations.
+
+Definition comp: com := <[ if X1 <= X2 && ~ X1 = X2 then 
+                                 ret := 0 
+                              else 
+                                 if X2 <= X1 && ~ X1 = X2  then 
+                                   ret := 2 
+                                 else ret := 1
+                                 end 
+                              end ]>.
+
+Definition rela_pre_comp (l : list Sigma.sigma) : Prop :=
+  match l with
+  | (m1 :: m2 :: []) => m1 X1 = m2 X2 /\ m1 X2 = m2 X1
+  | _ => False
+  end.
+
+Definition rela_post_comp (l : list Sigma.sigma) : Prop :=
+  match l with
+  | (m1 :: m2 :: []) => m1 ret + (m2 ret) = 2
+  | _ => False
+  end.
+
+Example Relation_comp : relational_prop 
+                            rela_pre_comp rela_post_comp 
+                            (comp :: comp :: []) Psi.empty_psi.
 Proof.
-intros.
-simpl in H.
-apply eq_add_S in H.
-apply length_zero_iff_nil in H.
-assumption.
-Qed.
+apply rcorrect  with Phi.empty_phi.
+(* Verification of proofs proof obligation for procedure *)
++ apply tc_p_empty_psi.
+(* Extracting auxiliary proofs proof obligation *)
++ intros.
+  destruct ml.
+  * discriminate hy.
+  * destruct (mk_rtc'_def comp (comp::[]) Phi.empty_phi s ml hy) as (hyr & HYP).
+    rewrite HYP.
+    split.
+    - simpl. auto. (* Verification of auxiliary proofs proof obligation for function 1*)
 
-Lemma hoare_is_rela :
-forall P Q c ps,
-hoare_triple (fun s => P [s]) (fun s => Q [s]) c ps ->
-relational_prop P Q [c] ps.
-Proof.
-unfold hoare_triple.
-unfold relational_prop.
-intros.
-inversion H3;subst.
-apply list_length_one in H0.
-apply list_length_one in H1.
-subst.
-eapply H.
-apply H2.
-assumption.
-Qed.
+    - destruct ml.
+      ++ discriminate hyr.
+      ++ destruct (mk_rtc'_def comp [] Phi.empty_phi s0 ml hyr) as (hyr2 & HYP2).
+        rewrite HYP2.
+        split.
+        ** simpl. auto. (* Verification of auxiliary proofs 
+                           proof obligation for function 1*)
 
-Lemma one_rela_is_hoare :
-forall (P Q: assertion) c ps,
-relational_prop (fun s: list sigma => P (hd default_sigma s)) (fun s => Q (hd default_sigma s)) [c] ps ->
-hoare_triple P Q c ps.
-Proof.
-unfold hoare_triple.
-unfold relational_prop.
-intros.
-specialize (H [s] [s']).
-simpl in H.
-apply H.
-reflexivity.
-reflexivity.
-assumption.
-apply E_Seq.
-assumption.
-apply E_Empty.
+        ** inversion hyr2.
+          symmetry in H1.
+          apply length_zero_iff_nil in H1.
+          subst.
+          simpl.  auto.
+(* Extracting main proof obligation *)
++ intros.
+  destruct ml.
+  * discriminate hy.
+  * destruct 
+      (mk_rtc_def rela_post_comp comp 
+      (comp::[]) Phi.empty_phi s ml hy) as (hyr & HYP).
+    rewrite HYP.
+    destruct ml.
+    - discriminate hyr.
+    - assert (H1 : length ([] : list com) = length ml).
+      { inversion hyr. reflexivity. }
+      eapply consequence_tc_suite.
+      ++ intros.
+         destruct 
+           (mk_rtc_def (fun l : list sigma => rela_post_comp (s1 :: l))
+            comp [] Phi.empty_phi s0 ml hyr) as (hyr2 & HYP2).
+         rewrite HYP2.
+         replace hyr2 with H1.
+         ** apply (consequence_tc_suite _ _ _ (fun m' => s1 ret + m' ret = 2)).
+            -- intros.
+               inversion hyr2.
+               symmetry in H4.
+               apply length_zero_iff_nil in H4.
+               subst.
+               simpl.
+               apply H2.
+           -- apply Vcg_Opt.tc_same. apply H0.
+         ** apply eq_proofs_unicity.
+            intros.
+            lia.
+      ++ (* Extracting relational precondition *) 
+         inversion H1.
+         symmetry in H2.
+         apply length_zero_iff_nil in H2.
+         subst.
+         simpl in H.
+         (* Proof on main proof obligation *)
+         apply Vcg_Opt.tc_same.
+         simpl.
+         intros.
+         destruct H.
+         destruct H0.
+         -- destruct H2.
+            ** subst.
+            assert(H6: False).
+            { lia. }
+            contradiction H6.
+            ** destruct H5.
+              +++ subst.
+                  rewrite (set''def _ _ _ 0).
+                  rewrite (set''def _ _ _ 2).
+                  all: try reflexivity.
+              +++ subst.
+                  assert(H6: False).
+                  { lia. }
+                  contradiction H6.
+          -- destruct H2.
+            ** destruct H4.
+              +++ subst.
+                  rewrite (set''def _ _ _ 2).
+                  rewrite (set''def _ _ _ 0).
+                  all: try reflexivity.
+              +++ subst.
+                  assert(H6: False).
+                  { lia. }
+                  contradiction H6.
+            ** destruct H4.
+              +++  subst.
+                   assert(H6: False).
+                   { lia. }
+                   contradiction H6.
+              +++ destruct H5.
+                  *** subst.
+                      subst.
+                      assert(H6: False).
+                      { lia. }
+                      contradiction H6.
+                  *** subst.
+                      rewrite (set''def _ _ _ 1).
+                      rewrite (set''def _ _ _ 1).
+                      all: try reflexivity.
 Qed.
-
-End Single_Rela_Prop.
