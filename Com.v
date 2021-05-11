@@ -109,7 +109,7 @@ Notation "x ; y" := (CSeq x y)
            (in custom com at level 70, right associativity) : com_scope.
 Notation "'if' x 'then' y 'else' z 'end'" :=  (CIf x y z)
            (in custom com at level 89, 
-           x custom bexp,
+           x custom bexp at level 0,
            y custom com at level 0, 
            z custom com at level 0) : com_scope.
 Notation "'while' x 'inv' i 'do' y 'end'" := (CWhile x y i)

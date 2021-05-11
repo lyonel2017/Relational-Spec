@@ -32,7 +32,7 @@ Module AexpNotations.
 Coercion AId : Loc.t >-> aexp.
 Coercion ANum : nat >-> aexp.
 
-Notation "[ e ]" := (e) (e custom aexp at level 0) : aexp_scope.
+Notation "[? e ?]" := (e) (e custom aexp at level 0) : aexp_scope.
 Notation "x" := x (in custom aexp at level 0, x constr at level 0) : aexp_scope.
 Notation "( x )" := x (in custom aexp, 
                        x custom aexp at level 2) : aexp_scope.
@@ -54,7 +54,7 @@ Import AexpNotations.
 
 (** Example of arithmetic expression **)
 
-Definition example_aexp : aexp := [3 + (EAX * 2)].
+Definition example_aexp : aexp := [? 3 + (EAX * 2) ?].
 
 Example aexp1 :
 forall st : sigma,
