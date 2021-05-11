@@ -183,7 +183,7 @@ Fixpoint tc (c: com) (m m': Sigma.sigma)
             (cl: Phi.phi) (fin: Prop -> Prop): Prop :=
     match c with
     | CSkip => fin (m = m')
-    | CAss x a => fin (m' = set m x (aeval m a))
+    | CAss x a => fin (m' = set m (aeval m x) (aeval m a))
     | CAssert b =>  fin (b m /\ m = m')
     | CSeq p1 p2 => forall m'', 
         tc p1 m m'' cl (fun f1 => tc p2 m'' m' cl (fun f2 => fin (f1 /\ f2)))

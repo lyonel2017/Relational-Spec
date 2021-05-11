@@ -133,7 +133,7 @@ apply recursion_hoare_triple with Phi.empty_phi.
     reflexivity.
 Qed.
 
-Definition plus3 : com := <[ EAX := EAX + 2; EAX := EAX + 2 ]>.
+Definition plus3 : com := <[ °EAX := EAX + 2; °EAX := EAX + 2 ]>.
 
 Example Haore2 : hoare_triple (fun m => m EAX = 1) (fun m' => m' EAX = 5) plus3 Psi.empty_psi.
 Proof.

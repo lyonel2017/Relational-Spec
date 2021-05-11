@@ -88,7 +88,7 @@ Fixpoint tc (c : com) (m : Sigma.sigma)
             (cl: Phi.phi) (suite : Sigma.sigma -> Prop) : Prop :=
     match c with
     | CSkip => forall m', m = m' -> suite m'
-    | CAss x a => forall m', (m' = set m x (aeval m a)) -> suite m'
+    | CAss x a => forall m', (m' = set m (aeval m x) (aeval m a)) -> suite m'
     | CAssert b => forall m', b m -> m = m' -> suite m'
     | CSeq p1 p2 => tc p1 m cl (fun m' => tc p2 m' cl suite)
     | CIf b p1 p2 => (bassn b m -> tc p1 m cl suite) /\

@@ -15,7 +15,7 @@ Definition assertion : Type := sigma -> Prop.
 
 Inductive com : Type :=
 | CSkip
-| CAss (x : Loc.t) (a : aexp)
+| CAss (x : aexp) (a : aexp)
 | CAssert (b: assertion )
 | CSeq (p1 : com) (p2 : com)
 | CIf (b : bexp) (p1 p2 : com)
@@ -36,9 +36,10 @@ End Psi.
 Inductive ceval : com -> sigma -> Psi.psi -> sigma -> Prop :=
   | E_Skip : forall s ps,
     ceval CSkip s ps s
-  | E_Ass : forall s ps x a1 n,
-    aeval s a1 = n ->
-    ceval (CAss x a1) s ps (x !-> n ; s)
+  | E_Ass : forall s ps x a n l,
+    aeval s a = n ->
+    aeval s x = l ->
+    ceval (CAss x a) s ps (l !-> n ; s)
   | E_Assert: forall s ps (b : assertion),
     b s ->
     ceval (CAssert b) s ps s
@@ -99,7 +100,7 @@ Notation "{ x }" := x (in custom com at level 0, x constr) : com_scope.
 Notation "'skip'" := (CSkip) (in custom com at level 1) : com_scope.
 Notation "x := y" := (CAss x y)
             (in custom com at level 89, 
-             x constr at level 0,
+             x custom aexp,
              y custom aexp, 
              no associativity) : com_scope.
 Notation "'assert' b" := (CAssert b)
@@ -126,7 +127,7 @@ Import ComNotations.
 
 (** Examples of commands **)
 
-Definition plus2 : com := <[ EAX := EAX + 2 ]>.
+Definition plus2 : com := <[ °EAX := EAX + 2 ]>.
 
 Example ecom3 :
 forall (s : sigma),
@@ -134,7 +135,7 @@ forall (s : sigma),
 Proof.
 intros.
 unfold plus2.
-apply E_Ass. simpl. reflexivity.
+apply E_Ass. reflexivity. reflexivity.
 Qed.
 
 Definition assert2 : com := <[ assert (fun s => s EAX = 2) ]>.

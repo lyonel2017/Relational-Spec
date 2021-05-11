@@ -413,11 +413,11 @@ Import AexpNotations.
 Import BexpNotations.
 
 Definition comp: com := <[ if X1 <= X2 && ~ X1 = X2 then 
-                                 ret := 0 
+                                 °ret := 0 
                               else 
                                  if X2 <= X1 && ~ X1 = X2  then 
-                                   ret := 2 
-                                 else ret := 1
+                                   °ret := 2 
+                                 else °ret := 1
                                  end 
                               end ]>.
 

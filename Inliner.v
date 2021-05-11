@@ -78,7 +78,7 @@ intros.
 induction H.
   + apply E_Skip.
   + apply E_Ass.
-    now auto.
+    all: try now auto.
   + apply E_Assert.
     now auto.
   + simpl. apply E_IfTrue; [now auto | now auto].
@@ -104,7 +104,7 @@ induction p;intros.
   + inversion H;subst.
     apply E_Skip.
   + inversion H;subst.
-    apply E_Ass. now auto.
+    apply E_Ass. all: try now auto.
   + inversion H;subst.
     apply E_Assert. now auto.
   + inversion H;subst.
@@ -216,7 +216,7 @@ induction n.
     apply E_Skip.
   + inversion H;subst.
     apply E_Ass.
-    auto.
+    all: try now auto.
   + inversion H;subst.
     apply E_Assert.
     auto.
@@ -452,7 +452,7 @@ induction 1;intros.
 * exists 1.
   intros.
   apply E_Ass.
-  assumption.
+  all: try now auto.
 * exists 1.
   intros.
   apply E_Assert.
