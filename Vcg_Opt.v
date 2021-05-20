@@ -8,6 +8,9 @@ From Rela Require Vcg.
 From Rela Require Import Hoare_Triple.
 Import Bool.Bool.
 
+From Coq Require Import Lists.List.
+Import ListNotations.
+
 Import Vcg.Why3_Set.
 Import Vcg.Assn_b.
 
@@ -261,8 +264,8 @@ induction p;simpl.
 * intros. apply H. assumption.
 Qed.
 
-Lemma prenexe_tc :
-forall p m m' cl (suite : sigma -> Prop -> Prop),
+Lemma prenexe_tc:
+forall (A:Type) p m m' cl (suite : A -> Prop -> Prop),
 (forall s, tc p m m' cl (suite s)) ->
 tc p m m' cl (fun f => forall s,suite s f).
 Proof.
@@ -360,6 +363,24 @@ induction p;simpl.
   apply H.
 * intros. apply H.
 * intros. apply H.
+Qed.
+
+Lemma true_tc :
+forall p m m' cl,
+True -> tc p m m' cl (fun _ => True).
+Proof.
+induction p;simpl;intros.
+all: try auto.
+* eapply consequence_tc_suite.
+  + intros.
+    apply IHp2.
+    apply H0.
+  + apply IHp1. auto.
+* eapply consequence_tc_suite.
+  + intros.
+    apply IHp2.
+    apply H0.
+  + apply IHp1. auto.
 Qed.
 
 Lemma tc_same :
@@ -507,3 +528,161 @@ split;intros.
   apply H.
   apply H0.
 Qed.
+
+
+Module Test.
+
+Import ComNotations.
+Import AexpNotations.
+Import BexpNotations.
+
+Definition test (p1: com) (cl: Phi.phi) (a : sigma -> Prop) (m : sigma) :=
+           forall m'' : sigma, tc p1 m m'' cl (fun f : Prop => f -> a m'').
+
+Fixpoint tc_test (c : com) (cl: Phi.phi) : list (Sigma.sigma -> Prop) :=
+match c with
+ | CSkip => []
+ | CAss x a => []
+ | CAssert b => [fun m => b m]
+ | CSeq p1 p2 => tc_test p1 cl ++
+                 map (*fun a: (Sigma.sigma -> Prop) =>  
+                 fun m =>
+                 forall m'',
+                 tc p1 m m'' cl (fun f => f -> a m'')*)
+                 (test p1 cl) (tc_test p2 cl)
+
+ | CIf b p1 p2 => (map (fun a: (Sigma.sigma -> Prop) =>
+                  fun m => simpl_bassn b m -> a m) (tc_test p1 cl))
+                  ++
+                  (map (fun a: (Sigma.sigma -> Prop) =>
+                  fun m => ~simpl_bassn b m -> a m) (tc_test p2 cl))
+
+| CWhile b p i => [fun m => i m]
+                   ++
+                   (map (fun a: (Sigma.sigma -> Prop) =>  
+                   fun _ => forall m', simpl_bassn b m' -> a m') (tc_test p cl))
+                   ++
+                   [fun _ => forall m' m'', i m'  -> tc p m' m'' cl (fun f => f -> i m'')]
+
+ | CCall f => [fun m => (get_pre (cl f)) m]
+end.
+
+Lemma tc_test_same :
+forall p cl m,
+(forall n, (nth n (tc_test p cl) (fun _ => True)) m) -> tc' p m cl.
+Proof.
+induction p;intros.
++ simpl. auto.
++ simpl. auto.
++ simpl.
+  apply (H 0).
++ simpl.
+  split.
+  * apply IHp1.
+    simpl in H.
+    intro n.
+    generalize (H n);intros;clear H.
+    destruct (Proc.lt_ge_cases n (length ((tc_test p1 cl)))).
+    - rewrite app_nth1 in H0; [assumption|assumption].
+    - rewrite nth_overflow; [ auto | assumption].
+  * intros.
+    eapply consequence_tc_suite.
+    - intros.
+      apply IHp2.
+      intros n.
+      generalize dependent H1.
+      generalize dependent n.
+      apply H0.
+    - simpl in H.
+      apply prenexe_tc.
+      intro n.
+      generalize (H ((length(tc_test p1 cl))+n));intros;clear H.
+      rewrite app_nth2_plus in H0.
+      destruct (Proc.lt_ge_cases n (length ((tc_test p2 cl)))).
+      ++ erewrite nth_indep in H0;[|rewrite map_length;assumption].
+         rewrite map_nth in H0.
+         apply H0.
+      ++ rewrite nth_overflow;[ | assumption].
+         eapply consequence_tc_suite.
+         ** intros. apply H1.
+         ** apply true_tc. auto.
++ simpl.
+  split.
+  * intros.
+    apply IHp1.
+    simpl in H.
+    intro n.
+    generalize (H n);intros;clear H.
+    destruct (Proc.lt_ge_cases n (length ((tc_test p1 cl)))).
+    - rewrite app_nth1 in H1;[ | rewrite map_length;assumption].
+      erewrite nth_indep in H1;[ | rewrite map_length;assumption].
+      rewrite 
+      (map_nth (fun (a : sigma -> Prop) (m : sigma) => simpl_bassn b m -> a m)) in H1.
+      apply H1.
+      assumption.
+    - rewrite nth_overflow;[auto | assumption].
+  * intros.
+    apply IHp2.
+    simpl in H.
+    intro n.
+    generalize (H ((length(tc_test p1 cl))+n));intros;clear H.
+    erewrite <- map_length in H1.
+    rewrite app_nth2_plus in H1.
+    destruct (Proc.lt_ge_cases n (length ((tc_test p2 cl)))).
+    - erewrite nth_indep in H1;[ | rewrite map_length;assumption].
+      rewrite 
+      (map_nth (fun (a : sigma -> Prop) (m : sigma) => ~simpl_bassn b m -> a m)) in H1.
+      apply H1.
+      assumption.
+    - rewrite nth_overflow;[auto | assumption].
++ simpl.
+  split;[ apply (H 0)| ].
+  split.
+  * intros.
+    apply IHp.
+    intro n.
+    generalize (H (1 + n)).
+    intros.
+    simpl in H1.
+    destruct (Proc.lt_ge_cases n (length ((tc_test p cl)))).
+    - rewrite app_nth1 in H1;[ | rewrite map_length;assumption].
+      erewrite nth_indep in H1;[ | rewrite map_length;assumption].
+      rewrite 
+      (map_nth (fun (a : sigma -> Prop) (_ : sigma) => 
+                forall m', simpl_bassn b m' -> a m')) in H1.
+      apply H1.
+      assumption.
+    - rewrite nth_overflow;[auto | assumption].
+  * intros.
+     generalize (H (1 + (length (tc_test p cl)) + 0)).
+    intros.
+    simpl in H1.
+    erewrite <- map_length in H1.
+    rewrite app_nth2_plus in H1.
+    simpl in H1. apply H1. assumption.
++ apply (H 0).
+Qed.
+
+Definition assert3 : com := <[ assert (fun m => m EAX = 2) ;
+                               skip; 
+                               assert (fun m => m EAX = 2) ]>.
+
+Example test_tc : 
+forall m n,
+m EAX = 2 -> (nth n (tc_test assert3 Phi.empty_phi) (fun _ => True)) m.
+Proof.
+simpl.
+destruct n.
+  * auto.
+  * destruct n.
+    + unfold test.
+      simpl.
+      intros.
+      destruct H0.
+      subst.
+      assumption.
+    + intros. 
+      destruct n; [auto|auto].
+Qed.
+
+End Test.
