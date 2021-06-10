@@ -11,9 +11,3 @@ Vcg.v
 Vcg_Opt.v
 Correct.v
 Rela.v
-
-# Remove
-Label.v
-Lambda.v
-EAexp.v
-EBexp.v
