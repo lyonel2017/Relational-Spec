@@ -2,72 +2,90 @@ From Rela Require Import Loc.
 From Rela Require Import Label.
 From Rela Require Import Aexp.
 From Rela Require Import Bexp.
-From Rela Require Import EAexp.
-From Rela Require Import EBexp.
 From Rela Require Import Proc.
 From Rela Require Import Sigma.
-From Rela Require Import Lambda.
+From Coq Require Import Lia.
 
-From Coq Require Export List.
+From Coq Require Import Lists.List.
+Import ListNotations.
+
+(** Definition of history **)
+
+Definition lambda : Type := list (Label.t * sigma).
+
+(** Definition of assertion **)
+
+Definition assertion : Type := sigma -> lambda -> Prop.
 
 (** Defintion of command and program **)
 
 Inductive com : Type :=
-| CSkip
-| CAss (x : Loc.t) (a : aexp)
-| CAssert (b: ebexp)
-| CIf (b : bexp) (p1 p2 : prog)
-| CWhile (b : bexp) (p : prog) (inv : ebexp) (ass : (list nat))
-| CCall (f : Proc.t)
-with prog : Type := 
-| pnil : prog
-| pconst: Label.t -> com -> prog -> prog
-.
-
-Scheme com_prod_ind := Induction for com Sort Prop
-with prog_com_ind := Induction for prog Sort Prop.
-Combined Scheme com_prog_mutind from com_prod_ind, prog_com_ind.
+| CSkip (l: Label.t)
+| CAss (l: Label.t) (x : Loc.t) (a : aexp)
+| CSeq (p1 p2 : com)
+(*| CAssert (b: assertion )*)
+| CIf (l: Label.t) (b : bexp) (p1 p2 : com)
+| CWhile (l: Label.t) (b : bexp) (p : com) (inv : assertion) (ass : (list nat))
+(* | CCall (f : Proc.t)*).
 
 (** A map from procedure name to commands, called Psi*)
 
 Module Psi.
 
-  (** The clause of the program that can be called **)
-
-  Definition clause : Type := (ebexp * ebexp * (list nat)).
-
   (** The programs that can be called is a maps from procedure to program **)
 
-  Definition psi : Type := Proc.t -> (prog * clause).
+  Definition psi : Type := Proc.t -> com.
 
   (** Notation for a "singleton state" with just one variable bound to a value. *)
 
-  Definition update_psi (x:Proc.t) (v: (prog * clause)) (l:psi): psi :=
+  Definition update_psi (x:Proc.t) (v: com ) (l:psi): psi :=
   fun (x': Label.t) => if Proc.eqb x' x then v else l x'.
 
-  Notation "x '#->' v ; l" := (update_psi x v l)(at level 100).
--
-(*  Notation "x '#->' v ; s" := (fun x' => if Proc.eqb x' x then v else s x') (at level 100).*)
-
- Definition get_proc (ps:psi) (f :Proc.t):= 
-          let (p,_) := ps f in
-          p.
-
-  Definition get_an (ps:psi) (f :Proc.t):= 
-          let (_,ann) := ps f in
-          ann.
-
-  Definition get_pre (an:clause) := 
-          let (cont,ass) := an in
-          let (pre,post) := cont in
-          pre.
-
-  Definition get_post (an:clause) := 
-          let (cont,ass) := an in
-          let (pre,post) := cont in
-          post.
-
+  Notation "x '#->' v ; l" := (update_psi x v l)(at level 100, v at next level, right associativity).
 End Psi.
+
+(** Evaluation command as a relation **)
+
+Inductive ceval : com -> sigma -> lambda -> Psi.psi -> 
+                  sigma -> lambda -> Prop :=
+  | E_Skip : forall s ps la l, 
+    ceval (CSkip l) s la ps s ((l,s)::la)
+  | E_Ass : forall s la l ps x a1 n,
+    aeval s a1 = n ->
+    ceval (CAss l x a1) s la ps (x !-> n ; s) ((l,s)::la)
+  | E_IfTrue : forall s s' la la' l ps b p1 p2,
+      beval s b = true ->
+      ceval p1 s ((l,s)::la) ps s' la' ->
+      ceval (CIf l b p1 p2) s la ps s' ((l,s)::la)
+  | E_IfFalse : forall s s' la la' l ps b p1 p2,
+      beval s b = false ->
+      ceval p2 s ((l,s)::la) ps s' la' ->
+      ceval (CIf l b p1 p2) s la ps s' ((l,s)::la)
+  | E_Seq : forall s s' s'' la la' la'' ps p1 p2,
+      ceval p1 s la ps s' la'->
+      ceval p2 s' la' ps s'' la''->
+      ceval (CSeq p1 p2) s la ps s'' la''
+  | E_WhileFalse : forall b s la l ps p inv ass,
+      beval s b = false ->
+      ceval (CWhile l b p inv ass) s la ps s ((l,s)::la)
+  | E_WhileTrue : forall b s s' s'' la la' la'' l ps p inv ass,
+      beval s b = true ->
+      ceval p s ((l,s)::la) ps s' la' ->
+      ceval (CWhile l b p inv ass) s' la ps s'' la'' ->
+      ceval (CWhile l b p inv ass) s  la ps s'' ((l,s)::la).
+
+(** Examples of commands **)
+
+Definition plus2 : com := CAss l1 EAX (APlus (AId EAX) (ANum 2)).
+
+Example ecom3 :
+forall (s : sigma),
+  ceval plus2 s [] (fun _ => CSkip l1) (EAX !-> (s EAX) + 2 ; s) ((l1, s)::[]).
+Proof.
+intros.
+unfold plus2.
+apply E_Ass. simpl. reflexivity.
+Qed.
 
 (** Evaluation of command as a functional **)
 
@@ -93,170 +111,214 @@ Proof. reflexivity. Qed.
 
 End Play.
 
-Fixpoint ceval_com (s : sigma) (l: Label.t) (la: lambda) (ps: Psi.psi) (c : com) (i : nat): option sigma :=
+Fixpoint ceval_step (s : sigma) (la: lambda) (ps: Psi.psi) (c : com) (i : nat): option (sigma * lambda) :=
   match i with
   | O  => None
   | S i' =>
     match c with
-    | CSkip => Some (s)
-    | CAss x a1 => Some((x !-> (aeval s a1) ; s))
-    | CAssert b  => Some(s)
-    | CIf b p1 p2 =>
+    | CSkip l => Some (s,((l,s)::la))
+    | CAss l x a1 => Some((x !-> (aeval s a1) ; s),((l,s)::la))
+   (* | CAssert b  => Some(s,((l,s)::la))*)
+    | CSeq p1 p2 =>
+        match ceval_step s la ps p1 i' with
+        | None => None
+        | Some (s',la') => ceval_step s' la' ps p2 i'
+        end
+    | CIf l b p1 p2 =>
       match (beval s b) with
-      | true => ceval_prog s (l |-> s ; la ) ps p1 i'
-      | false => ceval_prog s (l |-> s ; la ) ps p2 i' 
+      | true => 
+        match ceval_step s ((l,s)::la) ps p1 i' with
+        | None => None 
+        | Some (s,_) => Some (s,((l,s)::la))
+        end
+      | false => 
+        match ceval_step s ((l,s)::la) ps p2 i' with
+        | None => None 
+        | Some (s,_) => Some(s,((l,s)::la))
+        end
       end
-   | CWhile b p1 inv ass =>
+   | CWhile l b p1 inv ass =>
       match (beval s b) with
       | true =>
-        match ceval_prog s (l |-> s ; la ) ps p1 i' with
-        | Some (s')  => ceval_com s' l la  ps c i'
+        match ceval_step s ((l,s)::la) ps p1 i' with
+        | Some (s',_)  => 
+          match ceval_step s' la ps c i' with
+          | None => None 
+          | Some (s,_) => Some (s,((l,s)::la))
+          end
         | None => None
         end
-      | false => Some(s)
-      end
-    | CCall f =>
-        match ceval_prog s (l |-> s ; la ) ps (Psi.get_proc ps f) i' with
-        | Some (s')  => Some( s')
-        | None => None
+      | false => Some(s,((l,s)::la))
       end
     end
-  end
-  with ceval_prog (s : sigma) (la: lambda) (ps: Psi.psi) (p : prog) (i : nat): option sigma :=
-    match i with
-      | O => None 
-      | S i' =>
-          match p with
-          | pnil  => Some (s)
-          | pconst l c p' => 
-              match ceval_com s l la ps c i' with
-                | None => None
-                | Some (s') => ceval_prog s' (l |-> s ; la ) ps p' i'
-              end
-         end
-   end.
+  end.
 
-(** Evaluation command as a relation **)
+Theorem ceval_step_more: forall i1 i2 p s s' la la' ps ,
+  i1 <= i2 ->
+  ceval_step_prog s la ps p i1 = Some (s', la') ->
+  ceval_step_prog s la ps p i2 = Some (s', la').
+Proof.
+intros i1 i2 p s s' la la' ps Hle Hceval.
+generalize dependent i1.
+generalize dependent i2.
+generalize dependent s.
+generalize dependent s'.
+generalize dependent la.
+generalize dependent la'.
+elim p using prog_com_ind with 
+  (P :=  fun c : com =>
+ forall l i1 i2 s la s' la',
+  i1 <= i2 ->
+  ceval_step_com s l la ps c i1 = Some (s', la') ->
+  ceval_step_com s l la ps c i2 = Some (s', la')).
+  * intros. destruct i1.
+    - inversion H0.
+    - destruct i2.
+      + inversion H.
+      + simpl in H0. simpl. rewrite H0. reflexivity.
+  * intros. destruct i1.
+    - inversion H0.
+    - destruct i2.
+      + inversion H.
+      + simpl in H0. simpl. rewrite H0. reflexivity.
+  * intros. destruct i1.
+    - inversion H0.
+    - destruct i2.
+      + inversion H.
+      + simpl in H0. simpl. rewrite H0. reflexivity.
+  * intros. destruct i1.
+    - inversion H2.
+    - destruct i2.
+      + inversion H1.
+      + simpl in H2. simpl. destruct (beval s b).
+        ** apply (H la' (l |-> s; la) s' s i2 i1).
+          -- lia.
+          --  assumption.
+        ** apply (H0 la' (l |-> s; la) s' s i2 i1).
+          -- lia.
+          -- assumption.
+  * intros. generalize dependent i2.  generalize dependent s. induction i1.
+    - intros. simpl in H1. inversion H1.
+    - intros. destruct i2.
+      + inversion H0.
+      + simpl in H1. simpl. destruct (beval s b).
+        ** destruct (ceval_step_prog s (l |-> s; la) ps p0 i1) eqn:Heqr1.
+          -- destruct (ceval_step_prog s (l |-> s; la) ps p0 i2) eqn:Heqr2.
+            ++ destruct p1. destruct p2.
+               apply (H l0 (l |-> s; la) s0 s i2 i1) in Heqr1. 
+               rewrite Heqr1 in Heqr2. 
+               inversion Heqr2.
+               rewrite <- H3.
+               apply (IHi1 s0).
+               assumption. lia. lia.
+            ++ destruct p1.
+               apply (H l0 (l |-> s; la) s0 s i2 i1) in Heqr1. 
+               rewrite Heqr1 in Heqr2. 
+               inversion Heqr2.
+               lia.
+         -- inversion H1.
+       ** assumption.
+  * intros. destruct i1.
+    - inversion Hceval.
+    - destruct i2.
+      + inversion Hle.
+      + simpl in Hceval. simpl. rewrite Hceval. reflexivity.
+  * intros. destruct i1.
+    - inversion Hceval.
+    - destruct i2.
+      + inversion Hle.
+      + simpl in Hceval. simpl. 
+      destruct (ceval_step_com s t la ps c i1) eqn:Heqr1.
+       ** destruct p1. apply (H t i1 i2 s la s0 l) in Heqr1.
+          rewrite Heqr1. 
+          apply (H0 la' (t |-> s; la) s' s0 i2 i1) in Hceval. 
+          rewrite Hceval. reflexivity.
+          lia. lia.
+        ** inversion Hceval.
+Qed.
 
-Inductive ceval_r_c : com -> sigma -> lambda -> Label.t -> Psi.psi -> sigma -> Prop :=
-  | E_Skip : forall s la ps l, 
-    ceval_r_c CSkip s la l ps s
-  | E_Ass : forall s la ps l x a1,
-    ceval_r_c (CAss x a1) s la l ps (x !-> (aeval s a1) ; s)
-  | E_Assert: forall s la ps b l,
-    ebeval_prop la b ->
-    ceval_r_c (CAssert b) s la l ps s
-  | E_IfTrue : forall s la s' ps b p1 p2 l,
-      beval s b = true ->
-      ceval_r_p p1 s (l |-> s ; la ) ps s' ->
-      ceval_r_c (CIf b p1 p2) s la l ps s'
-  | E_IfFalse : forall s la s' ps b p1 p2 l,
-      beval s b = false ->
-      ceval_r_p p2 s (l |-> s ; la ) ps s' ->
-      ceval_r_c (CIf b p1 p2) s la l ps s'
-  | E_WhileFalse : forall b s la ps p l inv ass,
-      beval s b = false ->
-      ceval_r_c (CWhile b p inv ass) s la l ps s
-  | E_WhileTrue : forall b s la s' s'' ps c l inv ass,
-      beval s b = true ->
-      ceval_r_p c s (l |-> s ; la )  ps s' ->
-      ceval_r_c (CWhile b c inv ass) s' la l ps s'' ->
-      ceval_r_c (CWhile b c inv ass) s  la l ps s''
-  | E_Call : forall s la ps s' l f,
-    ceval_r_p (Psi.get_proc ps f) s la ps s' ->
-    ceval_r_c (CCall f) s la l ps s'
- with ceval_r_p : prog -> sigma -> lambda -> Psi.psi -> sigma -> Prop :=
-  | E_pnil : forall s la ps, ceval_r_p pnil s la ps s
-  | E_pconst : forall s s' s'' la ps c l p',
-      ceval_r_c c s la l ps s' ->
-      ceval_r_p p' s' (l |-> s ; la ) ps s'' ->
-      ceval_r_p (pconst l c p') s la ps s''.
+Theorem ceval_step_more_c: forall c l i1 i2 s la s' la' ps,
+  i1 <= i2 ->
+  ceval_step_com s l la ps c i1 = Some (s', la') ->
+  ceval_step_com s l la ps c i2 = Some (s', la').
+ Proof.
+ Abort.
 
-(** Function and relational evaluaate to the same thing **)
+(** Function and relational evalution evaluate to the same thing **)
 
-Theorem ceval_ceval_r: forall p s s' la ps ,
-  (exists i, ceval_prog s la ps p i = Some s') ->
-  ceval_r_p p s la ps s'.
+(*Theorem ceval_step__ceval: forall p s s' la ps ,
+  well_p p ->
+  (exists i, ceval_step_prog s la ps p i = Some s') ->
+  ceval_p p s la ps s'.
   Proof.
-  intros.
+  Abort.
+  intros p s s' la ps Well H.
   inversion H as [i E].
   clear H.
   generalize dependent s'.
   generalize dependent s.
   generalize dependent p.
-  induction i.
+  generalize dependent la.
+  induction i as [| i' ].
   - intros. simpl in E. discriminate E.
   - intros. destruct p.
     + simpl in E. inversion E. apply E_pnil.
-    + simpl in E.  destruct c.
-     * simpl in E.
-  Abort.
+    + simpl in E. destruct (ceval_step_com s t la ps c i') eqn:Heqr1.
+      * apply E_pconst with s0 .
+        -- destruct i'.
+          ++ simpl in Heqr1. discriminate Heqr1.
+          ++ destruct c. 
+            ** simpl in Heqr1. inversion Heqr1. subst. apply E_Skip.
+            ** simpl in Heqr1. inversion Heqr1. subst. apply E_Ass. reflexivity.
+            ** simpl in Well. destruct Well. contradiction H.
+            ** simpl in Heqr1. destruct (beval s b) eqn:Heqr.
+              --- apply E_IfTrue.
+                +++ assumption.
+                +++ apply IHi'. 
+                  *** simpl in Well. destruct Well. destruct H. assumption.
+                  *** apply (ceval_step_more i' (S i') p1 s s0 (t |-> s; la) ps) in Heqr1.
+                    assumption.
+                    simpl in Well. destruct Well. destruct H. assumption.
+                    lia.
+              --- apply E_IfFalse.
+                +++ assumption.
+                +++ apply IHi'. 
+                  *** simpl in Well. destruct Well. destruct H. assumption.
+                  *** apply (ceval_step_more i' (S i') p2 s s0 (t |-> s; la) ps) in Heqr1.
+                    assumption.
+                    simpl in Well. destruct Well. destruct H. assumption.
+                    lia.
+            ** simpl in Heqr1. destruct (beval s b) eqn:Heqr.
+              --- destruct (ceval_step_prog s (t |-> s; la) ps p0 i') eqn:Heqr2.
+                +++ apply (E_WhileTrue b s la s1 s0 ps p0 t inv ass).
+                  *** assumption.
+                  *** apply IHi'.
+                  ---- simpl in Well. destruct Well. assumption.
+                  ---- apply (ceval_step_more i' (S i') p0 s s1 (t |-> s; la) ps) in Heqr2.
+                   assumption.
+                   simpl in Well. destruct Well. assumption.
+                   lia.
+                  *** 
+           
+            inversion Heqr1. subst.
+            ** simpl in Well. destruct Well. contradiction H.
+            ** simpl in Well. destruct Well. contradiction H.
+        -- apply IHi'. 
+          ++ simpl in Well. destruct Well. assumption.
+          ++  assumption.
+      * discriminate E.
+Qed.*)
 
-
-(** Helper function for command **)
-(* Collector function for locations *)
-
-Fixpoint cvc (c : com)  : Loc_Set.LocSet.t  :=
-    match c with
-    | CSkip  => Loc_Set.LocSet.empty
-    | CAss x a      =>  Loc_Set.LocSet.union (Loc_Set.LocSet.singleton x) (cva a)
-    | CAssert b     => cveb b
-    | CIf b c1 c2   => Loc_Set.LocSet.union (cvb b) (Loc_Set.LocSet.union (cvp c1) (cvp c2))
-    | CWhile b c _ _    => Loc_Set.LocSet.union (cvb b) (cvp c)
-    | CCall p       => Loc_Set.LocSet.empty
-    end
-with cvp (p : prog) : Loc_Set.LocSet.t :=
-  match p with
-  | pnil => Loc_Set.LocSet.empty
-  | pconst _ c q => Loc_Set.LocSet.union (cvc c) (cvp q) 
-  end.
-
-(* Collector function for labels *)
-
-Fixpoint clc (c : com)  : Label_Set.LabelSet.t  :=
-    match c with
-    | CSkip         => Label_Set.LabelSet.empty
-    | CAss x a      => Label_Set.LabelSet.empty
-    | CAssert b     => cleb b
-    | CIf b p1 p2   => Label_Set.LabelSet.union (clp p1) (clp p2)
-    | CWhile b c _ _  =>  clp c 
-    | CCall p       => Label_Set.LabelSet.empty
-  end
-with clp (p : prog) : Label_Set.LabelSet.t :=
-  match p with
-  | pnil => Label_Set.LabelSet.empty
-  | pconst l c q => Label_Set.LabelSet.union
-  (Label_Set.LabelSet.union (Label_Set.LabelSet.singleton l) (clc c)) (clp q) 
- end.
-
-(* Collector function for procedure names *)
-
-Fixpoint cpc (c : com)  : Proc_Set.ProcSet.t  :=
-    match c with
-    | CSkip        => Proc_Set.ProcSet.empty
-    | CAss x a     => Proc_Set.ProcSet.empty
-    | CAssert b    => Proc_Set.ProcSet.empty
-    | CIf b c1 c2  => Proc_Set.ProcSet.union (cpp c1) (cpp c2)
-    | CWhile b c _ _   => cpp c 
-    | CCall p      => Proc_Set.ProcSet.singleton p
-  end
-with cpp (p : prog) : Proc_Set.ProcSet.t :=
-  match p with
-  | pnil => Proc_Set.ProcSet.empty
-  | pconst _ c q => Proc_Set.ProcSet.union (cpc c) (cpp q) 
- end.
-
-(** Examples of commands **)
-
-Definition plus2 : prog := pconst l1 (CAss EAX (APlus (AId EAX) (ANum 2))) pnil.
-
-Definition assertcom : prog := pconst l1 (CAssert (EBLe (EAt EAX l1) (EANum 6))) pnil.
-
-Example ecom3 :
-forall (s : sigma) (la : lambda),
-    ceval_prog (EAX !-> 5 ; s) la (fun _ => (pnil,(EBTrue,EBTrue,nil))) plus2 2 =
-    Some ((EAX !-> 7 ; ((EAX !-> 5 ; s)))).
+(*Theorem ceval__ceval_step: forall p s s' la ps ,
+  well_p p ->
+  ceval_p p s la ps s' ->
+  (exists i, ceval_step_prog s la ps p i = Some s').
 Proof.
-intros.
-reflexivity.
-Qed.
+Abort.
+
+Theorem ceval_and_ceval_setp_coincide: forall p s s' la ps ,
+  well_p p ->
+  (ceval_p p s la ps s' <->
+  (exists i, ceval_step_prog s la ps p i = Some s')).
+Proof.
+Abort.*)
