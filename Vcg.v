@@ -31,7 +31,7 @@ split.
   * reflexivity.
   * contradiction n.
     rewrite H. reflexivity.
-+ intros. 
++ intros.
   unfold set.
   destruct (Loc.eq_dec x y).
   * contradiction H.
@@ -66,7 +66,7 @@ Definition bassn b :=
 
 Lemma bexp_eval_true : forall b st,
   beval st b = true -> (bassn b) st.
-Proof. 
+Proof.
 intros. unfold bassn. apply Is_true_eq_left. auto.
 Qed.
 
@@ -74,7 +74,7 @@ Lemma bexp_eval_false : forall b st,
   beval st b = false ->  ~((bassn b) st).
 Proof.
 intros. unfold bassn. apply negb_prop_elim.
-apply Is_true_eq_left. 
+apply Is_true_eq_left.
 apply negb_true_iff. auto.
 Qed.
 
@@ -186,7 +186,7 @@ induction p.
     apply H. assumption.
     apply H0. assumption.
 + simpl. intros.
-  split. 
+  split.
     * apply H.
       all: try assumption.
     * apply H0.
@@ -232,10 +232,10 @@ split.
 Qed.
 
 Parameter f : Proc.t.
-Definition cli_1 (x': Proc.t) := 
+Definition cli_1 (x': Proc.t) :=
         if Proc.eqb x' f then CSkip else CSkip.
 
-Definition phi_1 (x': Proc.t) := 
+Definition phi_1 (x': Proc.t) :=
         if Proc.eqb x' f then empty_clause else empty_clause.
 
 Example tc_p_update : tc_p cli_1 phi_1.

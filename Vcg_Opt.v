@@ -53,12 +53,12 @@ intros.
 induction b.
 * auto.
 * auto.
-* simpl. 
+* simpl.
   apply Is_true_eq_true in H.
   simpl in H.
   apply OrdersEx.Nat_as_DT.eqb_eq in H.
   assumption.
-* simpl. 
+* simpl.
   apply Is_true_eq_true in H.
   simpl in H.
   Search (Nat.leb _ _ = true).
@@ -77,7 +77,7 @@ induction b.
     apply H.
   + auto.
   + auto.
-  + auto.  
+  + auto.
 * simpl. apply Is_true_eq_true in H.
   simpl in H.
   apply andb_true_iff in H.
@@ -113,7 +113,7 @@ induction b.
   apply Proc.eqb_neq.
   apply negb_true_iff.
   apply negb_prop_intro in H.
-  apply Is_true_eq_true in H. 
+  apply Is_true_eq_true in H.
   apply H.
 * simpl.
   apply Proc.nle_gt.
@@ -141,7 +141,7 @@ induction b.
     apply H.
   + auto.
   + auto.
-  + auto.  
+  + auto.
 * simpl.
   intros H1.
   destruct H1.
@@ -188,11 +188,11 @@ Fixpoint tc (c: com) (m m': Sigma.sigma)
     | CSkip => fin (m = m')
     | CAss x a => fin (m' = set m (aeval m x) (aeval m a))
     | CAssert b =>  fin (b m /\ m = m')
-    | CSeq p1 p2 => forall m'', 
+    | CSeq p1 p2 => forall m'',
         tc p1 m m'' cl (fun f1 => tc p2 m'' m' cl (fun f2 => fin (f1 /\ f2)))
     | CIf b p1 p2 =>
-        tc p1 m m' cl (fun p1 => 
-        tc p2 m m' cl (fun p2 => 
+        tc p1 m m' cl (fun p1 =>
+        tc p2 m m' cl (fun p2 =>
             fin (branch (simpl_bassn b m) p1 p2)))
     | CWhile b p inv => fin (inv m /\ inv m' /\ ~(simpl_bassn b m'))
     | CCall f => fin((get_pre (cl f)) m /\ (get_post (cl f)) m')
@@ -222,17 +222,17 @@ induction p.
        + apply H1.
     - apply H0.
   * simpl. intros.
-    eapply IHp1 with 
+    eapply IHp1 with
      (fun p => tc p2 m m' cl (fun f2 : Prop => suite1 (branch (simpl_bassn b m) p f2))).
     - intros.
       eapply IHp2 with (fun f => suite1 (branch (simpl_bassn b m) p f)).
        + intros. apply H. assumption.
        + apply H1.
     - apply H0.
-  * simpl. intros. 
+  * simpl. intros.
     apply H.
     apply H0.
-  * simpl. intros. 
+  * simpl. intros.
     apply H.
     apply H0.
 Qed.
@@ -246,7 +246,7 @@ induction p;simpl.
 * intros. apply H. assumption.
 * intros. apply H. assumption.
 * intros. apply H. assumption.
-* intros.  
+* intros.
   eapply consequence_tc_suite.
   + intros.
     generalize H0.
@@ -296,17 +296,17 @@ Qed.
 Lemma opt_1_true:
 forall p1 p2 b m m' cl (suite : Prop),
 simpl_bassn b m ->
-tc p1 m m' cl (fun f1 => 
+tc p1 m m' cl (fun f1 =>
 tc p2 m m' cl (fun f2 =>  branch (simpl_bassn b m) f1 f2 -> suite)) ->
-tc p1 m m' cl (fun f1 => 
+tc p1 m m' cl (fun f1 =>
 tc p2 m m' cl (fun f2 => f1 -> suite)).
 Proof.
 intros.
-apply (consequence_tc_suite _ _ _ _ 
-             (fun f1 => tc p2 m m' cl (fun f2 => 
+apply (consequence_tc_suite _ _ _ _
+             (fun f1 => tc p2 m m' cl (fun f2 =>
               branch (simpl_bassn b m) f1 f2 -> suite))).
 * intros.
-  apply (consequence_tc_suite _ _ _ _ 
+  apply (consequence_tc_suite _ _ _ _
         (fun f2 => branch (simpl_bassn b m) p f2 -> suite)).
   - intros. apply H2.
     apply Then.
@@ -318,17 +318,17 @@ Qed.
 Lemma opt_1_false:
 forall p1 p2 b m m' cl (suite : Prop),
 ~simpl_bassn b m ->
-tc p1 m m' cl (fun f1 => 
+tc p1 m m' cl (fun f1 =>
 tc p2 m m' cl (fun f2 =>  branch (simpl_bassn b m) f1 f2 -> suite)) ->
-tc p1 m m' cl (fun f1 => 
+tc p1 m m' cl (fun f1 =>
 tc p2 m m' cl (fun f2 => f2 -> suite)).
 Proof.
 intros.
-apply (consequence_tc_suite _ _ _ _ 
-             (fun f1 => tc p2 m m' cl (fun f2 => 
+apply (consequence_tc_suite _ _ _ _
+             (fun f1 => tc p2 m m' cl (fun f2 =>
               branch (simpl_bassn b m) f1 f2 -> suite))).
 * intros.
-  apply (consequence_tc_suite _ _ _ _ 
+  apply (consequence_tc_suite _ _ _ _
         (fun f2 => branch (simpl_bassn b m) p f2 -> suite)).
   - intros. apply H2.
     apply Else.
@@ -348,7 +348,7 @@ induction p;simpl.
 * intros.
   assert (H1: tc p1 m m cl (fun _ : Prop => suite)).
   { intros.
-    eapply consequence_tc_suite with 
+    eapply consequence_tc_suite with
     ((fun _ : Prop => tc p2 m m' cl (fun _ : Prop => suite))).
     + intros.
       eapply IHp2.
@@ -411,7 +411,7 @@ induction p;simpl.
       eapply consequence_tc_suite.
       ** intros p He.
          apply intros_tc.
-         eapply consequence_tc_suite with 
+         eapply consequence_tc_suite with
          (fun f : Prop => p /\ f -> suite1 s).
          ++ auto.
          ++ apply He.
@@ -529,7 +529,6 @@ split;intros.
   apply H0.
 Qed.
 
-
 Module Test.
 
 Import ComNotations.
@@ -545,11 +544,7 @@ match c with
  | CAss x a => []
  | CAssert b => [fun m => b m]
  | CSeq p1 p2 => tc_test p1 cl ++
-                 map (*fun a: (Sigma.sigma -> Prop) =>  
-                 fun m =>
-                 forall m'',
-                 tc p1 m m'' cl (fun f => f -> a m'')*)
-                 (test p1 cl) (tc_test p2 cl)
+                 map (test p1 cl) (tc_test p2 cl)
 
  | CIf b p1 p2 => (map (fun a: (Sigma.sigma -> Prop) =>
                   fun m => simpl_bassn b m -> a m) (tc_test p1 cl))
@@ -559,7 +554,7 @@ match c with
 
 | CWhile b p i => [fun m => i m]
                    ++
-                   (map (fun a: (Sigma.sigma -> Prop) =>  
+                   (map (fun a: (Sigma.sigma -> Prop) =>
                    fun _ => forall m', simpl_bassn b m' -> a m') (tc_test p cl))
                    ++
                    [fun _ => forall m' m'', i m'  -> tc p m' m'' cl (fun f => f -> i m'')]
@@ -616,7 +611,7 @@ induction p;intros.
     destruct (Proc.lt_ge_cases n (length ((tc_test p1 cl)))).
     - rewrite app_nth1 in H1;[ | rewrite map_length;assumption].
       erewrite nth_indep in H1;[ | rewrite map_length;assumption].
-      rewrite 
+      rewrite
       (map_nth (fun (a : sigma -> Prop) (m : sigma) => simpl_bassn b m -> a m)) in H1.
       apply H1.
       assumption.
@@ -630,7 +625,7 @@ induction p;intros.
     rewrite app_nth2_plus in H1.
     destruct (Proc.lt_ge_cases n (length ((tc_test p2 cl)))).
     - erewrite nth_indep in H1;[ | rewrite map_length;assumption].
-      rewrite 
+      rewrite
       (map_nth (fun (a : sigma -> Prop) (m : sigma) => ~simpl_bassn b m -> a m)) in H1.
       apply H1.
       assumption.
@@ -647,8 +642,8 @@ induction p;intros.
     destruct (Proc.lt_ge_cases n (length ((tc_test p cl)))).
     - rewrite app_nth1 in H1;[ | rewrite map_length;assumption].
       erewrite nth_indep in H1;[ | rewrite map_length;assumption].
-      rewrite 
-      (map_nth (fun (a : sigma -> Prop) (_ : sigma) => 
+      rewrite
+      (map_nth (fun (a : sigma -> Prop) (_ : sigma) =>
                 forall m', simpl_bassn b m' -> a m')) in H1.
       apply H1.
       assumption.
@@ -664,10 +659,10 @@ induction p;intros.
 Qed.
 
 Definition assert3 : com := <[ assert (fun m => m EAX = 2) ;
-                               skip; 
+                               skip;
                                assert (fun m => m EAX = 2) ]>.
 
-Example test_tc : 
+Example test_tc :
 forall m n,
 m EAX = 2 -> (nth n (tc_test assert3 Phi.empty_phi) (fun _ => True)) m.
 Proof.
@@ -681,7 +676,7 @@ destruct n.
       destruct H0.
       subst.
       assumption.
-    + intros. 
+    + intros.
       destruct n; [auto|auto].
 Qed.
 
