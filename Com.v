@@ -127,7 +127,7 @@ Import ComNotations.
 
 (** Examples of commands **)
 
-Definition plus2 : com := <[ °EAX := EAX + 2 ]>.
+Definition plus2 : com := <[ EAX := °EAX + 2 ]>.
 
 Example ecom3 :
 forall (s : sigma),
@@ -149,6 +149,17 @@ unfold assert2.
 apply E_Assert. apply get_sigma_same.
 Qed.
 
-Check <[ skip; EAX := 3 ; assert (fun _ => True);if true && true then skip else skip;skip end; 
-             while EAX = 1 inv (fun _ => True) do skip end;
-             call P1]>.
+Check <[ skip; 
+         EAX := 3 ; 
+         assert (fun _ => True);
+         if true && true then
+            skip 
+         else
+           skip;
+           skip
+         end; 
+         while EAX = 1 inv (fun _ => True) do 
+           skip 
+         end;
+         call P1
+       ]>.

@@ -73,7 +73,7 @@ Import BexpNotations.
 
 (** Example of boolean expression **)
 
-Definition example_bexp : bexp := [! true && ~ EAX <= 4 !].
+Definition example_bexp : bexp := [! true && ~ °EAX <= 4 !].
 
 Print Visibility.
 

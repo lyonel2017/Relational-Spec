@@ -133,7 +133,7 @@ apply recursion_hoare_triple with Phi.empty_phi.
     reflexivity.
 Qed.
 
-Definition plus3 : com := <[ °EAX := EAX + 2; °EAX := EAX + 2 ]>.
+Definition plus3 : com := <[ EAX := °EAX + 2; EAX := °EAX + 2 ]>.
 
 Example Haore2 : hoare_triple (fun m => m EAX = 1) (fun m' => m' EAX = 5) plus3 Psi.empty_psi.
 Proof.
@@ -151,7 +151,7 @@ apply recursion_hoare_triple with Phi.empty_phi.
     reflexivity.
 Qed.
 
-Definition if2 : com := <[ if EAX = 4 then { plus2 } else { plus2 } end ]>.
+Definition if2 : com := <[ if °EAX = 4 then { plus2 } else { plus2 } end ]>.
 
 Example Hoare3 : hoare_triple (fun m => m EAX = 1) (fun m' => m' EAX = 3) if2 Psi.empty_psi .
 Proof.
@@ -178,8 +178,8 @@ apply recursion_hoare_triple with Phi.empty_phi.
          reflexivity.
 Qed.
 
-Definition if3 : com := <[ EAX := EAX + 2 ; 
-                          if EAX = 4 then { plus2 } else { plus2 } end; 
+Definition if3 : com := <[ EAX := °EAX + 2 ; 
+                          if °EAX = 4 then { plus2 } else { plus2 } end; 
                           { plus2 } ]>.
 
 Example Hoare4 : hoare_triple (fun m => m EAX = 1) (fun m' => m' EAX = 7) if3 Psi.empty_psi.
@@ -229,7 +229,7 @@ apply recursion_hoare_triple with Phi.empty_phi.
   + simpl; intros. auto.
 Qed.
 
-Definition if4 : com := <[ if EAX = 2 then assert (fun m => m EAX = 2) else skip end ]>.
+Definition if4 : com := <[ if °EAX = 2 then assert (fun m => m EAX = 2) else skip end ]>.
 
 Example Hoare7 : hoare_triple (fun m => m EAX = 2) (fun m' => m' EAX = 2) if4 Psi.empty_psi.
 Proof.
