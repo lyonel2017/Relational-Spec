@@ -1,7 +1,4 @@
 From Rela Require Import EVcg.
-
-Locate set.
-
 From Rela Require Import ECom.
 From Rela Require Import Bexp.
 From Rela Require Import Lambda.
@@ -21,8 +18,19 @@ Definition hoare_triple_p (P Q: assertion) (p : prog) (ps : Psi.psi) : Prop :=
 
 Definition clause_p (P Q: assertion) (p : prog) (l: Label.t) (ps : Psi.psi) : Prop :=
   forall s la s' la',  P s la -> ceval_p p s (l |-> s ; la ) ps s' la' -> Q s' (l |-> s ; la ).
-  
-  (*clause et hoare ne sont pas compatible*)
+
+(*clause et hoare ne sont pas compatible*)
+(*la est une list de tuple label*sigma: les duplications sont autorisé et il est laissé a
+    l'utilisateur de ne pas mettre de label double pour qu'il puisse sans sortir.
+    Voire sans label, qui sont la juste pour nous aidé, cela régle aussi le problem d'unisité
+
+  Finalement pas de label. Une assertion est une fonction list sigma -> Prop
+  Precondition est une fonction sigma  -> Prop 
+  Postcondition est une fonction sigma -> sigma -> Prop
+*)
+
+(*Une régle de décomposition sur la sequence n'est probablement pas possible
+car l'historique est connecté*)
 
 Lemma seq_hoare_triple :
 forall c l p ps (P Q R: assertion),
