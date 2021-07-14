@@ -40,6 +40,11 @@ Proof.
  reflexivity.
 Qed.
 
+Lemma inline_cassr n ps x a1: k_inliner (S n) (CAssr x a1) ps = (CAssr x a1).
+Proof.
+ reflexivity.
+Qed.
+
 Lemma inline_cassert n ps b: k_inliner (S n) (CAssert b) ps = (CAssert b).
 Proof.
  reflexivity.
@@ -79,6 +84,8 @@ induction H.
   + apply E_Skip.
   + apply E_Ass.
     all: try now auto.
+  + apply E_Assr.
+    all: try now auto.
   + apply E_Assert.
     now auto.
   + simpl. apply E_IfTrue; [now auto | now auto].
@@ -106,6 +113,8 @@ induction p;intros.
   + inversion H;subst.
     apply E_Ass. all: try now auto.
   + inversion H;subst.
+    apply E_Assr. all: try now auto.
+  + inversion H;subst.
     apply E_Assert. now auto.
   + inversion H;subst.
     eapply E_Seq.
@@ -119,13 +128,7 @@ induction p;intros.
       assumption.
       apply IHp2. apply H7.
    + remember (inliner (CWhile b p inv) ps) as original_command eqn:Horig.
-     induction H.
-     * inversion Horig.
-     * inversion Horig.
-     * inversion Horig.
-     * inversion Horig.
-     * inversion Horig.
-     * inversion Horig.
+     induction H; try inversion Horig.
      * inversion Horig;subst.
        eapply E_WhileFalse.
        assumption.
@@ -135,7 +138,6 @@ induction p;intros.
        apply IHp. apply H0.
        apply IHceval2.
        assumption.
-     * inversion Horig;subst.
    + apply E_Call.
       simpl in H. assumption.
 Qed.
@@ -154,6 +156,8 @@ induction p ;intros.
 * rewrite inline_cskip in H.
   apply H.
 * rewrite inline_cass in H.
+  apply H.
+* rewrite inline_cassr in H.
   apply H.
 * rewrite inline_cassert in H.
   apply H.
@@ -175,13 +179,7 @@ induction p ;intros.
     - apply IHp2.
       apply H7.
 * remember (k_inliner (S n) (CWhile b p inv) ps_init) as original_command eqn:Horig.
-  induction H;rewrite inline_cwhile in Horig.
-  + inversion Horig.
-  + inversion Horig.
-  + inversion Horig.
-  + inversion Horig.
-  + inversion Horig.
-  + inversion Horig.
+  induction H;rewrite inline_cwhile in Horig; try inversion Horig.
   + inversion Horig;subst.
      eapply E_WhileFalse.
      assumption.
@@ -193,7 +191,6 @@ induction p ;intros.
       assumption.
       rewrite <- inline_cwhile in Horig.
       apply Horig.
-  + inversion Horig;subst.
 * apply E_Call.
   rewrite inline_ccall in H.
   apply H.
@@ -218,6 +215,9 @@ induction n.
     apply E_Ass.
     all: try now auto.
   + inversion H;subst.
+    apply E_Assr.
+    all: try now auto.
+  + inversion H;subst.
     apply E_Assert.
     auto.
   + rewrite inline_cseq.
@@ -240,13 +240,7 @@ induction n.
       apply IHp2.
       apply H7.
   + remember (k_inliner (S n) (CWhile b p inv) ps) as original_command eqn:Horig.
-    induction H;rewrite inline_cwhile in Horig.
-    - inversion Horig.
-    - inversion Horig.
-    - inversion Horig.
-    - inversion Horig.
-    - inversion Horig.
-    - inversion Horig.
+    induction H;rewrite inline_cwhile in Horig; try inversion Horig.
     - inversion Horig;subst.
       eapply E_WhileFalse.
       assumption.
@@ -259,7 +253,6 @@ induction n.
          assumption.
          rewrite <- inline_cwhile in Horig.
          apply Horig.
-     - inversion Horig;subst.
   + apply IHn.
     apply H.
 Qed.
@@ -272,6 +265,8 @@ intros.
 generalize dependent s.
 generalize dependent s'.
 induction p;intros.
+* eapply inline_p_ps.
+  apply H.
 * eapply inline_p_ps.
   apply H.
 * eapply inline_p_ps.
@@ -294,13 +289,7 @@ induction p;intros.
     - apply IHp2.
       assumption.
 * remember (CWhile b p inv) as original_command eqn:Horig.
-  induction H.
-  + inversion Horig.
-  + inversion Horig.
-  + inversion Horig.
-  + inversion Horig.
-  + inversion Horig.
-  + inversion Horig.
+  induction H; try inversion Horig.
   + inversion Horig;subst.
      eapply E_WhileFalse.
      assumption.
@@ -311,7 +300,6 @@ induction p;intros.
     - apply IHceval2.
       assumption.
       reflexivity.
-  + inversion Horig;subst.
 * inversion H; subst.
   rewrite inline_ccall.
   eapply inline_p_ps.
@@ -337,6 +325,7 @@ induction n.
   + apply H.
   + apply H.
   + apply H.
+  + apply H.
   + inversion H;subst.
     apply E_Seq with s'0.
     - apply IHp1.
@@ -353,13 +342,7 @@ induction n.
       ** apply IHp2.
          assumption.
    + remember (k_inliner (S n) (CWhile b p inv) ps_init) as original_command eqn:Horig.
-     induction H.
-     - inversion Horig.
-     - inversion Horig.
-     - inversion Horig.
-     - inversion Horig.
-     - inversion Horig.
-     - inversion Horig.
+     induction H; try inversion Horig.
      - inversion Horig;subst.
        eapply E_WhileFalse.
        assumption.
@@ -370,7 +353,6 @@ induction n.
        ** apply IHceval2.
           assumption.
           reflexivity.
-     - inversion Horig;subst.
   + apply inline_ceval.
     apply IHn.
     rewrite inline_ccall in H.
@@ -396,6 +378,7 @@ induction n.
     - apply H.
     - apply H.
     - apply H.
+    - apply H.
     - rewrite inline_cseq in H.
       inversion H;subst.
       rewrite inline_cseq.
@@ -417,13 +400,7 @@ induction n.
          ++ apply IHp2.
             apply H8.
      - remember (k_inliner (S n) (CWhile b p inv) ps_init) as original_command eqn:Horig.
-     induction H.
-      ** inversion Horig.
-      ** inversion Horig.
-      ** inversion Horig.
-      ** inversion Horig.
-      ** inversion Horig.
-      ** inversion Horig.
+     induction H; try inversion Horig.
       ** inversion Horig;subst.
          eapply E_WhileFalse.
          assumption.
@@ -436,7 +413,6 @@ induction n.
             assumption.
             assumption.
             reflexivity.
-      ** inversion Horig;subst.
   - rewrite inline_ccall.
     apply IHn.
     now apply Le.le_S_n.
@@ -452,6 +428,10 @@ induction 1;intros.
 * exists 1.
   intros.
   apply E_Ass.
+  all: try now auto.
+* exists 1.
+  intros.
+  apply E_Assr.
   all: try now auto.
 * exists 1.
   intros.

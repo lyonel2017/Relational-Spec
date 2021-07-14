@@ -22,6 +22,7 @@ Proof.
   induction p.
   * unfold hoare_triple. intros. eapply H0. apply H2. inversion H3;subst. reflexivity.
   * unfold hoare_triple. intros. eapply H0. apply H2. inversion H3;subst. reflexivity.
+  * unfold hoare_triple. intros. eapply H0. apply H2. inversion H3;subst. reflexivity.
   * unfold hoare_triple. intros. eapply H0. apply H2.
     apply H. apply H2. inversion H3;subst. reflexivity.
   * intros P Q Htc' Htc Hproc. eapply seq_hoare_triple.

@@ -1,5 +1,4 @@
 From Rela Require Import Vcg.
-From Rela Require Vcg_Opt.
 From Rela Require Import Aexp.
 From Rela Require Import Bexp.
 From Rela Require Import Com.
@@ -8,8 +7,8 @@ From Rela Require Import Hoare_Triple.
 From Rela Require Import Correct.
 From Rela Require Import Loc.
 
-Require Import Program.
-Require Import Eqdep_dec.
+From Coq Require Import Program.
+From Coq Require Import Eqdep_dec.
 From Coq Require Import Lists.List.
 Import ListNotations.
 From Coq Require Import Lia.
@@ -194,8 +193,9 @@ Defined.
 (** Facts about rtc and rtc' **)
 
 Lemma mk_rtc_def :
-forall P h q pi s sl (hy:length (h::q) = length (s::sl)),
+forall h q pi s sl (hy:length (h::q) = length (s::sl)),
 exists (hyr:length q = length sl),
+forall P,
 rtc (h :: q) (s::sl) pi P hy  =
 tc h s pi (fun m' => rtc q sl pi (fun l => P (m'::l)) hyr).
 Proof.
@@ -300,17 +300,13 @@ induction p.
           destruct (mk_rtc'_def a p cl m ml hy2) as (hyr & HYP).
           rewrite HYP in H.
           destruct H.
-          replace hy with hyr.
           apply H.
-          apply eq_proofs_unicity.
-          intros.
-          lia.
        -- intros.
           assert (hy2: length (a ::p) = length (m::ml)).
           {intros. simpl. rewrite hy. reflexivity. }
-          destruct (mk_rtc_def Q a p cl m ml hy2) as (hyr & HYP).
+          destruct (mk_rtc_def a p cl m ml hy2) as (hyr & HYP).
           specialize (H0 (m::ml) hy2).
-          rewrite HYP in H0.
+          rewrite (HYP Q) in H0.
           replace hy with hyr.
           apply H0.
           assumption.

@@ -15,7 +15,8 @@ Definition assertion : Type := sigma -> Prop.
 
 Inductive com : Type :=
 | CSkip
-| CAss (x : aexp) (a : aexp)
+| CAss (x : Loc.t) (a : aexp)
+| CAssr (x : Loc.t) (a : aexp)
 | CAssert (b: assertion )
 | CSeq (p1 : com) (p2 : com)
 | CIf (b : bexp) (p1 p2 : com)
@@ -36,10 +37,12 @@ End Psi.
 Inductive ceval : com -> sigma -> Psi.psi -> sigma -> Prop :=
   | E_Skip : forall s ps,
     ceval CSkip s ps s
-  | E_Ass : forall s ps x a n l,
+  | E_Ass : forall s ps x a n,
     aeval s a = n ->
-    aeval s x = l ->
-    ceval (CAss x a) s ps (l !-> n ; s)
+    ceval (CAss x a) s ps (x !-> n ; s)
+  | E_Assr : forall s ps x a n,
+    aeval s a = n ->
+    ceval (CAssr x a) s ps ((s x) !-> n ; s)
   | E_Assert: forall s ps (b : assertion),
     b s ->
     ceval (CAssert b) s ps s
@@ -75,17 +78,10 @@ ceval (CWhile BTrue CSkip (fun _ => True)) s ps s' -> False.
 Proof.
   intros Heval.
   remember (CWhile BTrue CSkip (fun _ : Sigma.sigma => True)) as original_command eqn:Horig.
-  induction Heval.
-  * inversion Horig.
-  * inversion Horig.
-  * inversion Horig.
-  * inversion Horig.
-  * inversion Horig.
-  * inversion Horig.
+  induction Heval;try inversion Horig.
   * inversion Horig;subst. inversion H.
   * inversion Horig;subst.
     apply IHHeval2. reflexivity.
-  * inversion Horig.
 Qed.
 
 (** Notations for program **)
@@ -99,6 +95,11 @@ Notation "<[ e ]>" := (e) (e custom com at level 0) : com_scope.
 Notation "{ x }" := x (in custom com at level 0, x constr) : com_scope.
 Notation "'skip'" := (CSkip) (in custom com at level 1) : com_scope.
 Notation "x := y" := (CAss x y)
+            (in custom com at level 89,
+             x custom aexp,
+             y custom aexp,
+             no associativity) : com_scope.
+Notation "'°' x := y" := (CAssr x y)
             (in custom com at level 89,
              x custom aexp,
              y custom aexp,
@@ -125,8 +126,9 @@ End ComNotations.
 
 Import ComNotations.
 
-Check <[ skip;
+(*Check <[ skip;
          EAX := 3 ;
+         °EAX := EAX+1 ;
          assert (fun _ => True);
          if true && true then
             skip
@@ -138,4 +140,4 @@ Check <[ skip;
            skip
          end;
          call P1
-       ]>.
+       ]>.*)

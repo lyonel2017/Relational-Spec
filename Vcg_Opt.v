@@ -14,6 +14,8 @@ Import ListNotations.
 Import Vcg.Why3_Set.
 Import Vcg.Assn_b.
 
+(** Definition of logical banching **)
+
 Inductive branch (A B C : Prop) : Prop :=
   | Then : A -> B -> branch A B C
   | Else : ~ A -> C -> branch A B C.
@@ -30,6 +32,8 @@ destruct H.
   * intros. contradiction H1.
   * auto.
 Qed.
+
+(** Partial translation of boolean expression into Prop **)
 
 Fixpoint simpl_bassn b st :=
 match b with
@@ -61,7 +65,6 @@ induction b.
 * simpl.
   apply Is_true_eq_true in H.
   simpl in H.
-  Search (Nat.leb _ _ = true).
   apply Compare_dec.leb_complete in H.
   assumption.
 * destruct b;simpl.
@@ -182,11 +185,19 @@ induction b.
     contradiction H0.
 Qed.
 
+(** Defintion of optimized verification condition generator:
+    - We do not have an exponential growth of the size of the formulas due
+      to condition branching.
+    - Boolean expression are translated to Prop for convenience during proof
+      of verification conditions.
+**)
+
 Fixpoint tc (c: com) (m m': Sigma.sigma)
             (cl: Phi.phi) (fin: Prop -> Prop): Prop :=
     match c with
     | CSkip => fin (m = m')
-    | CAss x a => fin (m' = set m (aeval m x) (aeval m a))
+    | CAss x a => fin (m' = set m x (aeval m a))
+    | CAssr x a => fin (m' = set m (m x) (aeval m a))
     | CAssert b =>  fin (b m /\ m = m')
     | CSeq p1 p2 => forall m'',
         tc p1 m m'' cl (fun f1 => tc p2 m'' m' cl (fun f2 => fin (f1 /\ f2)))
@@ -198,6 +209,11 @@ Fixpoint tc (c: com) (m m': Sigma.sigma)
     | CCall f => fin((get_pre (cl f)) m /\ (get_post (cl f)) m')
     end.
 
+(** Facts about verification condition generator **)
+
+Ltac ltc1 := simpl; intros m m' suite1 suite2 H H0;
+             apply H; apply H0.
+
 Lemma consequence_tc_suite :
 forall p cl m m' (suite1 suite2 : Prop -> Prop),
 (forall p, suite1 p -> suite2 p) ->
@@ -205,15 +221,10 @@ tc p m m' cl suite1 -> tc p m m' cl suite2.
 Proof.
 intros p cl.
 induction p.
-  * simpl. intros.
-    apply H.
-    apply H0.
-  * simpl. intros.
-    apply H.
-    apply H0.
-  * simpl. intros.
-    apply H.
-    apply H0.
+  * ltc1.
+  * ltc1.
+  * ltc1.
+  * ltc1.
   * simpl. intros.
     eapply IHp1 with (fun p => tc p2 m'' m' cl (fun f2 : Prop => suite1 (p /\ f2))).
     - intros.
@@ -229,12 +240,8 @@ induction p.
        + intros. apply H. assumption.
        + apply H1.
     - apply H0.
-  * simpl. intros.
-    apply H.
-    apply H0.
-  * simpl. intros.
-    apply H.
-    apply H0.
+  * ltc1.
+  * ltc1.
 Qed.
 
 Lemma intros_tc :
@@ -243,6 +250,7 @@ tc p m m' cl (fun f => debut -> suite f) ->
 (debut -> tc p m m' cl suite).
 Proof.
 induction p;simpl.
+* intros. apply H. assumption.
 * intros. apply H. assumption.
 * intros. apply H. assumption.
 * intros. apply H. assumption.
@@ -270,6 +278,7 @@ forall (A:Type) p m m' cl (suite : A -> Prop -> Prop),
 tc p m m' cl (fun f => forall s,suite s f).
 Proof.
 induction p;simpl.
+* intros. apply H.
 * intros. apply H.
 * intros. apply H.
 * intros. apply H.
@@ -345,6 +354,7 @@ induction p;simpl.
 * intros. apply H.
 * intros. apply H.
 * intros. apply H.
+* intros. apply H.
 * intros.
   assert (H1: tc p1 m m cl (fun _ : Prop => suite)).
   { intros.
@@ -383,6 +393,8 @@ all: try auto.
   + apply IHp1. auto.
 Qed.
 
+(* The optimized version implies the naive version *)
+
 Lemma tc_same :
 forall p cl m (suite1 : Sigma.sigma -> Prop),
 (forall m', tc p m m' cl (fun p => p -> suite1 m')) -> Vcg.tc p m cl suite1.
@@ -391,6 +403,7 @@ intros.
 generalize dependent suite1.
 generalize dependent m.
 induction p;simpl.
+* intros. apply H. assumption.
 * intros. apply H. assumption.
 * intros. apply H. assumption.
 * intros. apply H. auto.
@@ -447,11 +460,14 @@ induction p;simpl.
   auto.
 Qed.
 
+(** Definition of a verification condition generator for the auxiliary goals **)
+
 Fixpoint tc' (c : com) (m: Sigma.sigma)
             (cl: Phi.phi) : Prop :=
 match c with
  | CSkip => True
  | CAss x a => True
+ | CAssr x a => True
  | CAssert b => b m
  | CSeq p1 p2 => tc' p1 m cl /\
                  forall m'',
@@ -464,6 +480,8 @@ match c with
  | CCall f => (get_pre (cl f)) m
 end.
 
+(* The optimized version implies the naive version *)
+
 Lemma tc'_same :
 forall p cl m,
 tc' p m cl -> Vcg.tc' p m cl.
@@ -471,7 +489,8 @@ Proof.
 induction p; simpl.
 * intros. auto.
 * intros. auto.
-* intros.  apply H.
+* intros. auto.
+* intros. apply H.
 * intros.
   split.
   - apply IHp1.
@@ -509,9 +528,13 @@ induction p; simpl.
 * intros. apply H.
 Qed.
 
+(** Definition of a verification condition generator for procedures **)
+
 Definition tc_p (ps: Psi.psi) (cl : Phi.phi) : Prop :=
     forall f m m', (get_pre (cl f)) m -> tc' (ps f) m cl /\
                 tc (ps f) m m' cl (fun p => p -> (get_post (cl f)) m').
+
+(* The optimized version implies the naive version *)
 
 Lemma tc_p_same :
 forall ps cl,
@@ -542,6 +565,7 @@ Fixpoint tc_test (c : com) (cl: Phi.phi) : list (Sigma.sigma -> Prop) :=
 match c with
  | CSkip => []
  | CAss x a => []
+ | CAssr x a => []
  | CAssert b => [fun m => b m]
  | CSeq p1 p2 => tc_test p1 cl ++
                  map (test p1 cl) (tc_test p2 cl)
@@ -567,6 +591,7 @@ forall p cl m,
 (forall n, (nth n (tc_test p cl) (fun _ => True)) m) -> tc' p m cl.
 Proof.
 induction p;intros.
++ simpl. auto.
 + simpl. auto.
 + simpl. auto.
 + simpl.

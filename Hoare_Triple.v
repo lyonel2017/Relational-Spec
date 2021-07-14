@@ -81,17 +81,10 @@ Lemma while_hoare_triple :
 Proof.
   intros P b c ps Hhoare st st' HP Heval.
   remember (CWhile b c P) as original_command eqn:Horig.
-  induction Heval.
-  * inversion Horig.
-  * inversion Horig.
-  * inversion Horig.
-  * inversion Horig.
-  * inversion Horig.
-  * inversion Horig.
+  induction Heval; try inversion Horig.
   * inversion Horig;subst. eauto.
   * inversion Horig;subst.
     eauto.
-  * inversion Horig.
 Qed.
 
 (** Definition of Precondtion **)
