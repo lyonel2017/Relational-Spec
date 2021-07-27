@@ -138,6 +138,22 @@ destruct contra as (contra & _).
 discriminate contra.
 Defined.
 
+(** Connect between Hoare Triple and Relational Properties **)
+
+Lemma hoare_rela :
+forall (P Q: r_assertion) h q ps pi sl (hy:length q = length sl),
+(forall s2 s3 : sigma,
+P (s2 :: sl) -> ceval h s2 ps s3 ->
+rtc q sl pi (fun sl : list sigma => Q (s3 :: sl)) hy) =
+hoare_triple (fun s => P (s:: sl) )
+             (fun s' => rtc q sl pi (fun sl : list sigma => Q (s' :: sl)) hy)
+              h ps.
+Proof.
+intros.
+unfold hoare_triple.
+reflexivity.
+Qed.
+
 (** Defintion of the generator of auxiliare goals for relational properties **)
 
 Program Fixpoint rtc' (cl : list com) (ml: list Sigma.sigma)
@@ -213,22 +229,6 @@ Proof.
 intros.
 eexists.
 program_simpl.
-Qed.
-
-(** Connect between Hoare Triple and Relational Properties **)
-
-Lemma hoare_rela :
-forall (P Q: r_assertion) h q ps pi sl (hy:length q = length sl),
-(forall s2 s3 : sigma,
-P (s2 :: sl) -> ceval h s2 ps s3 ->
-rtc q sl pi (fun sl : list sigma => Q (s3 :: sl)) hy) =
-hoare_triple (fun s => P (s:: sl) )
-             (fun s' => rtc q sl pi (fun sl : list sigma => Q (s' :: sl)) hy)
-              h ps.
-Proof.
-intros.
-unfold hoare_triple.
-reflexivity.
 Qed.
 
 (** Proof that one can use a standard verification condition generator

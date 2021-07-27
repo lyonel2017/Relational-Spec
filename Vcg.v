@@ -102,9 +102,9 @@ Fixpoint tc (c : com) (m : Sigma.sigma)
 
 (** Facts about verification condition generator **)
 
-Ltac ltc1 := intros m suite1 suite2 H H0; 
+Ltac ltc1 := intros m suite1 suite2 H H0;
              simpl; intros;
-             simpl in H0; 
+             simpl in H0;
              apply H; apply H0; assumption.
 
 Lemma consequence_tc_suite :

@@ -554,10 +554,6 @@ Qed.
 
 Module Test.
 
-Import ComNotations.
-Import AexpNotations.
-Import BexpNotations.
-
 Definition test (p1: com) (cl: Phi.phi) (a : sigma -> Prop) (m : sigma) :=
            forall m'' : sigma, tc p1 m m'' cl (fun f : Prop => f -> a m'').
 
@@ -682,6 +678,10 @@ induction p;intros.
     simpl in H1. apply H1. assumption.
 + apply (H 0).
 Qed.
+
+Import ComNotations.
+Import AexpNotations.
+Import BexpNotations.
 
 Definition assert3 : com := <[ assert (fun m => m EAX = 2) ;
                                skip;
