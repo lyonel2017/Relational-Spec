@@ -116,7 +116,7 @@ Notation "'if' x 'then' y 'else' z 'end'" :=  (CIf x y z)
            z custom com at level 0) : com_scope.
 Notation "'while' x 'inv' i 'do' y 'end'" := (CWhile x y i)
             (in custom com at level 89,
-            x custom bexp,
+            x custom bexp at level 0,
             y custom com at level 0,
             i constr at level 0) : com_scope.
 Notation "'call' f" := (CCall f)
