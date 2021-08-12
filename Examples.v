@@ -53,156 +53,187 @@ unfold plus2.
 apply E_Ass. reflexivity.
 Qed.
 
-Example ecom4 :
-forall (s : sigma),
-  ceval <[ assert (fun s => s EAX = 2) ]> (EAX !-> 2 ; s) Psi.empty_psi (EAX !-> 2 ; s).
-Proof.
-intros.
-apply E_Assert. apply get_sigma_same.
-Qed.
-
-
 (** Examples of proofs of Hoare Triples **)
 
-Example Hoare1 : hoare_triple (fun m => m EAX = 1) (fun m' => m' EAX = 3) plus2 Psi.empty_psi.
+(* Factorial examples *)
+
+(*
+  EEX the result
+  EAX the current index
+  EBX the size of the first array
+  ECX the size of the second array
+  EDX the address of the first array
+  EFX the address of the second array
+  EGX helper register
+  EHX helper register
+*)
+
+Definition a1: assertion := fun s => 0 <= s(EAX) /\ s(EAX) <= s(EBX) /\
+                                                    s(EAX) <= s(ECX).
+
+Definition a2: assertion := fun s => 
+   (s(EEX) = 1 /\ (forall k, 0 <= k /\ k < s(EAX)-> s(s(EDX) + k) = s(s(EFX) + k))) \/
+   (s(EEX) = 0 /\ (s(EAX) > 0 -> s(s(EDX) + (s(EAX) - 1)) < s(s(EAX) + (s(EFX)-1)))) \/
+   (s(EEX) = 2 /\ (s(EAX) > 0 -> s(s(EDX) + (s(EAX) - 1)) > s(s(EAX) + (s(EFX)-1)))).
+
+Definition b := 
+[!EAX <= EBX && EAX <= ECX && EEX = 1 && (~ EAX = EBX) && (~ EAX = ECX)!]. 
+
+Definition compare : com := 
+<[ EEX := 1;
+   EAX := 0;
+   while { b } inv (fun s => a1 s /\ a2 s ) do
+         EGX := EDX + EAX;
+         EGX := °EGX ;
+         EHX := EFX + EAX;
+         EHX := °EHX;
+         assert (fun s => s EHX = s (s EFX + s EAX ) /\ 
+                          s EGX = s (s EDX + s EAX ) /\ b s);
+         if EGX <= EHX && ~ EGX = EHX then 
+            EEX := 0
+         else 
+            if EHX <= EGX && ~ EGX = EHX then 
+                  EEX := 2
+            else 
+                  skip 
+            end
+          end;
+         EAX := EAX + 1
+    end
+ ]>.
+
+Ltac mem_s s l1 l2 v :=
+       generalize (set'def s l1 v l2);
+       intros Heax; destruct Heax as ( Heax & _);
+       rewrite Heax by lia;
+       clear Heax.
+
+Ltac mem_d s l1 l2 v :=
+       generalize (set'def s l1 v l2);
+       intros Heax; destruct Heax as ( _ & Heax);
+       rewrite Heax; [ | try (intros HF; inversion HF)];
+       clear Heax.
+
+Ltac mem_s_in s l1 l2 v H :=
+       generalize (set'def s l1 v l2);
+       intros Heax; destruct Heax as ( Heax & _);
+       rewrite Heax in H by lia;
+       clear Heax.
+
+Ltac mem_d_in s l1 l2 v H:=
+       generalize (set'def s l1 v l2);
+       intros Heax; destruct Heax as ( _ & Heax);
+       rewrite Heax in H; [ | try (intros HF; inversion HF)];
+       clear Heax.
+
+Example Hoare1 : hoare_triple (fun m => m(EDX) > 8 /\ m(EFX) > 8 ) 
+                              (fun m' => True) compare Psi.empty_psi.
 Proof.
 apply recursion_hoare_triple with Phi.empty_phi.
 * apply correct_proc.
   apply tc_p_empty_psi.
-* apply correct.
-  + simpl;intros. auto.
-  + simpl;intros.
-    rewrite H0.
-    rewrite H.
+* apply correct;[ | simpl; auto].
+  intros.
+  apply Vcg_Opt.tc'_same.
+  apply Vcg_Opt.Test.tc_test_same.
+  intros.
+  simpl.
+  destruct n.
+  - unfold Vcg_Opt.Test.test.
     simpl.
-    apply set'def.
-    reflexivity.
-Qed.
-
-Definition plus3 : com := <[ EAX := EAX + 2; EAX := EAX + 2 ]>.
-
-Example Haore2 : hoare_triple (fun m => m EAX = 1) (fun m' => m' EAX = 5) plus3 Psi.empty_psi.
-Proof.
-apply recursion_hoare_triple with Phi.empty_phi.
-* apply correct_proc.
-  apply tc_p_empty_psi.
-* apply correct.
-  + simpl;intros. auto.
-  + simpl;intros.
-    rewrite H1.
-    rewrite H0.
-    rewrite H.
-    simpl.
-    apply set'def.
-    reflexivity.
-Qed.
-
-Definition if2 : com := <[ if EAX = 4 then { plus2 } else { plus2 } end ]>.
-
-Example Hoare3 : hoare_triple (fun m => m EAX = 1) (fun m' => m' EAX = 3) if2 Psi.empty_psi .
-Proof.
-apply recursion_hoare_triple with Phi.empty_phi.
-* apply correct_proc.
-  apply tc_p_empty_psi.
-* apply correct.
-  + simpl; intros. auto.
-  + simpl;intros.
-    destruct (beval m (BEq (AId EAX) (ANum 4))) eqn:Hcond.
-    - split;intros.
-      ** rewrite H1.
-         rewrite H.
-         apply set'def.
-         reflexivity.
-      ** apply bexp_eval_true in Hcond.
-         contradiction H0.
-    - split;intros.
-      ** apply bexp_eval_false in Hcond.
-         contradiction H0.
-      ** rewrite H1.
-         rewrite H.
-         apply set'def.
-         reflexivity.
-Qed.
-
-Definition if3 : com := <[ EAX := EAX + 2 ;
-                          if EAX = 4 then { plus2 } else { plus2 } end;
-                          { plus2 } ]>.
-
-Example Hoare4 : hoare_triple (fun m => m EAX = 1) (fun m' => m' EAX = 7) if3 Psi.empty_psi.
-Proof.
-apply recursion_hoare_triple with Phi.empty_phi.
-* apply correct_proc.
-  apply tc_p_empty_psi.
-* eapply correct.
-  + simpl;intros. auto.
-  + simpl;intros.
-    destruct (beval m' (BEq (AId EAX) (ANum 4))) eqn:Hcond.
-    - split;intros.
-      ** rewrite H3.
-         rewrite H2.
-         rewrite H0.
-         rewrite H.
-         apply set'def.
-         reflexivity.
-      ** apply bexp_eval_true in Hcond.
-         contradiction H1.
-    - split;intros.
-      ** apply bexp_eval_false in Hcond.
-         contradiction H1.
-      ** rewrite H3.
-         rewrite H2.
-         rewrite H0.
-         rewrite H.
-         apply set'def.
-         reflexivity.
-Qed.
-
-Definition assert3 : com := <[ assert (fun m => m EAX = 2) ;
-                               assert (fun m => m EAX = 2) ]>.
-
-Example Hoare6 : hoare_triple (fun m => m EAX = 2) (fun _ => True) assert3 Psi.empty_psi.
-Proof.
-apply recursion_hoare_triple with Phi.empty_phi.
-* apply correct_proc.
-  apply tc_p_empty_psi.
-* apply correct.
-  + simpl;intros.
+    intros.
     split.
-    - assumption.
-    - intros.
-      rewrite <- H1.
-      assumption.
-  + simpl; intros. auto.
+    + unfold a1.
+       rewrite H1.
+       mem_s m'' EAX EAX 0.
+       split; [auto | ].
+       mem_d m'' EAX EBX 0.
+       mem_d m'' EAX ECX 0.
+       split; [apply Proc.Proc.le_0_l | apply Proc.Proc.le_0_l].
+    + unfold a2.
+      left.
+      split.
+       ** rewrite H1.
+          mem_d m'' EAX EEX 0.
+          rewrite H0.
+          mem_s m EEX EEX 1.
+          reflexivity.
+        ** intros.
+           rewrite H1 in H2.
+           generalize (set'def m'' EAX 0 EAX).
+           intros Heax; destruct Heax as ( Heax & _).
+           rewrite Heax in H2 by reflexivity.
+           destruct H2 as ( _ & He) ;inversion He.
+  - destruct n.
+    Focus 2.
+    destruct n.
+    + unfold Vcg_Opt.Test.test.
+      simpl.
+      intros.
+      decompose [and] H4; clear H4.
+      destruct H13.
+      ** split.
+         ++ unfold a1.
+            rewrite H14.
+            mem_s m''7 EAX EAX (m''7 EAX + 1).
+            mem_d m''7 EAX EBX (m''7 EAX + 1).
+            mem_d m''7 EAX ECX (m''7 EAX + 1).
+            rewrite H10.
+            mem_d m''5 EEX EAX 0.
+            mem_d m''5 EEX EBX 0.
+            mem_d m''5 EEX ECX 0.
+            rewrite H8.
+            mem_d m''4 EHX EAX (m''4 (m''4 EHX)).
+            mem_d m''4 EHX EBX (m''4 (m''4 EHX)).
+            mem_d m''4 EHX ECX (m''4 (m''4 EHX)).
+            rewrite H6.
+            mem_d m''3 EHX EAX (m''3 EFX + m''3 EAX).
+            mem_d m''3 EHX EBX (m''3 EFX + m''3 EAX).
+            mem_d m''3 EHX ECX (m''3 EFX + m''3 EAX).
+            rewrite H7.
+            mem_d m''2 EGX EAX (m''2 (m''2 EGX)).
+            mem_d m''2 EGX EBX (m''2 (m''2 EGX)).
+            mem_d m''2 EGX ECX (m''2 (m''2 EGX)).
+            rewrite H5.
+            mem_d m' EGX EAX (m' EDX + m' EAX).
+            mem_d m' EGX EBX (m' EDX + m' EAX).
+            mem_d m' EGX ECX (m' EDX + m' EAX).
+            repeat split; lia.
+        ++ unfold a2.
+           right;left.
+           rewrite H11.
+           mem_d m''6 EAX EEX (m''6 EAX + 1).
+           mem_d m''6 EAX EDX (m''6 EAX + 1).
+           mem_d m''6 EAX EFX (m''6 EAX + 1).
+           mem_s m''6 EAX EAX (m''6 EAX + 1).
+           mem_d m''6 EAX (m''6 EDX + (m''6 EAX + 1 - 1)) (m''6 EAX + 1).
+           mem_d m''6 EAX (m''6 EAX + 1 + (m''6 EFX - 1)) (m''6 EAX + 1).
+           rewrite H10.
+           mem_s m''5 EEX EEX 0.
+           split;[reflexivity | ].
+           mem_d m''5 EEX EDX 0.
+           mem_d m''5 EEX EFX 0.
+           mem_d m''5 EEX EAX 0.
+           intros.
+           mem_d m''5 EEX (m''5 EDX + (m''5 EAX + 1 - 1)) 0.
+           mem_d m''5 EEX (m''5 EAX + 1 + (m''5 EFX - 1)) 0.
+           rewrite H8 in H9.
+           mem_d_in m''4 EHX EGX (m''4 (m''4 EHX)) H9.
+           mem_s_in m''4 EHX EHX (m''4 (m''4 EHX)) H9.
+           rewrite H6 in H9.
+           mem_d_in m''3 EHX EGX (m''3 EFX + m''3 EAX) H9.
+           mem_s_in m''3 EHX EHX (m''3 EFX + m''3 EAX) H9.
+           mem_d_in m''3 EHX (m''3 EFX + m''3 EAX) (m''3 EFX + m''3 EAX) H9.
+           rewrite H7 in H9.
+
 Qed.
 
-Definition if4 : com := <[ if EAX = 2 then assert (fun m => m EAX = 2) else skip end ]>.
 
-Example Hoare7 : hoare_triple (fun m => m EAX = 2) (fun m' => m' EAX = 2) if4 Psi.empty_psi.
-Proof.
-apply recursion_hoare_triple with Phi.empty_phi.
-* apply correct_proc.
-  apply tc_p_empty_psi.
-* apply correct.
-  + simpl;intros.
-    split.
-    - intros.
-      assumption.
-    - auto.
-  + simpl;intros.
-    destruct (beval m (BEq (AId EAX) (ANum 2))) eqn:Hcond.
-    - split;intros.
-      ** rewrite <- H2.
-         assumption.
-      ** apply bexp_eval_true in Hcond.
-         contradiction H0.
-    - split;intros.
-      ** apply bexp_eval_false in Hcond.
-         contradiction H0.
-      ** rewrite <- H1.
-         assumption.
-Qed.
+(* TODO *)
 
-(** Some ltac to mechanize the extraction of proof obligation from the list construct **)
+
+(** Some ltac to mechanize the extraction of proof obligation from the list construct 
+    in relational property verification **)
 
 Ltac ltc3 hy :=
   inversion hy as [H1];
@@ -263,40 +294,6 @@ Ltac ltc0 phi := apply rcorrect with phi;
                 ].
 
 (** Examples of proofs of Relational Properties **)
-
-Definition rela_pre3 (l : list Sigma.sigma) : Prop :=
-  match l with
-  | (m1 :: m2 :: m3 :: []) => m1 EAX = m2 EAX /\ m2 EAX = m3 EAX
-  | _ => False
-  end.
-
-Definition rela_post3 (l : list Sigma.sigma) : Prop :=
-  match l with
-  | (m1 :: m2 :: m3 :: []) => m1 EAX = m2 EAX /\ m2 EAX = m3 EAX
-  | _ => False
-  end.
-
-Example Relation3 : relational_prop rela_pre3 rela_post3 
-                    (plus2 :: plus2 :: plus2 :: []) Psi.empty_psi.
-Proof.
-ltc0 Phi.empty_phi.
-(* Verification of proofs obligation for procedure *)
-+ apply tc_p_empty_psi.
-(* Verification of auxilliary proof obligation *)
-+ simpl. auto.
-+ simpl. auto.
-+ simpl. auto.
-(* Main proof obligation *)
-+ simpl.
-  intros.
-  rewrite H3.
-  rewrite H.
-  rewrite H2.
-  rewrite H0.
-  rewrite H1.
-  split.
-  all: try apply Why3_Set.set'def;reflexivity.
-Qed.
 
 Definition X1 : Loc.t:= 1.
 Definition X2 : Loc.t:= 2.
@@ -362,3 +359,39 @@ ltc0 Phi.empty_phi.
                rewrite (set''def _ _ _ 1).
                all: try reflexivity.
 Qed.
+
+(* Tras **********************)
+
+(*Definition rela_pre3 (l : list Sigma.sigma) : Prop :=
+  match l with
+  | (m1 :: m2 :: m3 :: []) => m1 EAX = m2 EAX /\ m2 EAX = m3 EAX
+  | _ => False
+  end.
+
+Definition rela_post3 (l : list Sigma.sigma) : Prop :=
+  match l with
+  | (m1 :: m2 :: m3 :: []) => m1 EAX = m2 EAX /\ m2 EAX = m3 EAX
+  | _ => False
+  end.
+
+Example Relation3 : relational_prop rela_pre3 rela_post3 
+                    (plus2 :: plus2 :: plus2 :: []) Psi.empty_psi.
+Proof.
+ltc0 Phi.empty_phi.
+(* Verification of proofs obligation for procedure *)
++ apply tc_p_empty_psi.
+(* Verification of auxilliary proof obligation *)
++ simpl. auto.
++ simpl. auto.
++ simpl. auto.
+(* Main proof obligation *)
++ simpl.
+  intros.
+  rewrite H3.
+  rewrite H.
+  rewrite H2.
+  rewrite H0.
+  rewrite H1.
+  split.
+  all: try apply Why3_Set.set'def;reflexivity.
+Qed.*)
