@@ -38,4 +38,5 @@ The project structure is a follows:
 <!-- car l'historique est connecté -->
 
 * Formalization of frame rules
+* Command Goto and Labels
 * Modular memory model for the verification condition generator
