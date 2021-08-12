@@ -519,6 +519,20 @@ induction 1;intros.
   + apply IH.
 Qed.
 
+Lemma ceval_n_inline_ps_S n p s ps  s':
+  ceval p s (k_inliner_ps n ps) s' ->
+  forall m, n <= m -> ceval p s (k_inliner_ps m ps) s'.
+Proof.
+intros.
+apply n_inline_n_inline_ps.
+intros.
+eapply n_ps_inline_n_inline in H.
+apply (inline_ceval_S (S n)).
+* apply H.
+* apply le_n_S.
+  assumption.
+Qed.
+
 (* ceval is inlining insensitive on ps *)
 
 Lemma n_inline_ps_ceval p s ps s' n:
