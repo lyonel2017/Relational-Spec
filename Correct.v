@@ -73,8 +73,7 @@ Proof.
        apply bexp_eval_true in H3.
        assumption.
     ** intros.
-       apply H1.
-       apply H2.
+       apply H1;[apply bexp_eval_true; apply H2 | apply H2].
     ** assumption.
   - intros.
     specialize (Htc' s0 H).
@@ -88,8 +87,9 @@ Proof.
       apply H.
     + assumption.
  * intros P Q Htc' Htc Hproc.
-  intros s s' Pre.
-   apply (consequence_hoare_post _ _ P _ (get_post (cl f))).
+   intros s s' Pre Heval.
+   generalize Heval.
+   apply (consequence_hoare_post (CCall f) _ P _ (get_post (cl f))).
     + apply (consequence_hoare_pre _ _ _ (get_pre (cl f))).
       - apply Hproc.
       - apply Htc'.

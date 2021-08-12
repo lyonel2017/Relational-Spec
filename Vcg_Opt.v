@@ -195,7 +195,7 @@ Qed.
 Fixpoint tc (c: com) (m m': Sigma.sigma)
             (cl: Phi.phi) (fin: Prop -> Prop): Prop :=
     match c with
-    | CSkip => fin (m = m')
+    | CSkip => fin (m' = m)
     | CAss x a => fin (m' = set m x (aeval m a))
     | CAssr x a => fin (m' = set m (m x) (aeval m a))
     | CAssert b =>  fin (b m /\ m = m')
@@ -393,6 +393,138 @@ all: try auto.
   + apply IHp1. auto.
 Qed.
 
+Lemma rev_simpl_tc :
+forall p m m' cl (suite : Prop),
+suite -> tc p m m' cl (fun _ => suite) .
+Proof.
+induction p;simpl.
+* intros. apply H.
+* intros. apply H.
+* intros. apply H.
+* intros. apply H.
+* intros.
+  apply (consequence_tc_suite _ _ _ _ (fun _ => suite)).
+  + intros.
+    apply IHp2.
+    apply H.
+  + apply IHp1.
+    apply H.
+* intros.
+  apply (consequence_tc_suite _ _ _ _ (fun _ => suite)).
+  + intros.
+    apply IHp2.
+    apply H.
+  + apply IHp1.
+    apply H.
+* intros. apply H.
+* intros. apply H.
+Qed.
+
+Lemma and_tc :
+forall p (f1: Prop) m m' cl (suite :Prop),
+(f1 -> tc p m m' cl (fun f2 => f2 -> suite)) -> 
+tc p m m' cl (fun f2 => f1 /\ f2 -> suite).
+Proof.
+induction p;simpl;intros.
+* apply H. apply H0. apply H0.
+* apply H. apply H0. apply H0.
+* apply H. apply H0. apply H0.
+* apply H. apply H0. apply H0.
+* eapply consequence_tc_suite.
+  + intros.
+    apply (consequence_tc_suite _ _ _ _ (fun f2 : Prop => (f1 /\ p) /\ f2 -> suite)).
+    - intros. apply H1. split. split. apply H2. apply H2. apply H2.
+    - apply IHp2.
+      apply H0.
+  + apply IHp1.
+    intros.
+    generalize (H H0 m'').
+    intros.
+    eapply consequence_tc_suite.
+    - intros p H2.
+      apply intros_tc.
+      apply (consequence_tc_suite _ _ _ _ (fun f : Prop => p /\ f -> suite)).
+      ++ intros. apply H3. split. apply H4. apply H5.
+      ++ apply H2.
+    - apply H1.
+* destruct (beval m b) eqn: He.
+  + simpl.
+    eapply consequence_tc_suite.
+    - intros.
+      eapply consequence_tc_suite.
+      ** intros.
+         destruct H2.
+         apply branch_simpl in H3.
+         destruct H3.
+         assert (H5: p).
+         { apply H3. 
+           apply bassn_simpl_bassn.
+           apply bexp_eval_true.
+           assumption.
+         }
+         assert (H6: f1 /\ p). { split. apply H2. apply H5. }
+         generalize H6.
+         apply H1.
+      ** apply rev_simpl_tc.
+       apply H0.
+    - apply IHp1.
+      intros.
+      generalize (H H0);intros.
+      apply (consequence_tc_suite _ _ _ _ _  (fun f2 : Prop => f2 -> suite))
+      in H1.
+      ** apply H1.
+      ** intros.
+       apply (consequence_tc_suite _ _ _ _ _  (fun _ : Prop => p -> suite)) 
+       in H2.
+       ++ apply simpl_tc in H2.
+          apply H2. apply H3.
+       ++ intros.
+          apply H4.
+          apply Then;[ | apply H5]. 
+          apply bassn_simpl_bassn.
+          apply bexp_eval_true.
+          assumption.
+  + simpl.
+    eapply consequence_tc_suite.
+    - intros.
+      eapply consequence_tc_suite.
+      ** intros.
+         destruct H2.
+         apply branch_simpl in H3.
+         destruct H3.
+         assert (H5: p0).
+         { apply H4. 
+           apply bassn_not_simpl_bassn_not.
+           apply bexp_eval_false.
+           assumption.
+         }
+         assert (H6: f1 /\ p0). { split. apply H2. apply H5. }
+         generalize H6.
+         apply H1.
+      ** apply IHp2.
+         apply H0.
+    - apply rev_simpl_tc.
+      intros.
+      generalize (H H0);intros.
+      apply (consequence_tc_suite _ _ _ _ _  
+      (fun _ : Prop => tc p2 m m' cl (fun p2 : Prop => p2 -> suite)))
+      in H1.
+      ** apply simpl_tc in H1.
+         apply H1.
+      ** intros.
+       apply (consequence_tc_suite _ _ _ _ _  (fun p0 : Prop => p0 -> suite)) 
+       in H2.
+       ++ apply H2.
+       ++ intros.
+          apply H3.
+          apply Else;[ | apply H4].
+          apply bassn_not_simpl_bassn_not.
+          apply bexp_eval_false.
+          assumption.
+* apply H. apply H0. apply H0.
+* apply H. apply H0. apply H0.
+Qed.
+
 (* The optimized version implies the naive version *)
 
 Lemma tc_same :
@@ -403,7 +535,7 @@ intros.
 generalize dependent suite1.
 generalize dependent m.
 induction p;simpl.
-* intros. apply H. assumption.
+* intros. apply H. symmetry. assumption.
 * intros. apply H. assumption.
 * intros. apply H. assumption.
 * intros. apply H. auto.
@@ -475,8 +607,8 @@ match c with
  | CIf b p1 p2 =>
       (simpl_bassn b m -> tc' p1 m cl) /\ (~simpl_bassn b m -> tc' p2 m cl)
  | CWhile b p inv => inv m /\
-                    (forall m', simpl_bassn b m' -> tc' p m' cl) /\
-                    (forall m' m'', inv m'  -> tc p m' m'' cl (fun f => f -> inv m''))
+   (forall m', simpl_bassn b m' -> tc' p m' cl) /\
+   (forall m' m'', simpl_bassn b m' -> inv m' -> tc p m' m'' cl (fun f => f -> inv m''))
  | CCall f => (get_pre (cl f)) m
 end.
 
@@ -524,7 +656,9 @@ induction p; simpl.
     + apply tc_same.
       intros.
       apply H.
-      assumption.
+      ** apply bassn_simpl_bassn.
+         assumption.
+      ** assumption.
 * intros. apply H.
 Qed.
 
@@ -577,7 +711,8 @@ match c with
                    (map (fun a: (Sigma.sigma -> Prop) =>
                    fun _ => forall m', simpl_bassn b m' -> a m') (tc_test p cl))
                    ++
-                   [fun _ => forall m' m'', i m'  -> tc p m' m'' cl (fun f => f -> i m'')]
+                   [fun _ => forall m' m'', 
+                   simpl_bassn b m' ->  i m' -> tc p m' m'' cl (fun f => f -> i m'')]
 
  | CCall f => [fun m => (get_pre (cl f)) m]
 end.
@@ -670,12 +805,12 @@ induction p;intros.
       assumption.
     - rewrite nth_overflow;[auto | assumption].
   * intros.
-     generalize (H (1 + (length (tc_test p cl)) + 0)).
+    generalize (H (1 + (length (tc_test p cl)) + 0)).
     intros.
-    simpl in H1.
-    erewrite <- map_length in H1.
-    rewrite app_nth2_plus in H1.
-    simpl in H1. apply H1. assumption.
+    simpl in H2.
+    erewrite <- map_length in H2.
+    rewrite app_nth2_plus in H2.
+    simpl in H2. apply H2;[ assumption | assumption ].
 + apply (H 0).
 Qed.
 
