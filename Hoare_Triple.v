@@ -152,10 +152,10 @@ Definition hoare_triple_ctx (cl : Phi.phi) (ps: Psi.psi)
     (forall p, hoare_triple (get_pre (cl p)) (get_post (cl p)) (CCall p) ps) ->
       hoare_triple P Q c ps.
 
-(* Hoare triple for ap procedure with the procedure context *)
+(* Hoare triple for a procedure with the procedure context *)
 
 Definition hoare_triple_proc_ctx (cl : Phi.phi) (ps_init :Psi.psi):=
-forall p ps, hoare_triple_ctx cl ps (get_pre (cl p)) (get_post (cl p)) (ps_init p).
+  forall p ps, hoare_triple_ctx cl ps (get_pre (cl p)) (get_post (cl p)) (ps_init p).
 
 Lemma recursive_proc ps cl:
     hoare_triple_proc_ctx cl ps ->
