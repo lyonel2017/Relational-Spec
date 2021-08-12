@@ -20,7 +20,7 @@ Definition r_assertion : Type := list sigma  -> Prop.
 (** Definition of the relational evaluation of program **)
 
 Inductive rceval : list com -> list sigma -> Psi.psi -> list sigma -> Prop :=
-  | E_Empty : forall ps,
+ | E_Empty : forall ps,
       rceval [] [] ps []
  | E_Seq : forall c qc s q s' q' ps,
       ceval c s ps s' ->
