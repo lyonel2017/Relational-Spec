@@ -19,6 +19,16 @@ Definition hoare_triple_p (P Q: assertion) (p : prog) (ps : Psi.psi) : Prop :=
 Definition clause_p (P Q: assertion) (p : prog) (l: Label.t) (ps : Psi.psi) : Prop :=
   forall s la s' la',  P s la -> ceval_p p s (l |-> s ; la ) ps s' la' -> Q s' (l |-> s ; la ).
 
+
+(* Rebase master, remove all E...
+  Asserst is transparent to the evalution (an annotation).
+  The evaluation system remain the same.
+  Assertion take a list of command. The hoare triple are base
+  of those assertions  
+  *)
+
+
+
 (*clause et hoare ne sont pas compatible*)
 (*la est une list de tuple label*sigma: les duplications sont autorisé et il est laissé a
     l'utilisateur de ne pas mettre de label double pour qu'il puisse sans sortir.
