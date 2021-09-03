@@ -15,7 +15,8 @@ Definition assertion : Type := sigma -> Prop.
 
 Inductive com : Type :=
 | CSkip
-| CAss (x : aexp) (a : aexp)
+| CAss (x : Loc.t) (a : aexp)
+| CAssr (x : Loc.t) (a : aexp)
 | CAssert (b: assertion )
 | CSeq (p1 : com) (p2 : com)
 | CIf (b : bexp) (p1 p2 : com)
@@ -36,10 +37,12 @@ End Psi.
 Inductive ceval : com -> sigma -> Psi.psi -> sigma -> Prop :=
   | E_Skip : forall s ps,
     ceval CSkip s ps s
-  | E_Ass : forall s ps x a n l,
+  | E_Ass : forall s ps x a n,
     aeval s a = n ->
-    aeval s x = l ->
-    ceval (CAss x a) s ps (l !-> n ; s)
+    ceval (CAss x a) s ps (x !-> n ; s)
+  | E_Assr : forall s ps x a n,
+    aeval s a = n ->
+    ceval (CAssr x a) s ps ((s x) !-> n ; s)
   | E_Assert: forall s ps (b : assertion),
     b s ->
     ceval (CAssert b) s ps s
@@ -75,17 +78,10 @@ ceval (CWhile BTrue CSkip (fun _ => True)) s ps s' -> False.
 Proof.
   intros Heval.
   remember (CWhile BTrue CSkip (fun _ : Sigma.sigma => True)) as original_command eqn:Horig.
-  induction Heval.
-  * inversion Horig.
-  * inversion Horig.
-  * inversion Horig.
-  * inversion Horig.
-  * inversion Horig.
-  * inversion Horig.
+  induction Heval;try inversion Horig.
   * inversion Horig;subst. inversion H.
   * inversion Horig;subst.
     apply IHHeval2. reflexivity.
-  * inversion Horig.
 Qed.
 
 (** Notations for program **)
@@ -99,9 +95,14 @@ Notation "<[ e ]>" := (e) (e custom com at level 0) : com_scope.
 Notation "{ x }" := x (in custom com at level 0, x constr) : com_scope.
 Notation "'skip'" := (CSkip) (in custom com at level 1) : com_scope.
 Notation "x := y" := (CAss x y)
-            (in custom com at level 89, 
+            (in custom com at level 89,
              x custom aexp,
-             y custom aexp, 
+             y custom aexp,
+             no associativity) : com_scope.
+Notation "'°' x := y" := (CAssr x y)
+            (in custom com at level 89,
+             x custom aexp,
+             y custom aexp,
              no associativity) : com_scope.
 Notation "'assert' b" := (CAssert b)
             (in custom com at level 89,
@@ -109,13 +110,13 @@ Notation "'assert' b" := (CAssert b)
 Notation "x ; y" := (CSeq x y)
            (in custom com at level 70, right associativity) : com_scope.
 Notation "'if' x 'then' y 'else' z 'end'" :=  (CIf x y z)
-           (in custom com at level 89, 
+           (in custom com at level 89,
            x custom bexp at level 0,
-           y custom com at level 0, 
+           y custom com at level 0,
            z custom com at level 0) : com_scope.
 Notation "'while' x 'inv' i 'do' y 'end'" := (CWhile x y i)
-            (in custom com at level 89, 
-            x custom bexp, 
+            (in custom com at level 89,
+            x custom bexp at level 0,
             y custom com at level 0,
             i constr at level 0) : com_scope.
 Notation "'call' f" := (CCall f)
@@ -125,30 +126,18 @@ End ComNotations.
 
 Import ComNotations.
 
-(** Examples of commands **)
-
-Definition plus2 : com := <[ °EAX := EAX + 2 ]>.
-
-Example ecom3 :
-forall (s : sigma),
-  ceval plus2 s Psi.empty_psi (EAX !-> (s EAX) + 2 ; s).
-Proof.
-intros.
-unfold plus2.
-apply E_Ass. reflexivity. reflexivity.
-Qed.
-
-Definition assert2 : com := <[ assert (fun s => s EAX = 2) ]>.
-
-Example ecom4 :
-forall (s : sigma),
-  ceval assert2 (EAX !-> 2 ; s) Psi.empty_psi (EAX !-> 2 ; s).
-Proof.
-intros.
-unfold assert2.
-apply E_Assert. apply get_sigma_same.
-Qed.
-
-Check <[ skip; EAX := 3 ; assert (fun _ => True);if true && true then skip else skip;skip end; 
-             while EAX = 1 inv (fun _ => True) do skip end;
-             call P1]>.
+(*Check <[ skip;
+         EAX := 3 ;
+         °EAX := EAX+1 ;
+         assert (fun _ => True);
+         if true && true then
+            skip
+         else
+           skip;
+           skip
+         end;
+         while EAX = 1 inv (fun _ => True) do
+           skip
+         end;
+         call P1
+       ]>.*)

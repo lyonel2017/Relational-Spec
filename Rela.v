@@ -1,5 +1,4 @@
 From Rela Require Import Vcg.
-From Rela Require Vcg_Opt.
 From Rela Require Import Aexp.
 From Rela Require Import Bexp.
 From Rela Require Import Com.
@@ -8,8 +7,8 @@ From Rela Require Import Hoare_Triple.
 From Rela Require Import Correct.
 From Rela Require Import Loc.
 
-Require Import Program.
-Require Import Eqdep_dec.
+From Coq Require Import Program.
+From Coq Require Import Eqdep_dec.
 From Coq Require Import Lists.List.
 Import ListNotations.
 From Coq Require Import Lia.
@@ -21,7 +20,7 @@ Definition r_assertion : Type := list sigma  -> Prop.
 (** Definition of the relational evaluation of program **)
 
 Inductive rceval : list com -> list sigma -> Psi.psi -> list sigma -> Prop :=
-  | E_Empty : forall ps,
+ | E_Empty : forall ps,
       rceval [] [] ps []
  | E_Seq : forall c qc s q s' q' ps,
       ceval c s ps s' ->
@@ -139,6 +138,22 @@ destruct contra as (contra & _).
 discriminate contra.
 Defined.
 
+(** Connect between Hoare Triple and Relational Properties **)
+
+Lemma hoare_rela :
+forall (P Q: r_assertion) h q ps pi sl (hy:length q = length sl),
+(forall s2 s3 : sigma,
+P (s2 :: sl) -> ceval h s2 ps s3 ->
+rtc q sl pi (fun sl : list sigma => Q (s3 :: sl)) hy) =
+hoare_triple (fun s => P (s:: sl) )
+             (fun s' => rtc q sl pi (fun sl : list sigma => Q (s' :: sl)) hy)
+              h ps.
+Proof.
+intros.
+unfold hoare_triple.
+reflexivity.
+Qed.
+
 (** Defintion of the generator of auxiliare goals for relational properties **)
 
 Program Fixpoint rtc' (cl : list com) (ml: list Sigma.sigma)
@@ -194,8 +209,9 @@ Defined.
 (** Facts about rtc and rtc' **)
 
 Lemma mk_rtc_def :
-forall P h q pi s sl (hy:length (h::q) = length (s::sl)),
+forall h q pi s sl (hy:length (h::q) = length (s::sl)),
 exists (hyr:length q = length sl),
+forall P,
 rtc (h :: q) (s::sl) pi P hy  =
 tc h s pi (fun m' => rtc q sl pi (fun l => P (m'::l)) hyr).
 Proof.
@@ -213,22 +229,6 @@ Proof.
 intros.
 eexists.
 program_simpl.
-Qed.
-
-(** Connect between Hoare Triple and Relational Properties **)
-
-Lemma hoare_rela :
-forall (P Q: r_assertion) h q ps pi sl (hy:length q = length sl),
-(forall s2 s3 : sigma,
-P (s2 :: sl) -> ceval h s2 ps s3 ->
-rtc q sl pi (fun sl : list sigma => Q (s3 :: sl)) hy) =
-hoare_triple (fun s => P (s:: sl) )
-             (fun s' => rtc q sl pi (fun sl : list sigma => Q (s' :: sl)) hy)
-              h ps.
-Proof.
-intros.
-unfold hoare_triple.
-reflexivity.
 Qed.
 
 (** Proof that one can use a standard verification condition generator
@@ -300,248 +300,17 @@ induction p.
           destruct (mk_rtc'_def a p cl m ml hy2) as (hyr & HYP).
           rewrite HYP in H.
           destruct H.
-          replace hy with hyr.
           apply H.
-          apply eq_proofs_unicity.
-          intros.
-          lia.
        -- intros.
           assert (hy2: length (a ::p) = length (m::ml)).
           {intros. simpl. rewrite hy. reflexivity. }
-          destruct (mk_rtc_def Q a p cl m ml hy2) as (hyr & HYP).
+          destruct (mk_rtc_def a p cl m ml hy2) as (hyr & HYP).
           specialize (H0 (m::ml) hy2).
-          rewrite HYP in H0.
+          rewrite (HYP Q) in H0.
           replace hy with hyr.
           apply H0.
           assumption.
           apply eq_proofs_unicity.
           intros.
           lia.
-Qed.
-
-(** Examples of proofs of Relational Properties **)
-
-Definition rela_pre2 (l : list Sigma.sigma) : Prop :=
-  match l with
-  | (m1 :: m2 :: []) => m1 EAX = m2 EAX
-  | _ => False
-  end.
-
-Definition rela_post2 (l : list Sigma.sigma) : Prop :=
-  match l with
-  | (m1 :: m2 :: []) => m1 EAX = m2 EAX
-  | _ => False
-  end.
-
-Example Relation2 : relational_prop rela_pre2 rela_post2 (plus2 :: plus2 :: []) Psi.empty_psi.
-Proof.
-apply rcorrect  with Phi.empty_phi.
-(* Verification of proofs proof obligation for procedure *)
-+ apply tc_p_empty_psi.
-(* Extracting auxiliary proofs proof obligation *)
-+ intros.
-  destruct ml.
-  * discriminate hy.
-  * destruct (mk_rtc'_def plus2 (plus2::[]) Phi.empty_phi s ml hy) as (hyr & HYP).
-    rewrite HYP.
-    split.
-    - simpl. auto.
-    - destruct ml.
-      ++ discriminate hyr.
-      ++ destruct (mk_rtc'_def plus2 [] Phi.empty_phi s0 ml hyr) as (hyr2 & HYP2).
-        rewrite HYP2.
-        split.
-        ** simpl. auto.
-        ** inversion hyr2.
-          symmetry in H1.
-          apply length_zero_iff_nil in H1.
-          subst.
-          simpl.
-          (* Verification of auxiliary proofs proof obligation *)
-           auto.
-(* Extracting main proof obligation *)
-+ intros.
-  destruct ml.
-  * discriminate hy.
-  * destruct (mk_rtc_def rela_post2 plus2 (plus2::[]) Phi.empty_phi s ml hy) as (hyr & HYP).
-    rewrite HYP.
-    destruct ml.
-    - discriminate hyr.
-    - assert (H1 : length ([] : list com) = length ml).
-      { inversion hyr. reflexivity. }
-      eapply consequence_tc_suite.
-      ++ intros.
-         destruct (mk_rtc_def (fun l : list sigma => rela_post2 (s1 :: l)) plus2 [] Phi.empty_phi s0 ml hyr) as (hyr2 & HYP2).
-         rewrite HYP2.
-         replace hyr2 with H1.
-         ** apply (consequence_tc_suite _ _ _ (fun m' => s1 EAX = m' EAX)).
-            -- intros.
-               inversion hyr2.
-               symmetry in H4.
-               apply length_zero_iff_nil in H4.
-               subst.
-               simpl.
-               apply H2.
-           -- apply H0.
-         ** apply eq_proofs_unicity.
-            intros.
-            lia.
-      ++ (* Extracting relational precondition *) 
-         inversion H1.
-         symmetry in H2.
-         apply length_zero_iff_nil in H2.
-         subst.
-         simpl in H.
-         (* Proof on main proof obligation *)
-         simpl.
-         intros.
-         rewrite H2.
-         rewrite H0.
-         rewrite H.
-         apply Why3_Set.set'def.
-         reflexivity.
-Qed.
-
-Import Vcg.Why3_Set.
-
-Definition X1 : Loc.t:= 1.
-Definition X2 : Loc.t:= 2.
-Definition ret : Loc.t := 3.
-
-Import ComNotations.
-Import AexpNotations.
-Import BexpNotations.
-
-Definition comp: com := <[ if X1 <= X2 && ~ X1 = X2 then 
-                                 °ret := 0 
-                              else 
-                                 if X2 <= X1 && ~ X1 = X2  then 
-                                   °ret := 2 
-                                 else °ret := 1
-                                 end 
-                              end ]>.
-
-Definition rela_pre_comp (l : list Sigma.sigma) : Prop :=
-  match l with
-  | (m1 :: m2 :: []) => m1 X1 = m2 X2 /\ m1 X2 = m2 X1
-  | _ => False
-  end.
-
-Definition rela_post_comp (l : list Sigma.sigma) : Prop :=
-  match l with
-  | (m1 :: m2 :: []) => m1 ret + (m2 ret) = 2
-  | _ => False
-  end.
-
-Example Relation_comp : relational_prop 
-                            rela_pre_comp rela_post_comp 
-                            (comp :: comp :: []) Psi.empty_psi.
-Proof.
-apply rcorrect  with Phi.empty_phi.
-(* Verification of proofs proof obligation for procedure *)
-+ apply tc_p_empty_psi.
-(* Extracting auxiliary proofs proof obligation *)
-+ intros.
-  destruct ml.
-  * discriminate hy.
-  * destruct (mk_rtc'_def comp (comp::[]) Phi.empty_phi s ml hy) as (hyr & HYP).
-    rewrite HYP.
-    split.
-    - simpl. auto. (* Verification of auxiliary proofs proof obligation for function 1*)
-
-    - destruct ml.
-      ++ discriminate hyr.
-      ++ destruct (mk_rtc'_def comp [] Phi.empty_phi s0 ml hyr) as (hyr2 & HYP2).
-        rewrite HYP2.
-        split.
-        ** simpl. auto. (* Verification of auxiliary proofs 
-                           proof obligation for function 1*)
-
-        ** inversion hyr2.
-          symmetry in H1.
-          apply length_zero_iff_nil in H1.
-          subst.
-          simpl.  auto.
-(* Extracting main proof obligation *)
-+ intros.
-  destruct ml.
-  * discriminate hy.
-  * destruct 
-      (mk_rtc_def rela_post_comp comp 
-      (comp::[]) Phi.empty_phi s ml hy) as (hyr & HYP).
-    rewrite HYP.
-    destruct ml.
-    - discriminate hyr.
-    - assert (H1 : length ([] : list com) = length ml).
-      { inversion hyr. reflexivity. }
-      eapply consequence_tc_suite.
-      ++ intros.
-         destruct 
-           (mk_rtc_def (fun l : list sigma => rela_post_comp (s1 :: l))
-            comp [] Phi.empty_phi s0 ml hyr) as (hyr2 & HYP2).
-         rewrite HYP2.
-         replace hyr2 with H1.
-         ** apply (consequence_tc_suite _ _ _ (fun m' => s1 ret + m' ret = 2)).
-            -- intros.
-               inversion hyr2.
-               symmetry in H4.
-               apply length_zero_iff_nil in H4.
-               subst.
-               simpl.
-               apply H2.
-           -- apply Vcg_Opt.tc_same. apply H0.
-         ** apply eq_proofs_unicity.
-            intros.
-            lia.
-      ++ (* Extracting relational precondition *) 
-         inversion H1.
-         symmetry in H2.
-         apply length_zero_iff_nil in H2.
-         subst.
-         simpl in H.
-         (* Proof on main proof obligation *)
-         apply Vcg_Opt.tc_same.
-         simpl.
-         intros.
-         destruct H.
-         destruct H0.
-         -- destruct H2.
-            ** subst.
-            assert(H6: False).
-            { lia. }
-            contradiction H6.
-            ** destruct H5.
-              +++ subst.
-                  rewrite (set''def _ _ _ 0).
-                  rewrite (set''def _ _ _ 2).
-                  all: try reflexivity.
-              +++ subst.
-                  assert(H6: False).
-                  { lia. }
-                  contradiction H6.
-          -- destruct H2.
-            ** destruct H4.
-              +++ subst.
-                  rewrite (set''def _ _ _ 2).
-                  rewrite (set''def _ _ _ 0).
-                  all: try reflexivity.
-              +++ subst.
-                  assert(H6: False).
-                  { lia. }
-                  contradiction H6.
-            ** destruct H4.
-              +++  subst.
-                   assert(H6: False).
-                   { lia. }
-                   contradiction H6.
-              +++ destruct H5.
-                  *** subst.
-                      subst.
-                      assert(H6: False).
-                      { lia. }
-                      contradiction H6.
-                  *** subst.
-                      rewrite (set''def _ _ _ 1).
-                      rewrite (set''def _ _ _ 1).
-                      all: try reflexivity.
 Qed.

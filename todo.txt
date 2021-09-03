@@ -1,5 +1,0 @@
-- frame rule
-- using of contruct \at in assertions
-- value in location can be location (pointer)
-- a map of variables (var -> nat) : in term of separartion logic, we have for the moment only a hear (nat -> nat) and we can add a stack (var -> nat) for modeling the behavior of
-  a memory allocator for global variables (require to be separated in the case of relational properties) thus canot be the same as in WP there the stack in hard coded.

@@ -6,7 +6,7 @@ From Rela Require Import Proc.
 From Rela Require Import Sigma.
 From Rela Require Import Loc.
 
-(* Redefinition of set from Why3 *)
+(** Redefinition of set from Why3 **)
 
 Module Why3_Set.
 
@@ -31,7 +31,7 @@ split.
   * reflexivity.
   * contradiction n.
     rewrite H. reflexivity.
-+ intros. 
++ intros.
   unfold set.
   destruct (Loc.eq_dec x y).
   * contradiction H.
@@ -55,7 +55,7 @@ End Why3_Set.
 
 Import Why3_Set.
 
-(* Boolean evaluation as Prop *)
+(** Boolean evaluation as Prop **)
 
 Module Assn_b.
 
@@ -66,7 +66,7 @@ Definition bassn b :=
 
 Lemma bexp_eval_true : forall b st,
   beval st b = true -> (bassn b) st.
-Proof. 
+Proof.
 intros. unfold bassn. apply Is_true_eq_left. auto.
 Qed.
 
@@ -74,7 +74,7 @@ Lemma bexp_eval_false : forall b st,
   beval st b = false ->  ~((bassn b) st).
 Proof.
 intros. unfold bassn. apply negb_prop_elim.
-apply Is_true_eq_left. 
+apply Is_true_eq_left.
 apply negb_true_iff. auto.
 Qed.
 
@@ -82,13 +82,14 @@ End Assn_b.
 
 Import Assn_b.
 
-(* Defintion of a verification condition generator *)
+(** Defintion of a verification condition generator **)
 
 Fixpoint tc (c : com) (m : Sigma.sigma)
             (cl: Phi.phi) (suite : Sigma.sigma -> Prop) : Prop :=
     match c with
     | CSkip => forall m', m = m' -> suite m'
-    | CAss x a => forall m', (m' = set m (aeval m x) (aeval m a)) -> suite m'
+    | CAss x a => forall m', (m' = set m x (aeval m a)) -> suite m'
+    | CAssr x a => forall m', (m' = set m (m x) (aeval m a)) -> suite m'
     | CAssert b => forall m', b m -> m = m' -> suite m'
     | CSeq p1 p2 => tc p1 m cl (fun m' => tc p2 m' cl suite)
     | CIf b p1 p2 => (bassn b m -> tc p1 m cl suite) /\
@@ -99,6 +100,13 @@ Fixpoint tc (c : com) (m : Sigma.sigma)
                   forall m',  (get_post (cl f)) m' -> suite m'
     end.
 
+(** Facts about verification condition generator **)
+
+Ltac ltc1 := intros m suite1 suite2 H H0;
+             simpl; intros;
+             simpl in H0;
+             apply H; apply H0; assumption.
+
 Lemma consequence_tc_suite :
 forall p cl m (suite1 suite2 : Sigma.sigma -> Prop),
 (forall s, suite1 s -> suite2 s) ->
@@ -106,22 +114,10 @@ tc p m cl suite1 -> tc p m cl suite2.
 Proof.
 intros p cl.
 induction p.
-  * intros. simpl. simpl in H0.
-    intros.
-    apply H.
-    apply H0.
-    assumption.
-  * intros. simpl. simpl in H0.
-    intros.
-    apply H.
-    apply H0.
-    assumption.
-  * intros. simpl. simpl in H0.
-    intros.
-    apply H.
-    apply H0.
-    assumption.
-    assumption.
+  * ltc1.
+  * ltc1.
+  * ltc1.
+  * ltc1.
   * intros.
     simpl. simpl in H0.
     eapply IHp1.
@@ -137,19 +133,17 @@ induction p.
     - intros.
       eapply IHp1.
       apply H. apply H0. assumption.
-    -intros.
+    - intros.
       eapply IHp2.
       apply H. apply H1. assumption.
-  * intros.
-    simpl. simpl in H0.
-    intros. apply H.
-    apply H0.
-    all : try assumption.
-  * intros. simpl. simpl in H0.
-    intros. apply H.
-    apply H0.
-    all : try assumption.
+  * ltc1.
+  * ltc1.
 Qed.
+
+Ltac ltc2 := intros m suite1 suite2 H H0;
+             simpl; intros;
+             split;[ apply H; try assumption; subst; reflexivity
+                   | apply H0; try assumption; subst; reflexivity].
 
 Lemma tc_split :
 forall p cl m (suite1 suite2 : Sigma.sigma -> Prop),
@@ -158,18 +152,10 @@ tc p m cl (fun m' => suite1 m' /\ suite2 m').
 Proof.
 intros p cl.
 induction p.
-+ simpl. intros.
-  split.
-  apply H. subst. reflexivity.
-  apply H0. subst. reflexivity.
-+ simpl. intros.
-  split.
-  apply H. subst. reflexivity.
-  apply H0. subst. reflexivity.
-+ simpl. intros.
-  split.
-  apply H. assumption. subst. reflexivity.
-  apply H0. assumption. subst. reflexivity.
++ ltc2.
++ ltc2.
++ ltc2.
++ ltc2.
 + simpl. intros.
   apply (consequence_tc_suite _ _ _ (fun m => tc p2 m cl suite1 /\ tc p2 m cl suite2)).
   * intros. destruct H1. apply IHp2. assumption. assumption.
@@ -185,27 +171,18 @@ induction p.
     apply IHp2.
     apply H. assumption.
     apply H0. assumption.
-+ simpl. intros.
-  split. 
-    * apply H.
-      all: try assumption.
-    * apply H0.
-      all: try assumption.
-+ simpl. intros.
-  split.
-    * apply H.
-      all: try assumption.
-    * apply H0.
-      all: try assumption.
++ ltc2.
++ ltc2.
 Qed.
 
-(* Definition of a verification condition generator for the auxiliary goals *)
+(** Definition of a verification condition generator for the auxiliary goals **)
 
 Fixpoint tc' (c : com) (m : Sigma.sigma)
             (cl: Phi.phi) : Prop :=
     match c with
     | CSkip => True
     | CAss x a => True
+    | CAssr x a => True
     | CAssert b => b m
     | CSeq p1 p2 => tc' p1 m cl /\
                     tc p1 m cl (fun m' => tc' p2 m' cl)
@@ -213,14 +190,18 @@ Fixpoint tc' (c : com) (m : Sigma.sigma)
                     (bassn b m -> tc' p1 m cl) /\
                     (~bassn b m -> tc' p2 m cl)
     | CWhile b p inv => inv m /\
-                          (forall m', bassn b m' -> tc' p m' cl) /\
-                          (forall m', inv m'  -> tc p m' cl inv)
+                     (forall m', bassn b m' -> tc' p m' cl) /\
+                     (forall m', bassn b m' -> inv m'  -> tc p m' cl inv)
     | CCall f => (get_pre (cl f)) m
     end.
+
+(** Definition of a verification condition generator for procedures **)
 
 Definition tc_p (ps: Psi.psi) (cl : Phi.phi) : Prop :=
     forall f m, (get_pre (cl f)) m -> tc' (ps f) m cl /\
                 tc (ps f) m cl (get_post (cl f)).
+
+(** Facts about verification condition generator for procedures **)
 
 Lemma tc_p_empty_psi : tc_p Psi.empty_psi Phi.empty_phi.
 Proof.
@@ -231,23 +212,24 @@ split.
 * simpl. intros. unfold empty_postcondition. auto.
 Qed.
 
-Parameter f : Proc.t.
-Definition cli_1 (x': Proc.t) := 
-        if Proc.eqb x' f then CSkip else CSkip.
+(** Verification of trivial procedure contract **)
 
-Definition phi_1 (x': Proc.t) := 
-        if Proc.eqb x' f then empty_clause else empty_clause.
+Parameter f : Proc.t.
+Definition cli_1 (x': Proc.t) :=
+        if Proc.eqb x' f then CSkip else Psi.empty_psi f.
+
+Definition phi_1 (x': Proc.t) :=
+        if Proc.eqb x' f then empty_clause else Phi.empty_phi f.
 
 Example tc_p_update : tc_p cli_1 phi_1.
 Proof.
-  unfold tc_p.
-  intros.
-  unfold cli_1, phi_1.
-  destruct (Proc.eqb f0 f).
-  - split.
-    * now auto.
-    * simpl. intros. unfold empty_postcondition. auto.
-  - split.
-    * now auto.
-    * simpl. intros. unfold empty_postcondition. auto.
+unfold tc_p.
+unfold cli_1, phi_1.
+intros.
+destruct (Proc.eqb f0 f).
+- split.
+  * now auto.
+  * simpl. intros. unfold empty_postcondition. auto.
+- apply tc_p_empty_psi.
+  assumption.
 Qed.

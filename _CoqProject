@@ -8,12 +8,7 @@ Com.v
 Inliner.v
 Hoare_Triple.v
 Vcg.v
-Vcg_Opt.v
 Correct.v
 Rela.v
-
-# Remove
-Label.v
-Lambda.v
-EAexp.v
-EBexp.v
+Vcg_Opt.v
+Examples.v
