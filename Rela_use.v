@@ -4,6 +4,8 @@ From Rela Require Import Inliner.
 From Rela Require Import Hoare_Triple.
 From Rela Require Import Rela.
 From Coq Require Import Lists.List.
+From Rela Require Import Vcg.
+
 Import ListNotations.
 
 (** Definition of relation Precondition **)
@@ -125,10 +127,9 @@ induction p;intros.
       intros.
       inversion H.
       inversion H0.
-      generalize (IHp s0 ps s' H4 H5 H10).
-      intros.
+      specialize (IHp s0 ps s' H4 H5 H10).
       destruct H2.
-      destruct H3.
+      destruct IHp.
       destruct (Proc.max_dec x0 x).
       ** exists x0.
          apply E_Seq;[ | apply H3].
@@ -293,6 +294,29 @@ apply r_recursive_proc.
 assumption.
 Qed.
 
+Lemma urcorrect :
+forall cl rcl ps p,
+tc_p ps cl ->
+forall (P Q: r_assertion),
+(forall ml (hy:length p = length ml),
+P ml -> rtc' p ml cl hy) ->
+(forall ml (hy:length p = length ml),
+P ml -> rtc p ml cl Q hy) ->
+relational_prop_ctx rcl ps P Q p.
+Proof.
+intros.
+intros H2.
+eapply rcorrect.
+ * apply H.
+ * apply H0.
+ * apply H1.
+Qed.
+
+
+(*Definition tc_p (ps: Psi.psi) (cl : Phi.phi) : Prop :=
+    forall f m, (get_pre (cl f)) m -> tc' (ps f) m cl /\
+                tc (ps f) m cl (get_post (cl f)).*)
+
 (* Relation contract translation *)
 
 (* TODO :
@@ -317,7 +341,7 @@ Qed.
 
 (* The rule for using relational properties is a form of cut.
   Maybe in the proof of compleness it can be shown that it is not
-  required. But it allow clear/shoter proofs *)
+  required. But it allow clear/smaller proofs *)
   
 Definition proc_call f s s' := forall ps, ceval (CCall f) s ps s'.
 
