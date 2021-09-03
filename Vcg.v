@@ -5,6 +5,8 @@ From Rela Require Import Hoare_Triple.
 From Rela Require Import Proc.
 From Rela Require Import Sigma.
 From Rela Require Import Loc.
+From Coq Require Import Lists.List.
+Import ListNotations.
 
 (** Redefinition of set from Why3 **)
 
@@ -84,33 +86,37 @@ Import Assn_b.
 
 (** Defintion of a verification condition generator **)
 
-Fixpoint tc (c : com) (m : Sigma.sigma)
-            (cl: Phi.phi) (suite : Sigma.sigma -> Prop) : Prop :=
+Definition history: Type := list Sigma.sigma.
+
+Definition suite : Type := Sigma.sigma -> history -> Prop.
+
+Fixpoint tc (c : com) (m : Sigma.sigma) (h : history)
+            (cl: Phi.phi) (s : suite) : Prop :=
     match c with
-    | CSkip => forall m', m = m' -> suite m'
-    | CAss x a => forall m', (m' = set m x (aeval m a)) -> suite m'
-    | CAssr x a => forall m', (m' = set m (m x) (aeval m a)) -> suite m'
-    | CAssert b => forall m', b m -> m = m' -> suite m'
-    | CSeq p1 p2 => tc p1 m cl (fun m' => tc p2 m' cl suite)
-    | CIf b p1 p2 => (bassn b m -> tc p1 m cl suite) /\
-                     (~bassn b m  -> tc p2 m cl suite)
-    | CWhile b p inv => inv m ->
-                        forall m', inv m' -> beval m' b = false -> suite m'
+    | CSkip => forall m', m = m' -> s m' (m :: h)
+    | CAss x a => forall m', (m' = set m x (aeval m a)) -> s m' (m :: h)
+    | CAssr x a => forall m', (m' = set m (m x) (aeval m a)) -> s m' (m :: h)
+    | CAssert b => forall m', b (m :: h) -> m = m' -> s m' (m :: h)
+    | CSeq p1 p2 => tc p1 m h cl (fun m' h => tc p2 m' h cl s)
+    | CIf b p1 p2 => (bassn b m -> tc p1 m h cl (fun m' _ => s m' (m :: h))) /\
+                     (~bassn b m  -> tc p2 m h cl (fun m' _ => s m' (m :: h)))
+    | CWhile b p inv => inv (m :: h) ->
+                        forall m', inv (m' :: h) -> beval m' b = false -> s m' (m :: h)
     | CCall f => (get_pre (cl f)) m ->
-                  forall m',  (get_post (cl f)) m' -> suite m'
+                  forall m',  (get_post (cl f)) m' m -> s m' (m :: h)
     end.
 
 (** Facts about verification condition generator **)
 
-Ltac ltc1 := intros m suite1 suite2 H H0;
+Ltac ltc1 := intros m l s1 s2 H H0;
              simpl; intros;
              simpl in H0;
              apply H; apply H0; assumption.
 
 Lemma consequence_tc_suite :
-forall p cl m (suite1 suite2 : Sigma.sigma -> Prop),
-(forall s, suite1 s -> suite2 s) ->
-tc p m cl suite1 -> tc p m cl suite2.
+forall p cl m l (s1 s2 : suite),
+(forall s l, s1 s l -> s2 s l) ->
+tc p m l cl s1 -> tc p m l cl s2.
 Proof.
 intros p cl.
 induction p.
@@ -131,24 +137,30 @@ induction p.
     intros. destruct H0.
     split.
     - intros.
-      eapply IHp1.
-      apply H. apply H0. assumption.
-    - intros.
-      eapply IHp2.
-      apply H. apply H1. assumption.
+      specialize (IHp1 m l (fun (m' : sigma) (_ : list sigma) => s1 m' (m :: l)) 
+      (fun (m' : sigma) (_ : list sigma) => s2 m' (m :: l))).
+      apply IHp1.
+      + intros. apply H. apply H3.
+      + apply H0. assumption.
+     - intros.
+       specialize (IHp2 m l (fun (m' : sigma) (_ : list sigma) => s1 m' (m :: l)) 
+      (fun (m' : sigma) (_ : list sigma) => s2 m' (m :: l))).
+        apply IHp2.
+      + intros. apply H. apply H3.
+      + apply H1. assumption.
   * ltc1.
   * ltc1.
 Qed.
 
-Ltac ltc2 := intros m suite1 suite2 H H0;
+Ltac ltc2 := intros m l s1 s2 H H0;
              simpl; intros;
              split;[ apply H; try assumption; subst; reflexivity
                    | apply H0; try assumption; subst; reflexivity].
 
 Lemma tc_split :
-forall p cl m (suite1 suite2 : Sigma.sigma -> Prop),
-tc p m cl suite1 -> tc p m cl suite2 ->
-tc p m cl (fun m' => suite1 m' /\ suite2 m').
+forall p cl m l (s1 s2 : suite),
+tc p m l cl s1 -> tc p m l cl s2 ->
+tc p m l cl (fun m' h => s1 m' h /\ s2 m' h).
 Proof.
 intros p cl.
 induction p.
@@ -157,7 +169,7 @@ induction p.
 + ltc2.
 + ltc2.
 + simpl. intros.
-  apply (consequence_tc_suite _ _ _ (fun m => tc p2 m cl suite1 /\ tc p2 m cl suite2)).
+  apply (consequence_tc_suite _ _ _ _ (fun m h => tc p2 m h cl s1 /\ tc p2 m h cl s2)).
   * intros. destruct H1. apply IHp2. assumption. assumption.
   * apply IHp1. assumption. assumption.
 + intros.
@@ -177,29 +189,30 @@ Qed.
 
 (** Definition of a verification condition generator for the auxiliary goals **)
 
-Fixpoint tc' (c : com) (m : Sigma.sigma)
+Fixpoint tc' (c : com) (m : Sigma.sigma) (h : history)
             (cl: Phi.phi) : Prop :=
     match c with
     | CSkip => True
     | CAss x a => True
     | CAssr x a => True
-    | CAssert b => b m
-    | CSeq p1 p2 => tc' p1 m cl /\
-                    tc p1 m cl (fun m' => tc' p2 m' cl)
+    | CAssert b => b (m :: h)
+    | CSeq p1 p2 => tc' p1 m h cl /\
+                    tc p1 m h cl (fun m' h => tc' p2 m' h cl)
     | CIf b p1 p2 =>
-                    (bassn b m -> tc' p1 m cl) /\
-                    (~bassn b m -> tc' p2 m cl)
-    | CWhile b p inv => inv m /\
-                     (forall m', bassn b m' -> tc' p m' cl) /\
-                     (forall m', bassn b m' -> inv m'  -> tc p m' cl inv)
+                    (bassn b m -> tc' p1 m h cl) /\
+                    (~bassn b m -> tc' p2 m h cl)
+    | CWhile b p inv => inv (m :: h) /\
+                     (forall m', bassn b m' -> tc' p m' h cl) /\
+                     (forall m', bassn b m' -> inv (m' :: h) -> 
+                      tc p m' h cl (fun m'' _ => inv (m'' :: h)))
     | CCall f => (get_pre (cl f)) m
     end.
 
 (** Definition of a verification condition generator for procedures **)
 
 Definition tc_p (ps: Psi.psi) (cl : Phi.phi) : Prop :=
-    forall f m, (get_pre (cl f)) m -> tc' (ps f) m cl /\
-                tc (ps f) m cl (get_post (cl f)).
+    forall f m, (get_pre (cl f)) m -> tc' (ps f) m [] cl /\
+                tc (ps f) m [] cl (fun m' _ => get_post (cl f) m' m).
 
 (** Facts about verification condition generator for procedures **)
 
