@@ -25,79 +25,68 @@ Proof.
   * unfold hoare_triple. intros. eapply H0. apply H2. inversion H3;subst. reflexivity.
   * unfold hoare_triple. intros. eapply H0. apply H2.
     apply H. apply H2. inversion H3;subst. reflexivity.
-  * intros P Q Htc' Htc Hproc. eapply seq_hoare_triple.
-  + apply IHp1.
-  - apply Htc'.
-  - simpl in Htc', Htc.
-    intros.
-    specialize (Htc' m H).
-    destruct Htc'.
-    specialize (Htc m H).
-    specialize
-      (tc_split p1 cl m
-                (fun m' : sigma => tc' p2 m' cl) (fun m' : sigma => tc p2 m' cl Q)).
-    intros.
-    apply H2. assumption. assumption.
-  - assumption.
-    + apply IHp2.
-  - intros. destruct H. assumption.
-  - intros. destruct H. assumption.
-  - assumption.
-    * intros P Q Htc' Htc Hproc. apply if_hoare_triple.
+  * intros P Q Htc' Htc Hproc. eapply seq_hoare_triple2.
+    apply IHp1; [ apply Htc' | | apply Hproc].
+    - intros.
+      apply (consequence_tc_suite _ _ _ 
+      (fun m' => tc' p2 m' cl /\ tc p2 m' cl (fun m'' => Q m''))).
+      + intros s H0 s''.
+        generalize dependent H0.
+        generalize dependent s''.
+        generalize dependent s.
+        apply IHp2.
+        ** intros. apply H0.
+        ** intros. apply H0.
+        ** apply Hproc.
+      + apply tc_split.
+        ** apply Htc'. apply H.
+        ** apply Htc. apply H.
+  * intros P Q Htc' Htc Hproc. apply if_hoare_triple.
     + apply IHp1.
-  - intros. apply Htc'. apply H. apply bexp_eval_true. apply H.
-  - intros. simpl in Htc. destruct H. specialize (Htc m H). destruct Htc.
-    apply H1. apply bexp_eval_true. assumption.
-  - assumption.
+      - intros. apply Htc'. apply H. apply bexp_eval_true. apply H.
+      - intros. simpl in Htc. destruct H. specialize (Htc m H). destruct Htc.
+        apply H1. apply bexp_eval_true. assumption.
+      - assumption.
     + apply IHp2.
-  - intros. apply Htc'. apply H. destruct H. apply bexp_eval_false in H0. apply H0.
-  - intros. simpl in H. destruct H. specialize (Htc m H). destruct Htc.
-    apply H2. apply bexp_eval_false. assumption.
-  - assumption.
-    * intros  P Q Htc' Htc.
-      specialize (IHp (fun s => inv s /\ beval s b = true) inv).
-      intros Hproc s s' Pre.
-      apply
-        (consequence_hoare_post _ _ P _ (fun s : sigma => inv s /\ beval s b = false)).
-    + apply (consequence_hoare_pre _ _ _ inv).
-  - apply while_hoare_triple.
-    specialize (Htc s Pre).
-    specialize (Htc' s Pre).
-    simpl in Htc, Htc'.
-    destruct Htc'.
-    destruct H0.
-    apply IHp.
-    ** intros.
-       apply H0.
-       destruct H2.
-       apply bexp_eval_true in H3.
-       assumption.
-    ** intros.
-       apply H1;[apply bexp_eval_true; apply H2 | apply H2].
-    ** assumption.
-  - intros.
-    specialize (Htc' s0 H).
-    apply Htc'.
-    + intros.
-      specialize (Htc s Pre).
-      apply Htc.
-      specialize (Htc' s Pre).
-      apply Htc'.
-      apply H.
-      apply H.
-    + assumption.
+      - intros. apply Htc'. apply H. destruct H. apply bexp_eval_false in H0. apply H0.
+      - intros. simpl in H. destruct H. specialize (Htc m H). destruct Htc.
+       apply H2. apply bexp_eval_false. assumption.
+      - assumption.
+ * intros P Q Htc' Htc.
+   specialize (IHp (fun s => inv s /\ beval s b = true) inv).
+   intros Hproc s s' Pre Heval.
+   specialize (Htc' s Pre).
+   simpl in Htc'.
+   destruct Htc'.
+   specialize (Htc s Pre H).
+   assert (H1 : inv s' /\ beval s' b = false -> Q s').
+   { intros. apply Htc. apply H1. apply H1. }
+   apply H1.
+   generalize Heval.
+   generalize H.
+   apply while_hoare_triple.
+   destruct H0.
+   apply IHp.
+   ** intros.
+      apply H0.
+      destruct H3.
+      apply bexp_eval_true in H4.
+      assumption.
+   ** intros.
+      apply H2.
+      destruct H3.
+      apply bexp_eval_true in H4.
+      assumption.
+      apply H3.
+   ** assumption.
  * intros P Q Htc' Htc Hproc.
    intros s s' Pre Heval.
+   specialize (Htc' s Pre).
+   specialize (Htc s Pre).
+   apply Htc; [apply Htc' | ].
    generalize Heval.
-   apply (consequence_hoare_post (CCall f) _ P _ (get_post (cl f))).
-    + apply (consequence_hoare_pre _ _ _ (get_pre (cl f))).
-      - apply Hproc.
-      - apply Htc'.
-    + eapply Htc.
-      apply Pre.
-      apply Htc'.
-      assumption.
-    + assumption.
+   generalize dependent Htc'.
+   apply Hproc.
 Qed.
 
 Lemma correct_proc :

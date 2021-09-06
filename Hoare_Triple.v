@@ -24,6 +24,18 @@ Proof.
   eapply H2. eapply H1. apply Pre. apply H3. apply H7.
 Qed.
 
+Lemma seq_hoare_triple2 :
+  forall p1 p2 ps (P Q: assertion),
+    hoare_triple P (fun s' => forall s'', ceval p2 s' ps s'' -> Q s'') p1 ps ->
+    hoare_triple P Q (CSeq p1 p2) ps.
+Proof.
+  unfold hoare_triple.
+  intros. inversion H1;subst.
+  specialize (H s s'0 H0 H4).
+  apply H.
+  apply H8.
+Qed.
+
 Lemma if_hoare_triple :
   forall p1 p2 b ps (P Q: assertion),
     hoare_triple (fun s => P s /\ beval s b = true) Q p1 ps ->
