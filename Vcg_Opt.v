@@ -528,7 +528,7 @@ Qed.
 (* The optimized version implies the naive version *)
 
 Lemma tc_same :
-forall p cl m (suite1 : Sigma.sigma -> Prop),
+forall p cl m (suite1 : assertion),
 (forall m', tc p m m' cl (fun p => p -> suite1 m')) -> Vcg.tc p m cl suite1.
 Proof.
 intros.
@@ -594,8 +594,7 @@ Qed.
 
 (** Definition of a verification condition generator for the auxiliary goals **)
 
-Fixpoint tc' (c : com) (m: Sigma.sigma)
-            (cl: Phi.phi) : Prop :=
+Fixpoint tc' (c : com) (m: Sigma.sigma) (cl: Phi.phi) : Prop :=
 match c with
  | CSkip => True
  | CAss x a => True
@@ -614,9 +613,7 @@ end.
 
 (* The optimized version implies the naive version *)
 
-Lemma tc'_same :
-forall p cl m,
-tc' p m cl -> Vcg.tc' p m cl.
+Lemma tc'_same : forall p cl m, tc' p m cl -> Vcg.tc' p m cl.
 Proof.
 induction p; simpl.
 * intros. auto.
@@ -688,10 +685,10 @@ Qed.
 
 Module Test.
 
-Definition test (p1: com) (cl: Phi.phi) (a : sigma -> Prop) (m : sigma) :=
+Definition test (p1: com) (cl: Phi.phi) (a : assertion) (m : sigma) :=
            forall m'' : sigma, tc p1 m m'' cl (fun f : Prop => f -> a m'').
 
-Fixpoint tc_test (c : com) (cl: Phi.phi) : list (Sigma.sigma -> Prop) :=
+Fixpoint tc_test (c : com) (cl: Phi.phi) : list assertion :=
 match c with
  | CSkip => []
  | CAss x a => []

@@ -1,11 +1,8 @@
-From Rela Require Import Vcg.
-From Rela Require Import Aexp.
-From Rela Require Import Bexp.
+From Rela Require Import Proc.
+From Rela Require Import Inliner.
 From Rela Require Import Com.
 From Rela Require Import Sigma.
 From Rela Require Import Hoare_Triple.
-From Rela Require Import Correct.
-From Rela Require Import Loc.
 
 From Coq Require Import Program.
 From Coq Require Import Eqdep_dec.
@@ -85,232 +82,288 @@ Qed.
 
 End Single_Rela_Prop.
 
-(** Defintion of the verification condition generator for relational properties,
-   using the verification condition generator for Hoare Triples **)
+(** Definition of relation Precondition **)
 
-Program Fixpoint rtc (cl : list com) (ml: list Sigma.sigma)
-            (cls: Phi.phi) (suite : list Sigma .sigma -> Prop)
-            (hy:length cl = length ml): Prop :=
- match cl ,ml with
- | [],[] => suite []
- | c :: qc, m :: qm =>
-   tc c m cls (fun m' => rtc qc qm cls (fun l => suite (m'::l))  _)
- | _, _ => !
-end.
+Definition r_precondition : Type := r_assertion.
 
-Next Obligation.
-destruct cl.
-- simpl in hy.
-  symmetry in hy.
-  apply length_zero_iff_nil in hy.
-  subst ml.
-  contradiction H0.
-  split.
-  reflexivity.
-  reflexivity.
-- destruct ml as [|m qm].
-  discriminate hy.
-  eapply H.
-  split.
-  reflexivity.
-  reflexivity.
-Qed.
+Definition empty_r_precondition : r_precondition := (fun _ => True).
 
-Next Obligation.
-split.
-intros.
-intros contra.
-destruct contra as (contra & _).
-discriminate contra.
-intros contra.
-destruct contra as ( _ & contra).
-discriminate contra.
-Defined.
+(** Defintion of relation Postcondtion **)
 
-Next Obligation.
-split.
-intros.
-intros contra.
-destruct contra as (_ & contra ).
-discriminate contra.
-intros contra.
-destruct contra as (contra & _).
-discriminate contra.
-Defined.
+Definition r_postcondition : Type := r_assertion.
 
-(** Connect between Hoare Triple and Relational Properties **)
+Definition empty_r_postcondition :  r_postcondition := (fun _ => True).
 
-Lemma hoare_rela :
-forall (P Q: r_assertion) h q ps pi sl (hy:length q = length sl),
-(forall s2 s3 : sigma,
-P (s2 :: sl) -> ceval h s2 ps s3 ->
-rtc q sl pi (fun sl : list sigma => Q (s3 :: sl)) hy) =
-hoare_triple (fun s => P (s:: sl) )
-             (fun s' => rtc q sl pi (fun sl : list sigma => Q (s' :: sl)) hy)
-              h ps.
+(** Definition of a relational contract **)
+
+Definition r_clause : Type := r_precondition * r_postcondition.
+
+Definition empty_clause : r_clause := (empty_r_precondition, empty_r_postcondition).
+
+Definition get_r_pre (an:r_clause) :=
+          let (pre,post) := an in
+          pre.
+
+Definition get_r_post (an:r_clause) :=
+          let (pre,post) := an in
+          post.
+
+Module R_Phi.
+
+  Definition r_phi : Type := list Proc.t -> r_clause.
+
+  Definition empty_r_phi: r_phi := fun _ => empty_clause.
+
+End R_Phi.
+
+(* Defintion of a Relational Properties with inliner*)
+
+Definition i_relational_prop (n: nat) (P Q: r_assertion) (c : list com) (ps : Psi.psi) : Prop :=
+  forall s s', length s = length c -> length s' = length c ->
+                P s -> rceval c s (k_inliner_ps n ps) s'  -> Q s'.
+
+Lemma n_inline_ps_rceval :
+forall (p : list com) (s : list Sigma.sigma) (ps : Proc.t -> com) 
+        (s' : list Sigma.sigma) (n : nat),
+length s = length p -> length s' = length p ->
+rceval p s (k_inliner_ps n ps) s' -> rceval p s ps s'.
 Proof.
-intros.
-unfold hoare_triple.
-reflexivity.
-Qed.
-
-(** Defintion of the generator of auxiliare goals for relational properties **)
-
-Program Fixpoint rtc' (cl : list com) (ml: list Sigma.sigma)
-            (cls : Phi.phi)
-            (hy:length cl = length ml): Prop :=
- match cl ,ml with
- | [],[] => True
- | c :: qc, m :: qm =>
-   tc' c m cls /\ rtc' qc qm cls _
- | _, _ => !
-end.
-
-Next Obligation.
-destruct cl.
-- simpl in hy.
-  symmetry in hy.
-  apply length_zero_iff_nil in hy.
-  subst ml.
-  contradiction H0.
-  split.
-  reflexivity.
-  reflexivity.
-- destruct ml as [|m qm].
-  discriminate hy.
-  eapply H.
-  split.
-  reflexivity.
-  reflexivity.
-Qed.
-
-Next Obligation.
-split.
-intros.
-intros contra.
-destruct contra as (contra & _).
-discriminate contra.
-intros contra.
-destruct contra as ( _ & contra).
-discriminate contra.
-Defined.
-
-Next Obligation.
-split.
-intros.
-intros contra.
-destruct contra as (_ & contra ).
-discriminate contra.
-intros contra.
-destruct contra as (contra & _).
-discriminate contra.
-Defined.
-
-(** Facts about rtc and rtc' **)
-
-Lemma mk_rtc_def :
-forall h q pi s sl (hy:length (h::q) = length (s::sl)),
-exists (hyr:length q = length sl),
-forall P,
-rtc (h :: q) (s::sl) pi P hy  =
-tc h s pi (fun m' => rtc q sl pi (fun l => P (m'::l)) hyr).
-Proof.
-intros.
-eexists.
-program_simpl.
-Qed.
-
-Lemma mk_rtc'_def :
-forall h q pi s sl (hy:length (h::q) = length (s::sl)),
-exists (hyr:length q = length sl),
-rtc' (h :: q) (s::sl) pi hy  =
-(tc' h s pi /\ rtc' q sl pi hyr).
-Proof.
-intros.
-eexists.
-program_simpl.
-Qed.
-
-(** Proof that one can use a standard verification condition generator
-    to proof Relational Properties **)
-
-Lemma rcorrect :
-forall cl ps p,
-tc_p ps cl ->
-forall (P Q: r_assertion),
-(forall ml (hy:length p = length ml),
-P ml -> rtc' p ml cl hy) ->
-(forall ml (hy:length p = length ml),
-P ml -> rtc p ml cl Q hy) ->
-relational_prop P Q p ps.
-Proof.
-intros cl ps p Hproc.
-unfold relational_prop.
-induction p.
-*  intros.
-   specialize (H0 []).
-   simpl in H0.
-   apply length_zero_iff_nil in H1.
-   apply length_zero_iff_nil in H2.
-   subst.
-   apply H0.
-   reflexivity.
-   assumption.
-*  intros.
-   destruct s.
-   + discriminate H1.
+induction p;intros.
+* inversion H.
+  apply length_zero_iff_nil in H3.
+  inversion H0.
+  apply length_zero_iff_nil in H4.
+  subst.
+  apply E_Empty.
+*  destruct s.
+   + discriminate H.
    + destruct s'.
-   - discriminate H2.
-   - inversion H4;subst.
-    specialize (IHp (fun sl => P (s :: sl)) (fun sl => Q (s1 :: sl))).
-    simpl in IHp.
-    generalize H13.
-    generalize H3.
-    inversion H1.
-    inversion H2.
-    generalize H7.
-    generalize H6.
-    eapply IHp.
-    ** intros.
-       symmetry in H1.
-       assert (hy2: length (a ::p) = length (s::ml)).
-       {intros. simpl. rewrite hy. reflexivity. }
-       specialize (H (s :: ml) hy2 H5).
-       destruct (mk_rtc'_def a p cl s ml hy2) as (hyr & HYP).
-       rewrite HYP in H.
-       destruct H.
-       replace hy with hyr.
-       apply H8.
-       apply eq_proofs_unicity.
-       intros.
-       lia.
-    ** intros.
-       generalize H10.
-       generalize H5.
-       generalize s s1.
-       rewrite hoare_rela.
-       eapply recursion_hoare_triple.
-       ++ eapply correct_proc.
-          apply Hproc.
-       ++ eapply correct.
-       -- intros.
-          assert (hy2: length (a ::p) = length (m::ml)).
-          {intros. simpl. rewrite hy. reflexivity. }
-          specialize (H (m :: ml) hy2 H8).
-          destruct (mk_rtc'_def a p cl m ml hy2) as (hyr & HYP).
-          rewrite HYP in H.
-          destruct H.
-          apply H.
-       -- intros.
-          assert (hy2: length (a ::p) = length (m::ml)).
-          {intros. simpl. rewrite hy. reflexivity. }
-          destruct (mk_rtc_def a p cl m ml hy2) as (hyr & HYP).
-          specialize (H0 (m::ml) hy2).
-          rewrite (HYP Q) in H0.
-          replace hy with hyr.
-          apply H0.
-          assumption.
-          apply eq_proofs_unicity.
-          intros.
-          lia.
+   - discriminate H0.
+   - inversion H1;subst.
+     apply E_Seq.
+      ** eapply n_inline_ps_ceval.
+         apply H7.
+     ** eapply IHp.
+        ++ inversion H;reflexivity.
+        ++ inversion H0;reflexivity.
+        ++ apply H10.
+Qed.
+
+Lemma rceval_n_inline_ps_S n p s ps  s':
+  length s = length p -> length s' = length p ->
+  rceval p s (k_inliner_ps n ps) s' ->
+  forall m, n <= m -> rceval p s (k_inliner_ps m ps) s'.
+Proof.
+generalize dependent s.
+generalize dependent s'.
+induction p;intros.
+* inversion H.
+  apply length_zero_iff_nil in H4.
+  inversion H0.
+  apply length_zero_iff_nil in H5.
+  subst.
+  apply E_Empty.
+* destruct s.
+   + discriminate H.
+   + destruct s'.
+   - discriminate H0.
+   - inversion H1;subst.
+     apply E_Seq.
+     ** eapply ceval_n_inline_ps_S.
+        apply H8.
+        apply H2.
+     ** eapply IHp.
+        ++ inversion H;reflexivity.
+        ++ inversion H0;reflexivity.
+        ++ apply H11.
+        ++ apply H2.
+Qed.
+
+Lemma rceval_n_inline_ps :
+forall (p : list com) (s : list Sigma.sigma) (ps : Psi.psi) (s' : list Sigma.sigma),
+length s = length p -> length s' = length p ->
+rceval p s ps s' -> exists n : nat, rceval p s (k_inliner_ps n ps) s'.
+Proof.
+induction p;intros.
+* inversion H.
+  apply length_zero_iff_nil in H3.
+  inversion H0.
+  apply length_zero_iff_nil in H4.
+  subst.
+  exists 0.
+  apply E_Empty.
+*  destruct s.
+   + discriminate H.
+   + destruct s'.
+   - discriminate H0.
+   - inversion H1;subst.
+      generalize (ceval_n_inline_ps a s ps s1 H7).
+      intros.
+      inversion H.
+      inversion H0.
+      specialize (IHp s0 ps s' H4 H5 H10).
+      destruct H2.
+      destruct IHp.
+      destruct (Proc.max_dec x0 x).
+      ** exists x0.
+         apply E_Seq;[ | apply H3].
+         apply (ceval_n_inline_ps_S x).
+         apply H2.
+         apply PeanoNat.Nat.max_l_iff.
+         apply e.
+      ** exists x.
+         apply E_Seq;[ apply H2 | ].
+         apply (rceval_n_inline_ps_S x0).
+         all: try assumption.
+         apply PeanoNat.Nat.max_r_iff.
+         apply e.
+Qed.
+
+Lemma i_relational_prop_relational_prop :
+  forall P Q p ps,
+  relational_prop P Q p ps <-> forall n, i_relational_prop n P Q p ps.
+Proof.
+unfold relational_prop, i_relational_prop;split;intros H.
+* intros n s s' H1 H2 Pre Heval.
+  eapply H.
+  apply H1.
+  apply H2.
+  apply Pre.
+  apply n_inline_ps_rceval in Heval.
+  all: try assumption.
+* intros s s' H1 H2 HPre Heval.
+  apply rceval_n_inline_ps in Heval;[ | assumption | assumption].
+  destruct Heval.
+  eapply H.
+  + apply H1.
+  + apply H2.
+  + apply HPre.
+  + apply H0.
+Qed.
+
+(* Relational property for a com list with procedure context *)
+
+Definition fold_call := List.map (fun p => CCall p).
+
+Definition relational_prop_ctx (rcl:R_Phi.r_phi) (ps: Psi.psi)
+                            (P Q : r_assertion) (c: list com) :=
+    (forall p, 0 < length p ->
+            relational_prop (get_r_pre (rcl p)) (get_r_post (rcl p)) (fold_call p) ps) ->
+      relational_prop P Q c ps.
+
+(* Relational property for a procedure list with the procedure context *)
+
+Definition fold_proc (ps: Psi.psi) := List.map (fun p => ps p).
+
+Definition relational_prop_proc_ctx (rcl : R_Phi.r_phi) (ps_init :Psi.psi):=
+  forall p ps, 
+     relational_prop_ctx rcl ps (get_r_pre (rcl p)) (get_r_post (rcl p)) (fold_proc ps_init p).
+
+Lemma rceval_inf_loop p s ps s':
+length s = length p -> length s' = length p -> 0 < length p ->
+rceval (fold_call p) s (k_inliner_ps 0 ps) s' -> False.
+Proof.
+intros H1 H2 H Heval.
+destruct p.
+* inversion H.
+* inversion Heval;subst.
+  inversion H4;subst.
+  apply ceval_inf_loop in H3.
+  apply H3.
+Qed.
+
+Lemma fold_call_length (f : list Proc.t) : length (fold_call f) = length f.
+Proof.
+apply map_length.
+Qed.
+
+Lemma fold_proc_length (ps: Psi.psi) (f : list Proc.t) : length (fold_proc ps f) = length f.
+Proof.
+apply map_length.
+Qed.
+
+Lemma r_n_inline_ps_inline:
+  forall (n : nat) (f : list Proc.t) (s : list Sigma.sigma)
+         (ps : Proc.t -> com) (s' : list Sigma.sigma),
+  length s = length f -> length s' = length f ->
+  rceval (fold_call f) s (k_inliner_ps (S n) ps) s' -> 
+  rceval (fold_proc ps f ) s (k_inliner_ps n ps) s'.
+Proof.
+induction f;intros.
+* inversion H.
+  apply length_zero_iff_nil in H3.
+  inversion H0.
+  apply length_zero_iff_nil in H4.
+  subst.
+  apply E_Empty.
+* destruct s.
+   + discriminate H.
+   + destruct s'.
+   - discriminate H0.
+   - inversion H1;subst.
+     apply E_Seq.
+     ** apply n_inline_ps_inline in H7.
+        apply H7.
+     ** apply IHf.
+        ++ inversion H;reflexivity.
+        ++ inversion H0;reflexivity.
+        ++ apply H10.
+Qed.
+
+Lemma r_recursive_proc ps rcl:
+    relational_prop_proc_ctx rcl ps ->
+   (forall p, 0 < length p -> 
+      relational_prop (get_r_pre (rcl p)) (get_r_post (rcl p)) (fold_call p) ps).
+Proof.
+intros.
+apply i_relational_prop_relational_prop.
+intros n.
+generalize dependent p.
+induction n.
+* intros p Hp s s' H1 H2 HPre Heval.
+  destruct p.
+  + inversion Hp.
+  + apply rceval_inf_loop in Heval.
+    - contradiction Heval.
+    - rewrite H1.
+      rewrite fold_call_length.
+      reflexivity.
+    - rewrite H2.
+      rewrite fold_call_length.
+      reflexivity.
+    - assumption.
+* intros p Hp s s' H1 H2 HPre Heval.
+  apply r_n_inline_ps_inline in Heval.
+  eapply H.
+  + apply IHn.
+  + rewrite H1.
+    rewrite fold_call_length.
+    rewrite fold_proc_length.
+    reflexivity.
+  + rewrite H2.
+    rewrite fold_call_length.
+    rewrite fold_proc_length.
+    reflexivity.
+  + apply HPre.
+  + apply Heval.
+  + rewrite H1.
+    rewrite fold_call_length.
+    reflexivity.
+  + rewrite H2.
+    rewrite fold_call_length.
+    reflexivity.
+Qed.
+
+(* Verification of Relational properties with procedure *)
+
+Lemma recursion_relational :
+  forall P Q p ps rcl,
+    relational_prop_proc_ctx rcl ps ->
+    relational_prop_ctx rcl ps P Q p ->
+    relational_prop P Q p ps.
+Proof.
+intros.
+apply H0.
+apply r_recursive_proc.
+assumption.
 Qed.
