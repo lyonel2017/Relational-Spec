@@ -85,7 +85,7 @@ Import Assn_b.
 (** Defintion of a verification condition generator **)
 
 Fixpoint tc (c : com) (m : Sigma.sigma)
-            (cl: Phi.phi) (suite : Sigma.sigma -> Prop) : Prop :=
+            (cl: Phi.phi) (suite : assertion) : Prop :=
     match c with
     | CSkip => forall m', m = m' -> suite m'
     | CAss x a => forall m', (m' = set m x (aeval m a)) -> suite m'
@@ -108,9 +108,9 @@ Ltac ltc1 := intros m suite1 suite2 H H0;
              apply H; apply H0; assumption.
 
 Lemma consequence_tc_suite :
-forall p cl m (suite1 suite2 : Sigma.sigma -> Prop),
-(forall s, suite1 s -> suite2 s) ->
-tc p m cl suite1 -> tc p m cl suite2.
+forall p cl m (suite1 suite2 : assertion),
+  (forall s, suite1 s -> suite2 s) ->
+  tc p m cl suite1 -> tc p m cl suite2.
 Proof.
 intros p cl.
 induction p.
@@ -146,9 +146,9 @@ Ltac ltc2 := intros m suite1 suite2 H H0;
                    | apply H0; try assumption; subst; reflexivity].
 
 Lemma tc_split :
-forall p cl m (suite1 suite2 : Sigma.sigma -> Prop),
-tc p m cl suite1 -> tc p m cl suite2 ->
-tc p m cl (fun m' => suite1 m' /\ suite2 m').
+forall p cl m (suite1 suite2 : assertion),
+  tc p m cl suite1 -> tc p m cl suite2 ->
+  tc p m cl (fun m' => suite1 m' /\ suite2 m').
 Proof.
 intros p cl.
 induction p.
@@ -177,8 +177,7 @@ Qed.
 
 (** Definition of a verification condition generator for the auxiliary goals **)
 
-Fixpoint tc' (c : com) (m : Sigma.sigma)
-            (cl: Phi.phi) : Prop :=
+Fixpoint tc' (c : com) (m : Sigma.sigma) (cl: Phi.phi) : Prop :=
     match c with
     | CSkip => True
     | CAss x a => True

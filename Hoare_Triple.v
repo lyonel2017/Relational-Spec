@@ -58,34 +58,6 @@ Proof.
     + apply H6.
 Qed.
 
-Lemma consequence_hoare_pre :
-  forall p ps (P P' Q: assertion),
-    hoare_triple P' Q p ps ->
-    (forall s, P s -> P' s)->
-    hoare_triple P Q p ps.
-Proof.
-  unfold hoare_triple.
-  intros.
-  eapply H.
-  apply H0.
-  apply H1.
-  apply H2.
-Qed.
-
-Lemma consequence_hoare_post :
-  forall p ps (P Q Q': assertion),
-    hoare_triple P Q' p ps ->
-    (forall s, Q' s -> Q s)->
-    hoare_triple P Q p ps.
-Proof.
-  unfold hoare_triple.
-  intros.
-  apply H0.
-  eapply H.
-  apply H1.
-  apply H2.
-Qed.
-
 Lemma while_hoare_triple :
   forall P b c ps,
     hoare_triple (fun s => P s /\ beval s b = true) (P) c ps ->

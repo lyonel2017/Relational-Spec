@@ -13,7 +13,7 @@ Import ListNotations.
    using the verification condition generator for Hoare Triples **)
 
 Program Fixpoint rtc (cl : list com) (ml: list Sigma.sigma)
-            (cls: Phi.phi) (suite : list Sigma .sigma -> Prop)
+            (cls: Phi.phi) (suite : r_assertion)
             (hy:length cl = length ml): Prop :=
  match cl ,ml with
  | [],[] => suite []
