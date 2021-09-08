@@ -438,15 +438,14 @@ induction p;simpl;intros.
       apply H0.
   + apply IHp1.
     intros.
-    generalize (H H0 m'').
-    intros.
+    specialize (H H0 m'').
     eapply consequence_tc_suite.
     - intros p H2.
       apply intros_tc.
       apply (consequence_tc_suite _ _ _ _ (fun f : Prop => p /\ f -> suite)).
-      ++ intros. apply H3. split. apply H4. apply H5.
+      ++ intros. apply H1. split. apply H3. apply H4.
       ++ apply H2.
-    - apply H1.
+    - apply H.
 * destruct (beval m b) eqn: He.
   + simpl.
     eapply consequence_tc_suite.
@@ -469,18 +468,18 @@ induction p;simpl;intros.
        apply H0.
     - apply IHp1.
       intros.
-      generalize (H H0);intros.
+      specialize (H H0).
       apply (consequence_tc_suite _ _ _ _ _  (fun f2 : Prop => f2 -> suite))
-      in H1.
-      ** apply H1.
+      in H.
+      ** apply H.
       ** intros.
        apply (consequence_tc_suite _ _ _ _ _  (fun _ : Prop => p -> suite)) 
-       in H2.
-       ++ apply simpl_tc in H2.
-          apply H2. apply H3.
+       in H1.
+       ++ apply simpl_tc in H1.
+          apply H1. apply H2.
        ++ intros.
-          apply H4.
-          apply Then;[ | apply H5]. 
+          apply H3.
+          apply Then;[ | apply H4]. 
           apply bassn_simpl_bassn.
           apply bexp_eval_true.
           assumption.
@@ -505,19 +504,19 @@ induction p;simpl;intros.
          apply H0.
     - apply rev_simpl_tc.
       intros.
-      generalize (H H0);intros.
+      specialize (H H0).
       apply (consequence_tc_suite _ _ _ _ _  
       (fun _ : Prop => tc p2 m m' cl (fun p2 : Prop => p2 -> suite)))
-      in H1.
-      ** apply simpl_tc in H1.
-         apply H1.
+      in H.
+      ** apply simpl_tc in H.
+         apply H.
       ** intros.
        apply (consequence_tc_suite _ _ _ _ _  (fun p0 : Prop => p0 -> suite)) 
-       in H2.
-       ++ apply H2.
+       in H1.
+       ++ apply H1.
        ++ intros.
-          apply H3.
-          apply Else;[ | apply H4].
+          apply H2.
+          apply Else;[ | apply H3].
           apply bassn_not_simpl_bassn_not.
           apply bexp_eval_false.
           assumption.
@@ -683,30 +682,32 @@ split;intros.
   apply H0.
 Qed.
 
-Module Test.
+(** Definition of a verification condition generator for the auxiliary goals 
+    returning a list of goals **)
 
-Definition test (p1: com) (cl: Phi.phi) (a : assertion) (m : sigma) :=
+Module Tc'_list.
+
+Definition continuation (p1: com) (cl: Phi.phi) (a : assertion) (m : sigma) :=
            forall m'' : sigma, tc p1 m m'' cl (fun f : Prop => f -> a m'').
 
-Fixpoint tc_test (c : com) (cl: Phi.phi) : list assertion :=
+Fixpoint tc'_list (c : com) (cl: Phi.phi) : list assertion :=
 match c with
  | CSkip => []
  | CAss x a => []
  | CAssr x a => []
  | CAssert b => [fun m => b m]
- | CSeq p1 p2 => tc_test p1 cl ++
-                 map (test p1 cl) (tc_test p2 cl)
-
+ | CSeq p1 p2 => tc'_list p1 cl ++
+                 map (continuation p1 cl) (tc'_list p2 cl)
  | CIf b p1 p2 => (map (fun a: (Sigma.sigma -> Prop) =>
-                  fun m => simpl_bassn b m -> a m) (tc_test p1 cl))
+                  fun m => simpl_bassn b m -> a m) (tc'_list p1 cl))
                   ++
                   (map (fun a: (Sigma.sigma -> Prop) =>
-                  fun m => ~simpl_bassn b m -> a m) (tc_test p2 cl))
+                  fun m => ~simpl_bassn b m -> a m) (tc'_list p2 cl))
 
 | CWhile b p i => [fun m => i m]
                    ++
                    (map (fun a: (Sigma.sigma -> Prop) =>
-                   fun _ => forall m', simpl_bassn b m' -> a m') (tc_test p cl))
+                   fun _ => forall m', simpl_bassn b m' -> a m') (tc'_list p cl))
                    ++
                    [fun _ => forall m' m'', 
                    simpl_bassn b m' ->  i m' -> tc p m' m'' cl (fun f => f -> i m'')]
@@ -714,9 +715,11 @@ match c with
  | CCall f => [fun m => (get_pre (cl f)) m]
 end.
 
-Lemma tc_test_same :
+(* The optimized version implies the naive version *)
+
+Lemma tc'_list_same :
 forall p cl m,
-(forall n, (nth n (tc_test p cl) (fun _ => True)) m) -> tc' p m cl.
+(forall n, (nth n (tc'_list p cl) (fun _ => True)) m) -> tc' p m cl.
 Proof.
 induction p;intros.
 + simpl. auto.
@@ -729,9 +732,9 @@ induction p;intros.
   * apply IHp1.
     simpl in H.
     intro n.
-    generalize (H n);intros;clear H.
-    destruct (Proc.lt_ge_cases n (length ((tc_test p1 cl)))).
-    - rewrite app_nth1 in H0; [assumption|assumption].
+    specialize (H n).
+    destruct (Proc.lt_ge_cases n (length ((tc'_list p1 cl)))).
+    - rewrite app_nth1 in H; [assumption|assumption].
     - rewrite nth_overflow; [ auto | assumption].
   * intros.
     eapply consequence_tc_suite.
@@ -744,12 +747,12 @@ induction p;intros.
     - simpl in H.
       apply prenexe_tc.
       intro n.
-      generalize (H ((length(tc_test p1 cl))+n));intros;clear H.
-      rewrite app_nth2_plus in H0.
-      destruct (Proc.lt_ge_cases n (length ((tc_test p2 cl)))).
-      ++ erewrite nth_indep in H0;[|rewrite map_length;assumption].
-         rewrite map_nth in H0.
-         apply H0.
+      specialize (H ((length(tc'_list p1 cl))+n)).
+      rewrite app_nth2_plus in H.
+      destruct (Proc.lt_ge_cases n (length ((tc'_list p2 cl)))).
+      ++ erewrite nth_indep in H;[|rewrite map_length;assumption].
+         rewrite map_nth in H.
+         apply H.
       ++ rewrite nth_overflow;[ | assumption].
          eapply consequence_tc_suite.
          ** intros. apply H1.
@@ -760,27 +763,27 @@ induction p;intros.
     apply IHp1.
     simpl in H.
     intro n.
-    generalize (H n);intros;clear H.
-    destruct (Proc.lt_ge_cases n (length ((tc_test p1 cl)))).
-    - rewrite app_nth1 in H1;[ | rewrite map_length;assumption].
-      erewrite nth_indep in H1;[ | rewrite map_length;assumption].
+    specialize (H n).
+    destruct (Proc.lt_ge_cases n (length ((tc'_list p1 cl)))).
+    - rewrite app_nth1 in H;[ | rewrite map_length;assumption].
+      erewrite nth_indep in H;[ | rewrite map_length;assumption].
       rewrite
-      (map_nth (fun (a : sigma -> Prop) (m : sigma) => simpl_bassn b m -> a m)) in H1.
-      apply H1.
+      (map_nth (fun (a : sigma -> Prop) (m : sigma) => simpl_bassn b m -> a m)) in H.
+      apply H.
       assumption.
     - rewrite nth_overflow;[auto | assumption].
   * intros.
     apply IHp2.
     simpl in H.
     intro n.
-    generalize (H ((length(tc_test p1 cl))+n));intros;clear H.
-    erewrite <- map_length in H1.
-    rewrite app_nth2_plus in H1.
-    destruct (Proc.lt_ge_cases n (length ((tc_test p2 cl)))).
-    - erewrite nth_indep in H1;[ | rewrite map_length;assumption].
+    specialize (H ((length(tc'_list p1 cl))+n)).
+    erewrite <- map_length in H.
+    rewrite app_nth2_plus in H.
+    destruct (Proc.lt_ge_cases n (length ((tc'_list p2 cl)))).
+    - erewrite nth_indep in H;[ | rewrite map_length;assumption].
       rewrite
-      (map_nth (fun (a : sigma -> Prop) (m : sigma) => ~simpl_bassn b m -> a m)) in H1.
-      apply H1.
+      (map_nth (fun (a : sigma -> Prop) (m : sigma) => ~simpl_bassn b m -> a m)) in H.
+      apply H.
       assumption.
     - rewrite nth_overflow;[auto | assumption].
 + simpl.
@@ -792,7 +795,7 @@ induction p;intros.
     generalize (H (1 + n)).
     intros.
     simpl in H1.
-    destruct (Proc.lt_ge_cases n (length ((tc_test p cl)))).
+    destruct (Proc.lt_ge_cases n (length ((tc'_list p cl)))).
     - rewrite app_nth1 in H1;[ | rewrite map_length;assumption].
       erewrite nth_indep in H1;[ | rewrite map_length;assumption].
       rewrite
@@ -802,39 +805,12 @@ induction p;intros.
       assumption.
     - rewrite nth_overflow;[auto | assumption].
   * intros.
-    generalize (H (1 + (length (tc_test p cl)) + 0)).
-    intros.
-    simpl in H2.
-    erewrite <- map_length in H2.
-    rewrite app_nth2_plus in H2.
-    simpl in H2. apply H2;[ assumption | assumption ].
+    specialize (H (1 + (length (tc'_list p cl)) + 0)).
+    simpl in H.
+    erewrite <- map_length in H.
+    rewrite app_nth2_plus in H.
+    simpl in H. apply H;[ assumption | assumption ].
 + apply (H 0).
 Qed.
 
-Import ComNotations.
-Import AexpNotations.
-Import BexpNotations.
-
-Definition assert3 : com := <[ assert (fun m => m EAX = 2) ;
-                               skip;
-                               assert (fun m => m EAX = 2) ]>.
-
-Example test_tc :
-forall m n,
-m EAX = 2 -> (nth n (tc_test assert3 Phi.empty_phi) (fun _ => True)) m.
-Proof.
-simpl.
-destruct n.
-  * auto.
-  * destruct n.
-    + unfold test.
-      simpl.
-      intros.
-      destruct H0.
-      subst.
-      assumption.
-    + intros.
-      destruct n; [auto|auto].
-Qed.
-
-End Test.
+End Tc'_list.

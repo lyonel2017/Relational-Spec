@@ -229,6 +229,29 @@ apply recursion_hoare_triple with Phi.empty_phi.
 Qed.
 
 
+Definition assert3 : com := <[ assert (fun m => m EAX = 2) ;
+                               skip;
+                               assert (fun m => m EAX = 2) ]>.
+
+Example test_tc :
+forall m n,
+m EAX = 2 -> (nth n (tc_test assert3 Phi.empty_phi) (fun _ => True)) m.
+Proof.
+simpl.
+destruct n.
+  * auto.
+  * destruct n.
+    + unfold test.
+      simpl.
+      intros.
+      destruct H0.
+      subst.
+      assumption.
+    + intros.
+      destruct n; [auto|auto].
+Qed.
+
+
 (* TODO *)
 
 
