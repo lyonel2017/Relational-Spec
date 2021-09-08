@@ -202,8 +202,11 @@ Fixpoint tc' (c : com) (m : Sigma.sigma) (h : history)
                     (bassn b m -> tc' p1 m h cl) /\
                     (~bassn b m -> tc' p2 m h cl)
     | CWhile b p inv => inv (m :: h) /\
-                     (forall m', bassn b m' -> tc' p m' h cl) /\
-                     (forall m', bassn b m' -> inv (m' :: h) -> 
+                     (forall m', bassn b m' -> 
+                                 inv (m' :: h)-> 
+                                 tc' p m' h cl) /\
+                     (forall m', bassn b m' -> 
+                                 inv (m' :: h) -> 
                       tc p m' h cl (fun m'' _ => inv (m'' :: h)))
     | CCall f => (get_pre (cl f)) m
     end.

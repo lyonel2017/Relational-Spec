@@ -12,32 +12,41 @@ Import ListNotations.
 (** Defintion of the verification condition generator for relational properties,
    using the verification condition generator for Hoare Triples **)
 
-Program Fixpoint rtc (cl : list com) (ml: list Sigma.sigma)
-            (cls: Phi.phi) (suite : r_assertion)
-            (hy:length cl = length ml): Prop :=
- match cl ,ml with
- | [],[] => suite []
- | c :: qc, m :: qm =>
-   tc c m cls (fun m' => rtc qc qm cls (fun l => suite (m'::l))  _)
- | _, _ => !
+Definition r_suite : Type := list Sigma.sigma -> list history -> Prop.
+
+Program Fixpoint rtc (cl : list com) (ml: list Sigma.sigma) (hl: list history)
+            (cls: Phi.phi) (suite : r_suite)
+            (hy1:length cl = length ml) (hy2:length cl = length hl): Prop :=
+ match cl,ml,hl with
+ | [],[],[] => suite [] []
+ | c :: qc, m :: qm, h :: qh =>
+   tc c m h cls (fun m' h' => rtc qc qm qh cls (fun lm lh => suite (m'::lm) (h' :: lh)) _ _)
+ | _,_,_ => !
 end.
 
 Next Obligation.
 destruct cl.
-- simpl in hy.
-  symmetry in hy.
-  apply length_zero_iff_nil in hy.
-  subst ml.
+- simpl in hy1.
+  symmetry in hy1.
+  apply length_zero_iff_nil in hy1.
+  simpl in hy2.
+  symmetry in hy2.
+  apply length_zero_iff_nil in hy2.
+  subst ml hl.
   contradiction H0.
   split.
   reflexivity.
-  reflexivity.
+  split.
+  reflexivity. reflexivity.
 - destruct ml as [|m qm].
-  discriminate hy.
+  discriminate hy1.
+  destruct hl as [|h hm].
+  discriminate hy2.
   eapply H.
   split.
   reflexivity.
-  reflexivity.
+  split.
+  reflexivity. reflexivity.
 Qed.
 
 Next Obligation.
@@ -48,6 +57,7 @@ destruct contra as (contra & _).
 discriminate contra.
 intros contra.
 destruct contra as ( _ & contra).
+destruct contra as ( _ & contra).
 discriminate contra.
 Defined.
 
@@ -55,6 +65,31 @@ Next Obligation.
 split.
 intros.
 intros contra.
+destruct contra as ( _ & contra).
+destruct contra as (contra & _).
+discriminate contra.
+intros contra.
+destruct contra as (contra & _).
+discriminate contra.
+Defined.
+
+Next Obligation.
+split.
+intros.
+intros contra.
+destruct contra as (contra & _).
+discriminate contra.
+intros contra.
+destruct contra as (_ & contra ).
+destruct contra as (contra & _).
+discriminate contra.
+Defined.
+
+Next Obligation.
+split.
+intros.
+intros contra.
+destruct contra as (_ & contra ).
 destruct contra as (_ & contra ).
 discriminate contra.
 intros contra.
@@ -65,12 +100,13 @@ Defined.
 (** Connect between Hoare Triple and Relational Properties **)
 
 Lemma hoare_rela :
-forall (P Q: r_assertion) h q ps pi sl (hy:length q = length sl),
+forall (P: r_precondition) (Q: r_postcondition) 
+h q ps pi sl hl (hy1:length q = length sl) (hy2:length q = length hl),
 (forall s2 s3 : sigma,
 P (s2 :: sl) -> ceval h s2 ps s3 ->
-rtc q sl pi (fun sl : list sigma => Q (s3 :: sl)) hy) =
+rtc q sl hl pi (fun sl' _ => Q (s3 :: sl') (s2 :: sl)) hy1 hy2) =
 hoare_triple (fun s => P (s:: sl) )
-             (fun s' => rtc q sl pi (fun sl : list sigma => Q (s' :: sl)) hy)
+     (fun s' s => rtc q sl hl pi (fun sl' _ => Q (s' :: sl') (s :: sl)) hy1 hy2)
               h ps.
 Proof.
 intros.
@@ -81,33 +117,40 @@ Qed.
 (** Defintion of the generator of auxiliare goals for relational properties **)
 
 Program Fixpoint rtc' (cl : list com) (ml: list Sigma.sigma)
-            (cls : Phi.phi)
-            (hy:length cl = length ml): Prop :=
- match cl ,ml with
- | [],[] => True
- | c :: qc, m :: qm =>
-   tc' c m cls /\ rtc' qc qm cls _
- | _, _ => !
+            (hl: list history) (cls : Phi.phi)
+            (hy1:length cl = length ml) (hy2:length cl = length hl): Prop :=
+ match cl,ml,hl with
+ | [],[],[] => True
+ | c :: qc, m :: qm, h :: qh =>
+   tc' c m h cls /\ rtc' qc qm qh cls _ _
+ | _,_, _ => !
 end.
 
 Next Obligation.
 destruct cl.
-- simpl in hy.
-  symmetry in hy.
-  apply length_zero_iff_nil in hy.
+- simpl in hy1.
+  symmetry in hy1.
+  apply length_zero_iff_nil in hy1.
+  simpl in hy2.
+  symmetry in hy2.
+  apply length_zero_iff_nil in hy2.
   subst ml.
+  subst hl.
   contradiction H0.
   split.
   reflexivity.
-  reflexivity.
+  split.
+  reflexivity. reflexivity.
 - destruct ml as [|m qm].
-  discriminate hy.
+  discriminate hy1.
+  destruct hl as [|h qh].
+  discriminate hy2.
   eapply H.
   split.
   reflexivity.
-  reflexivity.
+  split.
+  reflexivity. reflexivity.
 Qed.
-
 Next Obligation.
 split.
 intros.
@@ -116,6 +159,7 @@ destruct contra as (contra & _).
 discriminate contra.
 intros contra.
 destruct contra as ( _ & contra).
+destruct contra as ( _ & contra).
 discriminate contra.
 Defined.
 
@@ -123,6 +167,31 @@ Next Obligation.
 split.
 intros.
 intros contra.
+destruct contra as ( _ & contra).
+destruct contra as (contra & _).
+discriminate contra.
+intros contra.
+destruct contra as (contra & _).
+discriminate contra.
+Defined.
+
+Next Obligation.
+split.
+intros.
+intros contra.
+destruct contra as (contra & _).
+discriminate contra.
+intros contra.
+destruct contra as (_ & contra ).
+destruct contra as (contra & _).
+discriminate contra.
+Defined.
+
+Next Obligation.
+split.
+intros.
+intros contra.
+destruct contra as (_ & contra ).
 destruct contra as (_ & contra ).
 discriminate contra.
 intros contra.
@@ -133,24 +202,31 @@ Defined.
 (** Facts about rtc and rtc' **)
 
 Lemma mk_rtc_def :
-forall h q pi s sl (hy:length (h::q) = length (s::sl)),
-exists (hyr:length q = length sl),
+forall c q pi s sl h hl 
+(hy1:length (c::q) = length (s::sl)) (hy2:length (c::q) = length (h::hl)),
+exists (hyr1:length q = length sl),
+exists (hyr2:length q = length hl),
 forall P,
-rtc (h :: q) (s::sl) pi P hy  =
-tc h s pi (fun m' => rtc q sl pi (fun l => P (m'::l)) hyr).
+rtc (c :: q) (s::sl) (h::hl) pi P hy1 hy2  =
+tc c s h pi (fun m' h' => rtc q sl hl pi (fun ml hl => P (m'::ml) (h'::hl)) hyr1 hyr2).
 Proof.
 intros.
+eexists.
 eexists.
 program_simpl.
 Qed.
 
 Lemma mk_rtc'_def :
-forall h q pi s sl (hy:length (h::q) = length (s::sl)),
-exists (hyr:length q = length sl),
-rtc' (h :: q) (s::sl) pi hy  =
-(tc' h s pi /\ rtc' q sl pi hyr).
+forall c q pi s sl h hl 
+(hy1:length (c::q) = length (s::sl))
+(hy2:length (c::q) = length (h::hl)),
+exists (hyr1:length q = length sl),
+exists (hyr2:length q = length hl),
+rtc' (c :: q) (s::sl) (h::hl)pi hy1 hy2  =
+(tc' c s h pi /\ rtc' q sl hl pi hyr1 hyr2).
 Proof.
 intros.
+eexists.
 eexists.
 program_simpl.
 Qed.
