@@ -38,20 +38,18 @@ induction p.
    reflexivity.
    assumption.
 *  intros.
-   destruct s.
-   + discriminate H1.
-   + destruct s'.
-   - discriminate H2.
-   - inversion H4;subst.
-    specialize (IHp (fun sl => P (s :: sl)) (fun sl => Q (s1 :: sl))).
-    simpl in IHp.
-    generalize H13.
-    generalize H3.
-    inversion H1.
-    inversion H2.
-    generalize H7.
-    generalize H6.
-    eapply IHp.
+   destruct s;[ discriminate H1 | ].
+   destruct s';[ discriminate H2| ].
+   inversion H4;subst.
+   specialize (IHp (fun sl => P (s :: sl)) (fun sl => Q (s1 :: sl))).
+   simpl in IHp.
+   generalize H13.
+   generalize H3.
+   inversion H1.
+   inversion H2.
+   generalize H7.
+   generalize H6.
+   eapply IHp.
     ** intros.
        symmetry in H1.
        assert (hy2: length (a ::p) = length (s::ml)).
@@ -86,11 +84,10 @@ induction p.
           assert (hy2: length (a ::p) = length (m::ml)).
           {intros. simpl. rewrite hy. reflexivity. }
           destruct (mk_rtc_def a p cl m ml hy2) as (hyr & HYP).
-          specialize (H0 (m::ml) hy2).
+          specialize (H0 (m::ml) hy2 H8).
           rewrite (HYP Q) in H0.
           replace hy with hyr.
           apply H0.
-          assumption.
           apply eq_proofs_unicity.
           intros.
           lia.

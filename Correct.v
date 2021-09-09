@@ -72,6 +72,7 @@ Proof.
       destruct H3.
       apply bexp_eval_true in H4.
       assumption.
+      apply H3.
    ** intros.
       apply H2.
       destruct H3.
