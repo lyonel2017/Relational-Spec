@@ -41,7 +41,7 @@ Definition relational_prop (P: r_precondition) (Q: r_postcondition)
 
 (** A Hoare Triple is a Relational Property for one program **)
 
-Section Single_Rela_Prop.
+Module Single_Rela_Prop.
 
 Lemma list_length_one:
 forall (A: Type) (h:A) (q : list A), length (h :: q) = 1 -> q = [].
