@@ -92,22 +92,3 @@ induction p.
           intros.
           lia.
 Qed.
-
-Lemma urcorrect :
-forall cl rcl ps p,
-tc_p ps cl ->
-forall (P Q: r_assertion),
-(forall ml (hy:length p = length ml),
-P ml -> rtc' p ml cl hy) ->
-(forall ml (hy:length p = length ml),
-P ml -> rtc p ml cl Q hy) ->
-relational_prop_ctx rcl ps P Q p.
-Proof.
-intros.
-intros H2.
-eapply rcorrect.
- * apply H.
- * apply H0.
- * apply H1.
-Qed.
-
