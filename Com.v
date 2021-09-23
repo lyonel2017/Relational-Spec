@@ -36,16 +36,15 @@ End Psi.
 
 Inductive ceval : com -> sigma -> Psi.psi -> sigma -> Prop :=
   | E_Skip : forall s ps,
-    ceval CSkip s ps s
+      ceval CSkip s ps s
   | E_Ass : forall s ps x a n,
-    aeval s a = n ->
-    ceval (CAss x a) s ps (x !-> n ; s)
+      aeval s a = n ->
+      ceval (CAss x a) s ps (x !-> n ; s)
   | E_Assr : forall s ps x a n,
-    aeval s a = n ->
-    ceval (CAssr x a) s ps ((s x) !-> n ; s)
+      aeval s a = n ->
+      ceval (CAssr x a) s ps ((s x) !-> n ; s)
   | E_Assert: forall s ps (b : assertion),
-    b s ->
-    ceval (CAssert b) s ps s
+      ceval (CAssert b) s ps s
   | E_IfTrue : forall s s' ps b p1 p2,
       beval s b = true ->
       ceval p1 s ps s' ->

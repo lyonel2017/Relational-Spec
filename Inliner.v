@@ -87,7 +87,6 @@ induction H.
   + apply E_Assr.
     all: try now auto.
   + apply E_Assert.
-    now auto.
   + simpl. apply E_IfTrue; [now auto | now auto].
   + simpl. apply E_IfFalse; [now auto | now auto].
   + simpl. eapply E_Seq.
@@ -115,7 +114,7 @@ induction p;intros.
   + inversion H;subst.
     apply E_Assr. all: try now auto.
   + inversion H;subst.
-    apply E_Assert. now auto.
+    apply E_Assert.
   + inversion H;subst.
     eapply E_Seq.
     * apply IHp1. apply H2.
@@ -219,7 +218,6 @@ induction n.
     all: try now auto.
   + inversion H;subst.
     apply E_Assert.
-    auto.
   + rewrite inline_cseq.
     rewrite inline_cseq in H.
     inversion H;subst.
@@ -436,7 +434,6 @@ induction 1;intros.
 * exists 1.
   intros.
   apply E_Assert.
-  assumption.
 * destruct IHceval as [n IH].
   exists n.
   intros.
