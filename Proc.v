@@ -1,34 +1,9 @@
-From Coq Require Import Arith.
-From Coq Require Import FMaps.
-From Coq Require Import MSets.
+(** Procedure names are Natural**)
+Require Import Arith.
 
-(** Procedure names are natural numbers **)
+(** We choose procedure names to be natural numbers. 
+    However, the best would be to define Module Proc
+    to be of Type Eq and make all proof modular.
+**)
 
 Module Proc := Nat.
-
-(** Defining a few procedure names **)
-
-Definition P1 : Proc.t:= 1.
-Definition  P2 : Proc.t := 2.
-Definition p3 : Proc.t := 3.
-Definition  P4 : Proc.t := 4.
-
-(** Definition of procedure maps **)
-
-Module Proc_Map.
-
-  Module ProcMap := FMapWeakList.Make Proc.
-  Module ProcMapFacts := FMapFacts.Facts ProcMap.
-  Module ProcMapProps := FMapFacts.Properties ProcMap.
-
-End Proc_Map.
-
-(** Defintion of procedure sets **)
-
-Module Proc_Set.
-
-  Module ProcSet := MSetAVL.Make Proc.
-  Module ProcSetFacts := MSetFacts.Facts ProcSet.
-  Module ProcSetProps := MSetProperties.Properties ProcSet.
-
-End Proc_Set.

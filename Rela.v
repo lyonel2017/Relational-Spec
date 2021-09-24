@@ -9,6 +9,7 @@ From Coq Require Import Eqdep_dec.
 From Coq Require Import Lists.List.
 Import ListNotations.
 From Coq Require Import Lia.
+Import Arith.
 
 (** Definition of relational assertion **)
 
@@ -204,7 +205,7 @@ induction p;intros.
       specialize (IHp s0 ps s' H4 H5 H10).
       destruct H2.
       destruct IHp.
-      destruct (Proc.max_dec x0 x).
+      destruct (Nat.max_dec x0 x).
       ** exists x0.
          apply E_Seq;[ | apply H3].
          apply (ceval_n_inline_ps_S x).

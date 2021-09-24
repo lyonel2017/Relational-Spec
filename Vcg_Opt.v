@@ -7,6 +7,7 @@ From Rela Require Import Loc.
 From Rela Require Vcg.
 From Rela Require Import Hoare_Triple.
 Import Bool.Bool.
+Import Arith.
 
 From Coq Require Import Lists.List.
 Import ListNotations.
@@ -70,11 +71,11 @@ induction b.
 * destruct b;simpl.
   + auto.
   + auto.
-  + apply Proc.eqb_neq.
+  + apply Nat.eqb_neq.
     apply negb_true_iff.
     apply Is_true_eq_true.
     apply H.
-  + apply Proc.leb_gt.
+  + apply Nat.leb_gt.
     apply negb_true_iff.
     apply Is_true_eq_true.
     apply H.
@@ -113,14 +114,14 @@ induction b.
 * auto.
 * auto.
 * simpl.
-  apply Proc.eqb_neq.
+  apply Nat.eqb_neq.
   apply negb_true_iff.
   apply negb_prop_intro in H.
   apply Is_true_eq_true in H.
   apply H.
 * simpl.
-  apply Proc.nle_gt.
-  apply Proc.leb_gt.
+  apply Nat.nle_gt.
+  apply Nat.leb_gt.
   apply negb_true_iff.
   apply negb_prop_intro in H.
   apply Is_true_eq_true in H.
@@ -128,19 +129,19 @@ induction b.
 * destruct b;simpl.
   + auto.
   + auto.
-  + apply Proc.eq_dne.
+  + apply Nat.eq_dne.
     apply negb_prop_intro in H.
     apply Is_true_eq_true in H.
     simpl in H.
     rewrite negb_involutive in H.
-    apply Proc.eqb_eq.
+    apply Nat.eqb_eq.
     apply H.
-  + apply Proc.nlt_ge.
+  + apply Nat.nlt_ge.
     apply negb_prop_intro in H.
     apply Is_true_eq_true in H.
     simpl in H.
     rewrite negb_involutive in H.
-    apply Proc.leb_le.
+    apply Nat.leb_le.
     apply H.
   + auto.
   + auto.
@@ -730,7 +731,7 @@ induction p;intros.
     simpl in H.
     intro n.
     specialize (H n).
-    destruct (Proc.lt_ge_cases n (length ((tc'_list p1 cl)))).
+    destruct (Nat.lt_ge_cases n (length ((tc'_list p1 cl)))).
     - rewrite app_nth1 in H; [assumption|assumption].
     - rewrite nth_overflow; [ auto | assumption].
   * intros.
@@ -746,7 +747,7 @@ induction p;intros.
       intro n.
       specialize (H ((length(tc'_list p1 cl))+n)).
       rewrite app_nth2_plus in H.
-      destruct (Proc.lt_ge_cases n (length ((tc'_list p2 cl)))).
+      destruct (Nat.lt_ge_cases n (length ((tc'_list p2 cl)))).
       ++ erewrite nth_indep in H;[|rewrite map_length;assumption].
          rewrite map_nth in H.
          apply H.
@@ -761,7 +762,7 @@ induction p;intros.
     simpl in H.
     intro n.
     specialize (H n).
-    destruct (Proc.lt_ge_cases n (length ((tc'_list p1 cl)))).
+    destruct (Nat.lt_ge_cases n (length ((tc'_list p1 cl)))).
     - rewrite app_nth1 in H;[ | rewrite map_length;assumption].
       erewrite nth_indep in H;[ | rewrite map_length;assumption].
       rewrite
@@ -776,7 +777,7 @@ induction p;intros.
     specialize (H ((length(tc'_list p1 cl))+n)).
     erewrite <- map_length in H.
     rewrite app_nth2_plus in H.
-    destruct (Proc.lt_ge_cases n (length ((tc'_list p2 cl)))).
+    destruct (Nat.lt_ge_cases n (length ((tc'_list p2 cl)))).
     - erewrite nth_indep in H;[ | rewrite map_length;assumption].
       rewrite
       (map_nth (fun (a : assertion) m  => ~simpl_bassn b m -> a m)) in H.
@@ -791,7 +792,7 @@ induction p;intros.
     intro n.
     specialize (H (1 + n)).
     simpl in H.
-    destruct (Proc.lt_ge_cases n (length ((tc'_list p cl)))).
+    destruct (Nat.lt_ge_cases n (length ((tc'_list p cl)))).
     - rewrite app_nth1 in H;[ | rewrite map_length;assumption].
       erewrite nth_indep in H;[ | rewrite map_length;assumption].
       rewrite

@@ -16,23 +16,3 @@ Definition EEX : Loc.t:= 5.
 Definition EFX : Loc.t:= 6.
 Definition EGX : Loc.t:= 7.
 Definition EHX : Loc.t:= 8.
-
-(** Definition of Locations maps **)
-
-Module Loc_Map.
-
-  Module LocMap := FMapWeakList.Make Loc.
-  Module LocMapFacts := FMapFacts.Facts LocMap.
-  Module LocMapProps := FMapFacts.Properties LocMap.
-
-End Loc_Map.
-
-(** Defintion of variable sets **)
-
-Module Loc_Set.
-
-  Module LocSet := MSetAVL.Make Loc.
-  Module LocSetFacts := MSetFacts.Facts LocSet.
-  Module LocSetProps := MSetProperties.Properties LocSet.
-
-End Loc_Set.
