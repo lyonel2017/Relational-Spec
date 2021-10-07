@@ -150,11 +150,11 @@ induction n.
   apply ceval_inf_loop in H1.
   contradiction H1.
 * intros p s s' HPre Heval.
-  apply n_inline_ps_inline in Heval.
   eapply H.
   + apply IHn.
   + apply HPre.
-  + apply Heval.
+  + apply n_inline_ps_inline in Heval.
+    apply Heval.
 Qed.
 
 (* Verification of Hoare Triple with procedure *)

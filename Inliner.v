@@ -4,6 +4,7 @@ From Rela Require Import Aexp.
 From Rela Require Import Bexp.
 From Rela Require Import Proc.
 From Rela Require Import Sigma.
+From Coq Require Import Arith.
 
 (** Function for procedure inlining in Com **)
 
@@ -468,7 +469,7 @@ induction 1;intros.
   + destruct n2 as [|n2].
     - apply ceval_inf_loop in IH2.
       contradiction IH2.
-    - destruct (Proc.max_dec (S n1) (S n2)).
+    - destruct (Nat.max_dec (S n1) (S n2)).
       ** rewrite e.
          rewrite inline_cseq.
          apply E_Seq with s'. 
@@ -492,7 +493,7 @@ induction 1;intros.
   + destruct n2 as [|n2].
     - apply ceval_inf_loop in IH2.
       contradiction IH2.
-    - destruct (Proc.max_dec (S n1) (S n2)).
+    - destruct (Nat.max_dec (S n1) (S n2)).
       ** rewrite e.
          rewrite inline_cwhile.
          apply E_WhileTrue with s'; [now auto | | ].
