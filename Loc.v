@@ -16,3 +16,8 @@ Definition EEX : Loc.t:= 5.
 Definition EFX : Loc.t:= 6.
 Definition EGX : Loc.t:= 7.
 Definition EHX : Loc.t:= 8.
+
+Definition X1 : Loc.t:= 1.
+Definition X2 : Loc.t:= 2.
+Definition X3 : Loc.t:= 3.
+Definition X4 : Loc.t:= 3.

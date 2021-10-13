@@ -215,10 +215,10 @@ Qed.
 
 Parameter f : Proc.t.
 Definition cli_1 (x': Proc.t) :=
-        if Proc.eqb x' f then CSkip else Psi.empty_psi f.
+        if Proc.eqb x' f then CSkip else Psi.empty_psi x'.
 
 Definition phi_1 (x': Proc.t) :=
-        if Proc.eqb x' f then empty_clause else Phi.empty_phi f.
+        if Proc.eqb x' f then empty_clause else Phi.empty_phi x'.
 
 Example tc_p_update : tc_p cli_1 phi_1.
 Proof.
