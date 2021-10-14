@@ -23,7 +23,8 @@ Inductive com : Type :=
 | CWhile (b : bexp) (p : com) (inv : assertion)
 | CCall (f: Proc.t).
 
-(** A map from procedure name to the associated commands *)
+(** Definition of procedure environment :
+    a map from procedure name to the associated commands **)
 
 Module Psi.
 
@@ -124,19 +125,3 @@ Notation "'call' f" := (CCall f)
 End ComNotations.
 
 Import ComNotations.
-
-(*Check <[ skip;
-         EAX := 3 ;
-         °EAX := EAX+1 ;
-         assert (fun _ => True);
-         if true && true then
-            skip
-         else
-           skip;
-           skip
-         end;
-         while EAX = 1 inv (fun _ => True) do
-           skip
-         end;
-         call P1
-       ]>.*)

@@ -31,7 +31,7 @@ Definition relational_prop (P Q: r_assertion) (c : list com) (ps : Psi.psi) : Pr
  forall s s',  length s = length c -> length s' = length c ->
                P s -> rceval c s ps s' -> Q s'.
 
-(** A Hoare Triple is a Relational Property for one program **)
+(** A Hoare Triple is a Relational Property for a list size one **)
 
 Section Single_Rela_Prop.
 
@@ -109,6 +109,9 @@ Definition get_r_post (an:r_clause) :=
           let (pre,post) := an in
           post.
 
+(** Defintion of relational contract environments :
+    a map from list of procedure name to relational clauses **)
+
 Module R_Phi.
 
   Definition r_phi : Type := list Proc.t -> r_clause.
@@ -124,7 +127,7 @@ Definition i_relational_prop (n: nat) (P Q: r_assertion) (c : list com) (ps : Ps
                 P s -> rceval c s (k_inliner_ps n ps) s'  -> Q s'.
 
 Lemma n_inline_ps_rceval :
-forall (p : list com) (s : list Sigma.sigma) (ps : Proc.t -> com) 
+forall (p : list com) (s : list Sigma.sigma) (ps : Proc.t -> com)
         (s' : list Sigma.sigma) (n : nat),
 length s = length p -> length s' = length p ->
 rceval p s (k_inliner_ps n ps) s' -> rceval p s ps s'.
@@ -257,8 +260,8 @@ Definition relational_prop_ctx (rcl:R_Phi.r_phi) (ps: Psi.psi)
 Definition fold_proc (ps: Psi.psi) := List.map (fun p => ps p).
 
 Definition relational_prop_proc_ctx (rcl : R_Phi.r_phi) (ps_init :Psi.psi):=
-  forall p ps, 
-     relational_prop_ctx rcl ps (get_r_pre (rcl p)) (get_r_post (rcl p)) (fold_proc ps_init p).
+  forall p ps,
+    relational_prop_ctx rcl ps (get_r_pre (rcl p)) (get_r_post (rcl p)) (fold_proc ps_init p).
 
 Lemma rceval_inf_loop p s ps s':
 length s = length p -> length s' = length p -> 0 < length p ->
@@ -287,7 +290,7 @@ Lemma r_n_inline_ps_inline:
   forall (n : nat) (f : list Proc.t) (s : list Sigma.sigma)
          (ps : Proc.t -> com) (s' : list Sigma.sigma),
   length s = length f -> length s' = length f ->
-  rceval (fold_call f) s (k_inliner_ps (S n) ps) s' -> 
+  rceval (fold_call f) s (k_inliner_ps (S n) ps) s' ->
   rceval (fold_proc ps f ) s (k_inliner_ps n ps) s'.
 Proof.
 induction f;intros.
@@ -313,7 +316,7 @@ Qed.
 
 Lemma r_recursive_proc ps rcl:
     relational_prop_proc_ctx rcl ps ->
-   (forall p, 0 < length p -> 
+   (forall p, 0 < length p ->
       relational_prop (get_r_pre (rcl p)) (get_r_post (rcl p)) (fold_call p) ps).
 Proof.
 intros.

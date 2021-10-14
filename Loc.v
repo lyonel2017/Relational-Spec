@@ -2,7 +2,7 @@ From Coq Require Import Arith.
 From Coq Require Import FMaps.
 From Coq Require Import MSets.
 
-(** Variable (also called locations) are natural numbers **)
+(** Locations are natural numbers **)
 
 Module Loc := Nat.
 

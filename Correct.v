@@ -90,6 +90,8 @@ Proof.
    apply Hproc.
 Qed.
 
+(** Proof that one can use a verification condition generator to proof procedure contract **)
+
 Theorem correct_proc :
   forall cl ps,
     tc_p cl ps ->

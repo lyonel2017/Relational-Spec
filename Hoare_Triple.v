@@ -97,6 +97,9 @@ Definition get_post (an:clause) :=
           let (pre,post) := an in
           post.
 
+(** Defintion of contract environments :
+    a map from procedure name to clauses **)
+
 Module Phi.
 
   Definition phi : Type := Proc.t -> clause.

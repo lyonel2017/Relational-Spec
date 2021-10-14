@@ -423,7 +423,7 @@ Qed.
 
 Lemma and_tc :
 forall p (f1: Prop) m m' cl (suite :Prop),
-(f1 -> tc p m m' cl (fun f2 => f2 -> suite)) -> 
+(f1 -> tc p m m' cl (fun f2 => f2 -> suite)) ->
 tc p m m' cl (fun f2 => f1 /\ f2 -> suite).
 Proof.
 induction p;simpl;intros.
@@ -457,7 +457,7 @@ induction p;simpl;intros.
          apply branch_simpl in H3.
          destruct H3.
          assert (H5: p).
-         { apply H3. 
+         { apply H3.
            apply bassn_simpl_bassn.
            apply bexp_eval_true.
            assumption.
@@ -478,7 +478,7 @@ induction p;simpl;intros.
           apply H1. apply H2.
        ++ intros.
           apply H3.
-          apply Then;[ | apply H4]. 
+          apply Then;[ | apply H4].
           apply bassn_simpl_bassn.
           apply bexp_eval_true.
           assumption.
@@ -491,7 +491,7 @@ induction p;simpl;intros.
          apply branch_simpl in H3.
          destruct H3.
          assert (H5: p0).
-         { apply H4. 
+         { apply H4.
            apply bassn_not_simpl_bassn_not.
            apply bexp_eval_false.
            assumption.
@@ -704,10 +704,10 @@ match c with
 | CWhile b p i => [fun m => i m]
                    ++
                    (map (fun a: (Sigma.sigma -> Prop) =>
-                   fun _ => forall m', 
+                   fun _ => forall m',
                    simpl_bassn b m' ->  i m' -> a m') (tc'_list p cl))
                    ++
-                   [fun _ => forall m' m'', 
+                   [fun _ => forall m' m'',
                    simpl_bassn b m' ->  i m' -> tc p m' m'' cl (fun f => f -> i m'')]
 
  | CCall f => [fun m => (get_pre (cl f)) m]
