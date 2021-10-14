@@ -156,7 +156,7 @@ apply recursion_hoare_triple with f_phi.
             rewrite Loc.mul_succ_r.
             all : try lia.
          ++ split. all: try lia.
-      ** induction n; [auto | auto].
+      ** destruct n; [auto | auto].
     (* Main proof obligation for procedure f : the postconditon hold*)
     - simpl.
       intros.
@@ -196,7 +196,7 @@ apply recursion_hoare_triple with f_phi.
          mem_d m X1 X4 (m X4).
          mem_s m X1 X1 (m X4).
          lia.
-      ** induction n; [auto | auto].
+      ** destruct n; [auto | auto].
  (* Main proof obligation for command com : the post condition hold*)
   + unfold f_psi, f_phi.
     simpl.  intros.

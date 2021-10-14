@@ -10,7 +10,7 @@ Import Assn_b.
 
 (** Proof that one can use a verification condition generator to proof Hoare Triples **)
 
-Lemma correct :
+Theorem correct :
   forall p cl ps,
   forall (P Q: assertion),
     (forall m, P m -> tc' p m cl) ->
@@ -90,7 +90,7 @@ Proof.
    apply Hproc.
 Qed.
 
-Lemma correct_proc :
+Theorem correct_proc :
   forall cl ps,
     tc_p cl ps ->
     hoare_triple_proc_ctx ps cl.

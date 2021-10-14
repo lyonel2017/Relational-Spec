@@ -15,7 +15,7 @@ From Coq Require Import Lia.
 (** Proof that one can use a standard verification condition generator
     to proof Relational Properties **)
 
-Lemma rcorrect :
+Theorem rcorrect :
 forall cl ps p,
 tc_p ps cl ->
 forall (P Q: r_assertion),

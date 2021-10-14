@@ -164,7 +164,7 @@ Qed.
 
 (* Verification of Hoare Triple with procedure *)
 
-Lemma recursion_hoare_triple :
+Theorem recursion_hoare_triple :
   forall P Q p ps cl,
     hoare_triple_proc_ctx cl ps  ->
     hoare_triple_ctx cl ps P Q p ->

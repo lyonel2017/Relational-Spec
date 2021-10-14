@@ -523,7 +523,7 @@ Qed.
 
 (* The optimized version implies the naive version *)
 
-Lemma tc_same :
+Theorem tc_same :
 forall p cl m (suite1 : assertion),
 (forall m', tc p m m' cl (fun p => p -> suite1 m')) -> Vcg.tc p m cl suite1.
 Proof.
@@ -609,7 +609,7 @@ end.
 
 (* The optimized version implies the naive version *)
 
-Lemma tc'_same : forall p cl m, tc' p m cl -> Vcg.tc' p m cl.
+Theorem tc'_same : forall p cl m, tc' p m cl -> Vcg.tc' p m cl.
 Proof.
 induction p; simpl.
 * intros. auto.
@@ -663,7 +663,7 @@ Definition tc_p (ps: Psi.psi) (cl : Phi.phi) : Prop :=
 
 (* The optimized version implies the naive version *)
 
-Lemma tc_p_same :
+Theorem tc_p_same :
 forall ps cl,
 tc_p ps cl -> Vcg.tc_p ps cl.
 Proof.
@@ -715,7 +715,7 @@ end.
 
 (* The optimized version implies the naive version *)
 
-Lemma tc'_list_same :
+Theorem tc'_list_same :
 forall p cl m,
 (forall n, (nth n (tc'_list p cl) (fun _ => True)) m) -> tc' p m cl.
 Proof.
