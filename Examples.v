@@ -86,6 +86,8 @@ Ltac mem_d_in s l1 l2 v:=
 
 Parameter f : Proc.t.
 
+(* Body of procedure f: perfom multiplication *)
+
 Definition mult: com := <[ 
   if 0 <= X1 && ~ X1 = 0 then
       X2 := X2 + X3;
@@ -95,15 +97,21 @@ Definition mult: com := <[
     skip
   end ]>.
 
+(* Procedure environment *)
+
 Definition f_psi (x': Proc.t) :=
         if Proc.eqb x' f then mult else Psi.empty_psi x'.
 
+(* Contract of pre and post condition of procedure f *)
+
 Definition f_pre: assertion := fun s => 
    s(X2) = (s(X3)) * (s(X4) - s(X1)) /\
-   Nat.le 0 (s(X1)) /\ Nat.le (s(X1)) (s(X4)).
+   0 <= (s(X1)) /\ Nat.le (s(X1)) (s(X4)).
 
 Definition f_post: assertion := fun s =>
   s(X2) = (s(X3)) * (s(X4)).
+
+(* Contract environment *)
 
 Definition f_phi (x': Proc.t) :=
         if Proc.eqb x' f then (f_pre,f_post) else Phi.empty_phi x'.
@@ -265,72 +273,12 @@ Ltac ltc0 phi := apply rcorrect with phi;
                    clear H
                 ].
 
-(** Examples of proofs of Relational Properties **)
+(** Examples of proofs of Relational Properties 
+    with verification condition generator **)
 
-(* Defintion of a comparator function *)
+(* Example 1 *)
 
-Definition comp: com := <[ if X1 <= X2 && ~ X1 = X2 then
-                                 ret := 0
-                              else
-                                 if X2 <= X1 && ~ X1 = X2  then
-                                   ret := 2
-                                 else ret := 1
-                                 end
-                              end ]>.
-
-Definition rela_pre_comp (l : list Sigma.sigma) : Prop :=
-  match l with
-  | (m1 :: m2 :: []) => m1 X1 = m2 X2 /\ m1 X2 = m2 X1
-  | _ => False
-  end.
-
-Definition rela_post_comp (l : list Sigma.sigma) : Prop :=
-  match l with
-  | (m1 :: m2 :: []) => m1 ret + (m2 ret) = 2
-  | _ => False
-  end.
-
-Example Relation_comp : relational_prop
-                            rela_pre_comp rela_post_comp
-                            (comp :: comp :: []) Psi.empty_psi.
-Proof.
-ltc0 Phi.empty_phi.
-(* Verification of auxiliary proofs proof obligation for procedure*)
-+ apply tc_p_empty_psi.
-(* Verification of auxilliary proof obligation *)
-+ simpl. auto.
-+ simpl. auto.
-(* Main proof obligation *)
-+ simpl.
-  intros.
-  destruct H.
-  destruct H0.
-  -- destruct H2.
-     ** subst. lia.
-     ** destruct H2.
-        +++ subst.
-            rewrite (set''def _ _ _ 0).
-            rewrite (set''def _ _ _ 2).
-            all: try reflexivity.
-        +++ subst. lia.
-  -- destruct H2.
-     ** destruct H3.
-        +++ subst.
-            rewrite (set''def _ _ _ 2).
-            rewrite (set''def _ _ _ 0).
-            all: try reflexivity.
-        +++ subst. lia.
-     ** destruct H4.
-        +++  subst. lia.
-        +++ destruct H3.
-           *** subst. lia.
-           *** subst.
-               rewrite (set''def _ _ _ 1).
-               rewrite (set''def _ _ _ 1).
-               all: try reflexivity.
-Qed.
-
-(* Defintion of a comparator function *)
+(* Defintion of a swap functions *)
 
 Definition swap_1: com := <[ X3 := °X1;
                              °X1 := °X2;
@@ -341,6 +289,8 @@ Definition swap_2: com := <[ °X1 := °X1 + °X2;
                              °X2 := °X1 - °X2;
                              °X1 := °X1 - °X2
                            ]>.
+
+(* Defintion of relational pre and post condition *)
 
 Definition rela_pre (l : list Sigma.sigma) : Prop :=
   match l with
@@ -499,4 +449,71 @@ ltc0 Phi.empty_phi.
       rewrite H3.
       mem_d s 3 1 (s (s 1)).
       lia.
+Qed.
+
+(* Example 2 *)
+
+(* Defintion of a comparator function *)
+
+Definition comp: com := <[ if X1 <= X2 && ~ X1 = X2 then
+                                 ret := 0
+                              else
+                                 if X2 <= X1 && ~ X1 = X2  then
+                                   ret := 2
+                                 else ret := 1
+                                 end
+                              end ]>.
+
+(* Defintion of relational pre and post condition *)
+
+Definition rela_pre_comp (l : list Sigma.sigma) : Prop :=
+  match l with
+  | (m1 :: m2 :: []) => m1 X1 = m2 X2 /\ m1 X2 = m2 X1
+  | _ => False
+  end.
+
+Definition rela_post_comp (l : list Sigma.sigma) : Prop :=
+  match l with
+  | (m1 :: m2 :: []) => m1 ret + (m2 ret) = 2
+  | _ => False
+  end.
+
+Example Relation_comp : relational_prop
+                            rela_pre_comp rela_post_comp
+                            (comp :: comp :: []) Psi.empty_psi.
+Proof.
+ltc0 Phi.empty_phi.
+(* Verification of auxiliary proofs proof obligation for procedure*)
++ apply tc_p_empty_psi.
+(* Verification of auxilliary proof obligation *)
++ simpl. auto.
++ simpl. auto.
+(* Main proof obligation *)
++ simpl.
+  intros.
+  destruct H.
+  destruct H0.
+  -- destruct H2.
+     ** subst. lia.
+     ** destruct H2.
+        +++ subst.
+            mem_s s ret ret 0.
+            mem_s s0 ret ret 2.
+            reflexivity.
+        +++ subst. lia.
+  -- destruct H2.
+     ** destruct H3.
+        +++ subst.
+            mem_s s ret ret 2.
+            mem_s s0 ret ret 0.
+            reflexivity.
+        +++ subst. lia.
+     ** destruct H4.
+        +++  subst. lia.
+        +++ destruct H3.
+           *** subst. lia.
+           *** subst.
+               mem_s s ret ret 1.
+               mem_s s0 ret ret 1.
+               reflexivity.
 Qed.
