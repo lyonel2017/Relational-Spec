@@ -20,4 +20,5 @@ Definition EHX : Loc.t:= 8.
 Definition X1 : Loc.t:= 1.
 Definition X2 : Loc.t:= 2.
 Definition X3 : Loc.t:= 3.
-Definition X4 : Loc.t:= 3.
+Definition ret : Loc.t := 3.
+Definition X4 : Loc.t:= 4.

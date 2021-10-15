@@ -18,6 +18,7 @@ Import ListNotations.
 From Coq Require Import Program.
 From Coq Require Import Eqdep_dec.
 From Coq Require Import Lia.
+From Coq Require Import Omega.
 Require Import Arith.
 
 (** Example of arithmetic expression **)
@@ -68,20 +69,18 @@ Ltac mem_s s l1 l2 v :=
 Ltac mem_d s l1 l2 v :=
        generalize (set'def s l1 v l2);
        intros Heax; destruct Heax as ( _ & Heax);
-       rewrite Heax; [ | try (intros HF; inversion HF)];
+       rewrite Heax; [ | first [ lia | (intros HF; inversion HF)]];
        clear Heax.
 
-Ltac mem_s_in s l1 l2 v H :=
+Ltac mem_s_in s l1 l2 v :=
        generalize (set'def s l1 v l2);
        intros Heax; destruct Heax as ( Heax & _);
-       rewrite Heax in H by lia;
-       clear Heax.
+       rewrite Heax; clear Heax.
 
-Ltac mem_d_in s l1 l2 v H:=
+Ltac mem_d_in s l1 l2 v:=
        generalize (set'def s l1 v l2);
        intros Heax; destruct Heax as ( _ & Heax);
-       rewrite Heax in H; [ | try (intros HF; inversion HF)];
-       clear Heax.
+       rewrite Heax; clear Heax.
 
 (** Examples of proofs of Hoare Triples with verification condition generator **)
 
@@ -268,10 +267,6 @@ Ltac ltc0 phi := apply rcorrect with phi;
 
 (** Examples of proofs of Relational Properties **)
 
-Definition X1 : Loc.t:= 1.
-Definition X2 : Loc.t:= 2.
-Definition ret : Loc.t := 3.
-
 (* Defintion of a comparator function *)
 
 Definition comp: com := <[ if X1 <= X2 && ~ X1 = X2 then
@@ -333,4 +328,175 @@ ltc0 Phi.empty_phi.
                rewrite (set''def _ _ _ 1).
                rewrite (set''def _ _ _ 1).
                all: try reflexivity.
+Qed.
+
+(* Defintion of a comparator function *)
+
+Definition swap_1: com := <[ X3 := °X1;
+                             °X1 := °X2;
+                             °X2 := X3
+                           ]>.
+
+Definition swap_2: com := <[ °X1 := °X1 + °X2;
+                             °X2 := °X1 - °X2;
+                             °X1 := °X1 - °X2
+                           ]>.
+
+Definition rela_pre (l : list Sigma.sigma) : Prop :=
+  match l with
+  | (m1 :: m2 :: []) => m1 (m1 X1) = m2 (m2 X1) /\ m1 (m1 X2) = m2 (m2 X2) /\
+                         m1 X1 > 3 /\ m1 X2 > 3 /\ m2 X1 > 3 /\ m2 X2 > 3 /\
+                         m1 X1 <> m1 X2 /\ m2 X1 <> m2 X2
+  | _ => False
+  end.
+
+Definition rela_post (l : list Sigma.sigma) : Prop :=
+  match l with
+  | (m1 :: m2 :: []) => m1 (m1 X1) = m2 (m2 X1) /\ m1 (m1 X2) = m2 (m2 X2)
+  | _ => False
+  end.
+
+Example Relation_swap : relational_prop
+                            rela_pre rela_post
+                            (swap_1 :: swap_2 :: []) Psi.empty_psi.
+Proof.
+ltc0 Phi.empty_phi.
+(* Verification of auxiliary proofs proof obligation for procedure*)
++ apply tc_p_empty_psi.
+(* Verification of auxilliary proof obligation *)
++ simpl. auto.
++ simpl. auto.
+(* Main proof obligation *)
++ simpl.
+  intros.
+  unfold X1, X2, X3 in *.
+  decompose [and] H;clear H.
+  decompose [and] H2;clear H2.
+  decompose [and] H1;clear H1.
+  split.
+  * (*<1>*)
+    rewrite H6.
+    mem_d_in m''0 (m''0 2) 1 (m''0 3).
+    mem_d_in m''0 (m''0 2) (m''0 1) (m''0 3).
+    rewrite H5.
+    mem_d_in m'' (m'' 1) 1 (m'' (m'' 2)).
+    mem_s m'' (m'' 1) (m'' 1) (m'' (m'' 2)).
+    rewrite H3.
+    mem_d s 3 2 (s (s 1)).
+    mem_d s 3 (s 2) (s (s 1)).
+    (*<2>*)
+    rewrite H8.
+    mem_d_in m''2 (m''2 1) 1 (m''2 (m''2 1) - m''2 (m''2 2)).
+    mem_s m''2 (m''2 1) (m''2 1) (m''2 (m''2 1) - m''2 (m''2 2)).
+    rewrite H7.
+    mem_d_in m''1 (m''1 2) 2 (m''1 (m''1 1) - m''1 (m''1 2)).
+    mem_d_in m''1 (m''1 2) 1 (m''1 (m''1 1) - m''1 (m''1 2)).
+    mem_s m''1 (m''1 2) (m''1 2) (m''1 (m''1 1) - m''1 (m''1 2)).
+    mem_d_in m''1 (m''1 2) (m''1 1) (m''1 (m''1 1) - m''1 (m''1 2)).
+    rewrite H.
+    mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
+    mem_d s0 (s0 1) (s0 2) (s0 (s0 1) + s0 (s0 2)).
+    mem_d s0 (s0 1) 1 (s0 (s0 1) + s0 (s0 2)).
+    mem_s s0 (s0 1) (s0 1) (s0 (s0 1) + s0 (s0 2)).
+    - lia.
+    (* all the little things *)
+    - rewrite H.
+      mem_d s0 (s0 1) 1 (s0 (s0 1) + s0 (s0 2)).
+      mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
+      lia.
+    - rewrite H.
+      mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
+      lia.
+    - rewrite H.
+      mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
+      lia.
+    - rewrite H7.
+      mem_d_in m''1 (m''1 2) 1 (m''1 (m''1 1) - m''1 (m''1 2)).
+      rewrite H.
+      mem_d s0 (s0 1) 1 (s0 (s0 1) + s0 (s0 2)).
+      lia.
+      rewrite H.
+      mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
+      lia.
+    - rewrite H3.
+      mem_d s 3 1 (s (s 1)).
+      lia.
+    - rewrite H5.
+      mem_d_in m'' (m'' 1) 1 (m'' (m'' 2)).
+      mem_d_in m'' (m'' 1) 2 (m'' (m'' 2)).
+      rewrite H3.
+      mem_d s 3 1 (s (s 1)).
+      mem_d s 3 2 (s (s 1)).
+      lia.
+      rewrite H3.
+      mem_d s 3 1 (s (s 1)).
+      lia.
+      rewrite H3.
+      mem_d s 3 1 (s (s 1)).
+      lia.
+   - rewrite H5.
+      mem_d_in m'' (m'' 1) 2 (m'' (m'' 2)).
+      rewrite H3.
+      mem_d s 3 2 (s (s 1)).
+      lia. 
+      rewrite H3.
+      mem_d s 3 1 (s (s 1)).
+      lia.
+ * (*<1>*)
+    rewrite H6.
+    mem_d_in m''0 (m''0 2) 2 (m''0 3).
+    mem_s m''0 (m''0 2) (m''0 2) (m''0 3).
+    rewrite H5.
+    mem_d_in m'' (m'' 1) 3 (m'' (m'' 2)).
+    rewrite H3.
+    mem_s s 3 3 (s (s 1)).
+    (*<2>*)
+    rewrite H8.
+    mem_d_in m''2 (m''2 1) 2 (m''2 (m''2 1) - m''2 (m''2 2)).
+    mem_d_in m''2 (m''2 1) (m''2 2) (m''2 (m''2 1) - m''2 (m''2 2)).
+    rewrite H7.
+    mem_d_in m''1 (m''1 2) 2 (m''1 (m''1 1) - m''1 (m''1 2)).
+    mem_s m''1 (m''1 2) (m''1 2)  (m''1 (m''1 1) - m''1 (m''1 2)).
+    rewrite H.
+    mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
+    mem_d s0 (s0 1) (s0 2) (s0 (s0 1) + s0 (s0 2)).
+    mem_d s0 (s0 1) 1 (s0 (s0 1) + s0 (s0 2)).
+    mem_s s0 (s0 1) (s0 1) (s0 (s0 1) + s0 (s0 2)).
+    - lia.
+      (* all the little things*)
+    - rewrite H.
+      mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
+      lia.
+    - rewrite H7.
+      mem_d_in m''1 (m''1 2) 1 (m''1 (m''1 1) - m''1 (m''1 2)).
+      mem_d_in m''1 (m''1 2) 2 (m''1 (m''1 1) - m''1 (m''1 2)).
+      rewrite H.
+      mem_d s0 (s0 1) 1 (s0 (s0 1) + s0 (s0 2)).
+      mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
+      lia.
+      rewrite H.
+      mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
+      lia.
+      rewrite H.
+      mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
+      lia.
+    - rewrite H7.
+      mem_d_in m''1 (m''1 2) 1 (m''1 (m''1 1) - m''1 (m''1 2)).
+      rewrite H.
+      mem_d s0 (s0 1) 1 (s0 (s0 1) + s0 (s0 2)).
+      lia.
+      rewrite H.
+      mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
+      lia.
+    - rewrite H3.
+      mem_d s 3 1 (s (s 1)).
+      lia.
+    - rewrite H5.
+      mem_d_in m'' (m'' 1) 2 (m'' (m'' 2)).
+      rewrite H3.
+      mem_d s 3 2 (s (s 1)).
+      lia.
+      rewrite H3.
+      mem_d s 3 1 (s (s 1)).
+      lia.
 Qed.
