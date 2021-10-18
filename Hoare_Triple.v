@@ -178,3 +178,16 @@ apply H0.
 apply recursive_proc.
 assumption.
 Qed.
+
+(* A corollaire from recursion_hoare_triple *)
+
+Theorem procedure_hoare_triple :
+  forall p cl ps,
+    hoare_triple_proc_ctx cl ps  ->
+    hoare_triple (get_pre (cl p)) (get_post (cl p)) (ps p) ps.
+Proof.
+intros.
+apply recursion_hoare_triple with cl.
+assumption.
+apply H.
+Qed.
