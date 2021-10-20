@@ -6,6 +6,17 @@ This repository contains a [Coq](https://coq.inria.fr/) formalization and proof 
 * a method for verifying relational properties using a verification condition generator, without relying on code transformation (such as
   self-composition) or making additional separation hypotheses in case of aliasing;
 
+This project was developed and tested with Coq version 8.12.0.
+To run the whole proof, run
+
+ ` make`
+
+Then, to observe the proof step-by-step for some file, run
+
+  `coqide <filename.v>`
+
+for example, `coqide Hoare_Triple.v`
+
 ## The project structure
 
 * **Loc.v**:  definition of locations.
