@@ -88,7 +88,7 @@ Parameter f : Proc.t.
 
 (* Body of procedure f: perfom multiplication *)
 
-Definition mult: com := <[ 
+Definition mult: com := <[
   if 0 <= X1 && ~ X1 = 0 then
       X2 := X2 + X3;
       X1 := X1 - 1;
@@ -104,7 +104,7 @@ Definition f_psi (x': Proc.t) :=
 
 (* Contract of pre and post condition of procedure f *)
 
-Definition f_pre: assertion := fun s => 
+Definition f_pre: assertion := fun s =>
    s(X2) = (s(X3)) * (s(X4) - s(X1)) /\
    0 <= (s(X1)) /\ Nat.le (s(X1)) (s(X4)).
 
@@ -118,17 +118,17 @@ Definition f_phi (x': Proc.t) :=
 
 (* Program computing the multiplication of X3 and X4 and put the result in X2 *)
 
-Definition com_1 := <[ 
+Definition com_1 := <[
   X1 := X4;
   X2 := 0;
   call(f)
 ]>.
 
-Example Hoare_tiple :hoare_triple (fun _ => True) 
+Example Hoare_tiple :hoare_triple (fun _ => True)
                               (fun m => f_post m) com_1 f_psi.
 Proof.
 apply recursion_hoare_triple with f_phi.
-(* Verification of auxiliary proofs proof obligation for procedure*)
+(* Verification of proof obligation for procedure*)
 * apply correct_proc.
   unfold f_psi, f_phi.
   apply Vcg_Opt.tc_p_same.
@@ -210,9 +210,9 @@ apply recursion_hoare_triple with f_phi.
     rewrite Proc.eqb_refl in H3.
     simpl in H3.
     apply H3.
-Qed. 
+Qed.
 
-(** Some ltac to automatize the extraction of proof obligation from the list construct 
+(** Some ltac to automatize the extraction of proof obligation from the list construct
     in relational property verification **)
 
 Ltac ltc3 hy :=
@@ -227,9 +227,9 @@ Ltac ltc2 phi hy :=
          clear HYP hy;
          rename hyr into hy.
 
-Ltac ltc7 phi hy H:= 
+Ltac ltc7 phi hy H:=
   ltc2 phi hy;
-  split;[clear hy; inversion H; clear H; apply Vcg_Opt.tc'_same 
+  split;[clear hy; inversion H; clear H; apply Vcg_Opt.tc'_same
         | first [ ltc7 phi hy H| simpl;auto]].
 
 Ltac ltc1 phi hy ml H :=
@@ -262,8 +262,8 @@ Ltac ltc4 ml hy phi:=
                  | ltc4 ml hy phi]
           ].
 
-Ltac ltc0 phi := apply rcorrect with phi; 
-                 [ 
+Ltac ltc0 phi := apply rcorrect with phi;
+                 [
                  | intros ml hy H;
                    ltc1 phi hy ml H
                  | intros ml hy H;
@@ -273,7 +273,7 @@ Ltac ltc0 phi := apply rcorrect with phi;
                    clear H
                 ].
 
-(** Examples of proofs of Relational Properties 
+(** Examples of proofs of Relational Properties
     with verification condition generator **)
 
 (* Example 1 *)
@@ -311,7 +311,7 @@ Example Relation_swap : relational_prop
                             (swap_1 :: swap_2 :: []) Psi.empty_psi.
 Proof.
 ltc0 Phi.empty_phi.
-(* Verification of auxiliary proofs proof obligation for procedure*)
+(* Verification of proof obligation for procedure*)
 + apply tc_p_empty_psi.
 (* Verification of auxilliary proof obligation *)
 + simpl. auto.
@@ -388,7 +388,7 @@ ltc0 Phi.empty_phi.
       mem_d_in m'' (m'' 1) 2 (m'' (m'' 2)).
       rewrite H3.
       mem_d s 3 2 (s (s 1)).
-      lia. 
+      lia.
       rewrite H3.
       mem_d s 3 1 (s (s 1)).
       lia.
@@ -483,7 +483,7 @@ Example Relation_comp : relational_prop
                             (comp :: comp :: []) Psi.empty_psi.
 Proof.
 ltc0 Phi.empty_phi.
-(* Verification of auxiliary proofs proof obligation for procedure*)
+(* Verification of proof obligation for procedure*)
 + apply tc_p_empty_psi.
 (* Verification of auxilliary proof obligation *)
 + simpl. auto.
