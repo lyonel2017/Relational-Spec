@@ -34,3 +34,24 @@ for example, `coqide Hoare_Triple.v`
                   and proof of useful property.
 * **Correct_Rela.v**: proofs that Relational Properties can be verified using verification condition generator.
 * **Examples.v**: some examples.
+
+## FASE 2022
+
+The main elements of the FASE 2022 paper can be found in the following files and statement:
+
+* Definition `hoare_triple`, in file **Hoare_Triple.v**, formalizes Defintion 1 in the FASE 2022 paper.
+* Lemma `recursive_proc`, in file **Hoare_Triple.v**, formalizes Lemma 1 in the FASE 2022 paper.
+* Theorem `recursion_hoare_triple`, in file **Hoare_Triple.v**, formalizes Theorem 1 in the FASE 2022 paper.
+* Theorem `procedure_hoare_triple`, in file **Hoare_Triple.v**, formalizes Corollary 1 in the FASE 2022 paper.
+* Definition `relational_prop`, in file **rela.v**, formalizes Defintion 3 in the FASE 2022 paper.
+* Fixpoint `tc`, in file **Vcg.v**, formalizes Defintion 4 in the FASE 2022 paper.
+* Fixpoint `tc'`, in file **Vcg.v**, formalizes Defintion 5 in the FASE 2022 paper.
+* Defintion `tc_p`, in file **Vcg.v**, formalizes Defintion 6 in the FASE 2022 paper.
+* Lemma `correct_c`, in file **Correct.v**, formalizes Lemma 2 in the FASE 2022 paper.
+* Lemma `correct_proc`, in file **Correct.v**, formalizes Lemma 3 in the FASE 2022 paper.
+* Theorem `correct`, in file **Hoare_Triple.v**, formalizes Theorem 2 in the FASE 2022 paper.
+* Example `hoare_triple_mult`, in file **Examples.v**, formalizes Example 4 in the FASE 2022 paper.
+* Fixpoint `rtc`, in file **Vcg_rela.v**, formalizes Definition 7 in the FASE 2022 paper.
+* Fixpoint `rtc'`, in file **Vcg_rela.v**, formalizes Definition 8 in the FASE 2022 paper.
+* Theorem `rcorrect`, in file **Correct_Rela.v**, formalizes Theorem 3 in the FASE 2022 paper.
+* Example `relation_swap`, in file **Examples.v**, formalizes Example 5 in the FASE 2022 paper.
