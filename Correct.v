@@ -10,7 +10,7 @@ Import Assn_b.
 
 (** Proof that one can use a verification condition generator to proof Hoare Triples **)
 
-Theorem correct :
+Lemma correct_c :
   forall p cl ps,
   forall (P Q: assertion),
     (forall m, P m -> tc' p m cl) ->
@@ -93,15 +93,32 @@ Qed.
 (** Proof that one can use a verification condition 
     generator to proof procedure contract **)
 
-Theorem correct_proc :
+Lemma correct_proc :
   forall cl ps,
-    tc_p cl ps ->
-    hoare_triple_proc_ctx ps cl.
+    tc_p ps cl ->
+    hoare_triple_proc_ctx cl ps.
 Proof.
   intros cl ps Htc.
   unfold hoare_triple_proc_ctx.
   intros.
-  apply correct.
+  apply correct_c.
   * apply Htc.
   * apply Htc.
+Qed.
+
+(** Proof that one can use a verification condition 
+    generator to proof Hoare triple **)
+
+Theorem correct :
+  forall (c: com) (cl: Phi.phi) (ps: Psi.psi),
+  forall (P Q: assertion),
+    tc_p ps cl ->
+    (forall m, P m -> tc' c m cl) ->
+    (forall m, P m -> tc c m cl Q) ->
+    hoare_triple P Q c ps.
+Proof.
+intros.
+apply recursion_hoare_triple with cl.
+* apply correct_proc. assumption.
+* apply correct_c. all: try assumption.
 Qed.

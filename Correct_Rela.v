@@ -68,11 +68,9 @@ induction p.
        generalize H5.
        generalize s s1.
        rewrite hoare_rela.
-       eapply recursion_hoare_triple.
-       ++ eapply correct_proc.
-          apply Hproc.
-       ++ eapply correct.
-       -- intros.
+       eapply correct.
+       ++ apply Hproc.
+       ++ intros.
           assert (hy2: length (a ::p) = length (m::ml)).
           {intros. simpl. rewrite hy. reflexivity. }
           specialize (H (m :: ml) hy2 H8).
@@ -80,7 +78,7 @@ induction p.
           rewrite HYP in H.
           destruct H.
           apply H.
-       -- intros.
+       ++ intros.
           assert (hy2: length (a ::p) = length (m::ml)).
           {intros. simpl. rewrite hy. reflexivity. }
           destruct (mk_rtc_def a p cl m ml hy2) as (hyr & HYP).

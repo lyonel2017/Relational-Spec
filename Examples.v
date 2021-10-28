@@ -124,13 +124,12 @@ Definition com_1 := <[
   call(f)
 ]>.
 
-Example Hoare_tiple :hoare_triple (fun _ => True)
+Example hoare_triple_mult: hoare_triple (fun _ => True)
                               (fun m => f_post m) com_1 f_psi.
 Proof.
-apply recursion_hoare_triple with f_phi.
+apply correct with f_phi.
 (* Verification of proof obligation for procedure*)
-* apply correct_proc.
-  unfold f_psi, f_phi.
+* unfold f_psi, f_phi.
   apply Vcg_Opt.tc_p_same.
   intros f0.
   destruct (Proc.eqb f0 f) eqn: E.
@@ -180,14 +179,13 @@ apply recursion_hoare_triple with f_phi.
   + split.
     - auto.
     - simpl. intros. unfold empty_postcondition. auto.
-* apply correct.
-  unfold f_psi, f_phi.
+* unfold f_psi, f_phi.
   (* Verification of auxilliary proof obligation for command com*)
-  + intros. apply Vcg_Opt.tc'_same.
+  intros. apply Vcg_Opt.tc'_same.
     apply Vcg_Opt.Tc'_list.tc'_list_same.
       simpl.
       destruct n.
-      ** unfold Vcg_Opt.Tc'_list.continuation.
+      + unfold Vcg_Opt.Tc'_list.continuation.
          simpl.
          intros.
          rewrite Proc.eqb_refl.
@@ -203,9 +201,9 @@ apply recursion_hoare_triple with f_phi.
          mem_d m X1 X4 (m X4).
          mem_s m X1 X1 (m X4).
          lia.
-      ** destruct n; [auto | auto].
+      + destruct n; [auto | auto].
  (* Main proof obligation for command com : the post condition hold*)
-  + unfold f_psi, f_phi.
+* unfold f_psi, f_phi.
     simpl.  intros.
     rewrite Proc.eqb_refl in H3.
     simpl in H3.
@@ -306,7 +304,7 @@ Definition rela_post (l : list Sigma.sigma) : Prop :=
   | _ => False
   end.
 
-Example Relation_swap : relational_prop
+Example relation_swap : relational_prop
                             rela_pre rela_post
                             (swap_1 :: swap_2 :: []) Psi.empty_psi.
 Proof.
@@ -478,7 +476,7 @@ Definition rela_post_comp (l : list Sigma.sigma) : Prop :=
   | _ => False
   end.
 
-Example Relation_comp : relational_prop
+Example relation_comp : relational_prop
                             rela_pre_comp rela_post_comp
                             (comp :: comp :: []) Psi.empty_psi.
 Proof.
