@@ -232,16 +232,6 @@ eexists.
 program_simpl.
 Qed.
 
-(** Definition of a relational verification condition generator for procedures **)
-
-Definition rtc_p (ps: Psi.psi) (cl : Phi.phi) (rcl : R_Phi.r_phi) : Prop :=
-    forall f m, 
-    let c := (map ps f) in
-    let h := (map (fun _ => []) f) in
-    forall (hy1:length c = length m) (hy2:length c = length h),
-    (get_r_pre (rcl f)) m -> rtc' c m h cl hy1 hy2 /\
-                             rtc c m h cl (fun m' _ => (get_r_post (rcl f)) m' m) hy1 hy2.
-
 (** Translation of a list of procedure call to Prop **)
 
 Parameter proc_call: Proc.Proc.t -> sigma -> sigma -> Prop.
@@ -412,3 +402,48 @@ split.
   apply H.
 * eapply test. apply Heval.
 Qed.
+
+(** Definition of a relational verification condition generator for procedures **)
+
+Definition extract rcl := fun y:Proc.Proc.t =>
+  (fun m => get_r_pre (rcl [y]) [m], fun m' m =>  get_r_post (rcl [y]) [m'] [m]).
+
+Lemma hd_length_1 s: length s = 1 -> [hd default_sigma s] = s.
+Proof.
+intros.
+destruct s.
+* inversion H.
+* inversion H.
+  rewrite length_zero_iff_nil in H1.
+  subst.
+  simpl.
+  reflexivity.
+Qed.
+
+Lemma rela_hoare_extract rcl ps:
+  (forall p : list Proc.Proc.t,
+    0 < length p -> relational_prop (get_r_pre (rcl p)) (get_r_post (rcl p)) (fold_call p) ps) ->  
+   (forall p, hoare_triple (get_pre ((extract rcl) p)) (get_post ((extract rcl) p)) (CCall p) ps).
+Proof.
+intros.
+assert (H1 : 0 < 1); auto.
+specialize (H [p] H1). simpl in H.
+apply Single_Rela_Prop.one_rela_is_hoare.
+simpl.
+intros s s' hy1 hy2 Hpre Heval.
+inversion hy1.
+inversion hy2.
+rewrite hd_length_1 by apply H3.
+rewrite hd_length_1 by apply H2.
+apply H. all: try assumption.
+rewrite hd_length_1 in Hpre by apply H2.
+assumption.
+Qed.
+
+Definition rtc_p (ps: Psi.psi) (cl : Phi.phi) (rcl : R_Phi.r_phi) : Prop :=
+    forall f m, 
+    let c := (map ps f) in
+    let h := (map (fun _ => []) f) in
+    forall (hy1:length c = length m) (hy2:length c = length h),
+    (get_r_pre (rcl f)) m -> tr rcl -> rtc' c m h (phi_call (extract rcl)) hy1 hy2 /\
+                             rtc c m h (phi_call (extract rcl)) (fun m' _ => (get_r_post (rcl f)) m' m) hy1 hy2.

@@ -12,40 +12,7 @@ From Coq Require Import Lists.List.
 Import ListNotations.
 From Coq Require Import Lia.
 
-Definition extract rcl := fun y:Proc.Proc.t =>
-  (fun m => get_r_pre (rcl [y]) [m], fun m' m =>  get_r_post (rcl [y]) [m'] [m]).
 
-Lemma hd_length_1 s: length s = 1 -> [hd default_sigma s] = s.
-Proof.
-intros.
-destruct s.
-* inversion H.
-* inversion H.
-  rewrite length_zero_iff_nil in H1.
-  subst.
-  simpl.
-  reflexivity.
-Qed.
-
-Lemma rela_hoare_extract rcl ps:
-  (forall p : list Proc.Proc.t,
-    0 < length p -> relational_prop (get_r_pre (rcl p)) (get_r_post (rcl p)) (fold_call p) ps) ->  
-   (forall p, hoare_triple (get_pre ((extract rcl) p)) (get_post ((extract rcl) p)) (CCall p) ps).
-Proof.
-intros.
-assert (H1 : 0 < 1); auto.
-specialize (H [p] H1). simpl in H.
-apply Single_Rela_Prop.one_rela_is_hoare.
-simpl.
-intros s s' hy1 hy2 Hpre Heval.
-inversion hy1.
-inversion hy2.
-rewrite hd_length_1 by apply H3.
-rewrite hd_length_1 by apply H2.
-apply H. all: try assumption.
-rewrite hd_length_1 in Hpre by apply H2.
-assumption.
-Qed.
 
 (** Proof that one can use a standard verification condition generator
     to proof Relational Properties **)
@@ -158,6 +125,6 @@ Proof.
   {  rewrite map_length. rewrite map_length. reflexivity. }
   unfold rtc_p in Htc.
   eapply rcorrect;intros;specialize (Htc p ml hy H1 H).
-  * apply Htc.
-  * apply Htc.
+  * apply Htc. assumption.
+  * apply Htc. assumption.
 Qed.
