@@ -123,5 +123,3 @@ Notation "'call' f" := (CCall f)
             (in custom com at level 89,
             f constr at level 0) : com_scope.
 End ComNotations.
-
-Import ComNotations.
