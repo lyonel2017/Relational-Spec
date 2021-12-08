@@ -15,7 +15,7 @@ From Coq Require Import Lia.
 (** Proof that one can use a standard verification condition generator
     to proof Relational Properties **)
 
-Lemma rcorrect :
+Lemma rcorrect_c :
 forall rcl ps p h (hyh :length p = length h),
 forall (P: r_precondition) (Q: r_postcondition),
 (forall ps,
@@ -129,9 +129,30 @@ Proof.
   assert (H1:length (map ps p) = length (map (fun _ => ([] : history)) p)).
   {  rewrite map_length. rewrite map_length. reflexivity. }
   unfold rtc_p in Htc.
-  eapply rcorrect;split;intros; specialize (Htc p ml ps1 hy H1 H);destruct Htc.
+  eapply rcorrect_c;split;intros; specialize (Htc p ml ps1 hy H1 H);destruct Htc.
   * assumption.
   * apply H2.
   * assumption.
   * apply H3.
+Qed.
+
+(** Proof that one can use a verification condition 
+    generator to proof Relatioanl Properties **)
+
+Theorem rcorrect :
+  forall rcl ps p h (hyh :length p = length h),
+  forall (P: r_precondition) (Q: r_postcondition),
+  rtc_p ps rcl ->
+  (forall ps,
+    (forall ml (hy:length p = length ml),
+       P ml -> tr rcl ps -> rtc' p ml h (phi_call (extract rcl) ps) hy hyh) /\
+    (forall ml (hy:length p = length ml), 
+       P ml -> tr rcl ps -> 
+       rtc p ml h (phi_call (extract rcl) ps ) (fun ml' _ => Q ml' ml) hy hyh)) ->
+    relational_prop P Q p ps.
+Proof.
+intros.
+apply recursion_relational with rcl.
+* apply rcorrect_proc. assumption.
+* apply rcorrect_c with (h:=h) (hyh:=hyh). all: try assumption.
 Qed.
