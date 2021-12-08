@@ -12,21 +12,26 @@ From Coq Require Import Lists.List.
 Import ListNotations.
 From Coq Require Import Lia.
 
-
-
 (** Proof that one can use a standard verification condition generator
     to proof Relational Properties **)
 
 Lemma rcorrect :
 forall rcl ps p h (hyh :length p = length h),
 forall (P: r_precondition) (Q: r_postcondition),
-(forall ml (hy:length p = length ml),
-P ml -> tr rcl -> rtc' p ml h (phi_call (extract rcl)) hy hyh) ->
-(forall ml (hy:length p = length ml),
-P ml -> tr rcl -> rtc p ml h (phi_call (extract rcl)) (fun ml' _ => Q ml' ml) hy hyh) ->
+(forall ps,
+  (forall ml (hy:length p = length ml),
+     P ml -> tr rcl ps -> rtc' p ml h (phi_call (extract rcl) ps) hy hyh) /\
+  (forall ml (hy:length p = length ml), 
+     P ml -> tr rcl ps -> 
+     rtc p ml h (phi_call (extract rcl) ps ) (fun ml' _ => Q ml' ml) hy hyh)) ->
 relational_prop_ctx rcl ps P Q p.
 Proof.
-intros rcl ps p h hyh.
+intros rcl ps p h hyh P Q H.
+specialize (H ps); destruct H.
+generalize dependent H0.
+generalize dependent H.
+generalize dependent Q.
+generalize dependent P.
 generalize dependent h.
 induction p;intros.
 *  intros Hproc.
@@ -41,7 +46,7 @@ induction p;intros.
    apply length_zero_iff_nil in H1.
    apply length_zero_iff_nil in H2.
    subst.
-   apply H0.
+   eapply H0.
    reflexivity.
    assumption.
    eapply tr_relational_prop.
@@ -68,11 +73,11 @@ induction p;intros.
        assert (hy2: length (a ::p) = length (s::ml)).
        {intros. simpl. rewrite hy. reflexivity. }
        specialize (H (s :: ml) hy2 H5).
-       destruct (mk_rtc'_def a p (phi_call (extract rcl)) s ml h h0 hy2 hyh) 
+       destruct (mk_rtc'_def a p (phi_call (extract rcl) ps) s ml h h0 hy2 hyh) 
           as (hyr1 & hyr2 & HYP).
        rewrite HYP in H.
        destruct H.
-       eapply tr_relational_prop.
+       apply tr_relational_prop.
        apply Hproc.
        replace hy with hyr1.
        replace H6 with hyr2.
@@ -93,14 +98,14 @@ induction p;intros.
           assert (hy2: length (a ::p) = length (m::ml)).
           {intros. simpl. rewrite hy. reflexivity. }
           specialize (H (m :: ml) hy2 H12 Hproc).
-          destruct (mk_rtc'_def a p (phi_call (extract rcl)) m ml h h0 hy2 hyh) 
+          destruct (mk_rtc'_def a p (phi_call (extract rcl)ps) m ml h h0 hy2 hyh) 
             as (hyr1 & hyr2 & HYP).
           rewrite HYP in H.
           apply H.
        -- intros.
           assert (hy2: length (a ::p) = length (m::ml)).
           {intros. simpl. rewrite hy. reflexivity. }
-          destruct (mk_rtc_def a p (phi_call (extract rcl)) m ml h h0 hy2 hyh) 
+          destruct (mk_rtc_def a p (phi_call (extract rcl) ps) m ml h h0 hy2 hyh) 
              as (hyr1 & hyr2 & HYP).
           specialize (H0 (m::ml) hy2 H12 Hproc).
           specialize (HYP (fun l _ => Q l (m ::ml))).
@@ -115,7 +120,7 @@ Qed.
 
 Lemma rcorrect_proc :
   forall rcl ps,
-    rtc_p ps (phi_call (extract rcl)) rcl ->
+    rtc_p ps rcl ->
     relational_prop_proc_ctx rcl ps.
 Proof.
   intros cl ps Htc.
@@ -124,7 +129,9 @@ Proof.
   assert (H1:length (map ps p) = length (map (fun _ => ([] : history)) p)).
   {  rewrite map_length. rewrite map_length. reflexivity. }
   unfold rtc_p in Htc.
-  eapply rcorrect;intros;specialize (Htc p ml hy H1 H).
-  * apply Htc. assumption.
-  * apply Htc. assumption.
+  eapply rcorrect;split;intros; specialize (Htc p ml ps1 hy H1 H);destruct Htc.
+  * assumption.
+  * apply H2.
+  * assumption.
+  * apply H3.
 Qed.
