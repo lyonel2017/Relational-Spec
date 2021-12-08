@@ -31,7 +31,7 @@ Definition relational_prop (P Q: r_assertion) (c : list com) (ps : Psi.psi) : Pr
  forall s s',  length s = length c -> length s' = length c ->
                P s -> rceval c s ps s' -> Q s'.
 
-(** A Hoare Triple is a Relational Property for a list size one **)
+(** A Hoare Triple is a Relational Property for a list of program of size one **)
 
 Section Single_Rela_Prop.
 
