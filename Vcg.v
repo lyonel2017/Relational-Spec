@@ -84,7 +84,7 @@ End Assn_b.
 
 Import Assn_b.
 
-(** Defintion of a verification condition generator **)
+(** Definition of a verification condition generator **)
 
 Definition history: Type := list Sigma.sigma.
 
@@ -202,12 +202,9 @@ Fixpoint tc' (c : com) (m : Sigma.sigma) (h : history)
                     (bassn b m -> tc' p1 m h cl) /\
                     (~bassn b m -> tc' p2 m h cl)
     | CWhile b p inv => inv (m :: h) /\
-                     (forall m', bassn b m' -> 
-                                 inv (m' :: h)-> 
-                                 tc' p m' h cl) /\
-                     (forall m', bassn b m' -> 
-                                 inv (m' :: h) -> 
-                      tc p m' h cl (fun m'' _ => inv (m'' :: h)))
+                     (forall m', bassn b m' -> inv (m' :: h)-> tc' p m' h cl) /\
+                     (forall m', bassn b m' -> inv (m' :: h) -> 
+                                  tc p m' h cl (fun m'' _ => inv (m'' :: h)))
     | CCall f => (get_pre (cl f)) m
     end.
 
@@ -231,16 +228,16 @@ Qed.
 (** Verification of trivial procedure contract **)
 
 Parameter f : Proc.t.
-Definition cli_1 (x': Proc.t) :=
-        if Proc.eqb x' f then CSkip else Psi.empty_psi f.
+Definition f_psi (x': Proc.t) :=
+        if Proc.eqb x' f then CSkip else Psi.empty_psi x'.
 
-Definition phi_1 (x': Proc.t) :=
-        if Proc.eqb x' f then empty_clause else Phi.empty_phi f.
+Definition f_phi (x': Proc.t) :=
+        if Proc.eqb x' f then empty_clause else Phi.empty_phi x'.
 
-Example tc_p_update : tc_p cli_1 phi_1.
+Example tc_p_update : tc_p f_psi f_phi.
 Proof.
 unfold tc_p.
-unfold cli_1, phi_1.
+unfold f_psi, f_phi.
 intros.
 destruct (Proc.eqb f0 f).
 - split.

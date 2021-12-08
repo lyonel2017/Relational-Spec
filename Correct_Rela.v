@@ -93,7 +93,7 @@ induction p;intros.
        apply tr_relational_prop in Hproc.
        intros.
        specialize (phi_call_hoare ps (fun p => extract rcl p) H11) .
-       eapply correct.
+       eapply correct_c.
        -- intros.
           assert (hy2: length (a ::p) = length (m::ml)).
           {intros. simpl. rewrite hy. reflexivity. }

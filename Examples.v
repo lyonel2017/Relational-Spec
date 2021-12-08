@@ -4,10 +4,13 @@ From Rela Require Import Aexp.
 From Rela Require Import Bexp.
 From Rela Require Import Com.
 From Rela Require Import Vcg.
+From Rela Require Import Proc.
 From Rela Require Vcg_Opt.
 From Rela Require Import Hoare_Triple.
 From Rela Require Import Correct.
 From Rela Require Import Rela.
+From Rela Require Import Vcg_Rela.
+From Rela Require Import Correct_Rela.
 Import Vcg.Why3_Set.
 Import Vcg.Assn_b.
 From Coq Require Import Lists.List.
@@ -15,6 +18,8 @@ Import ListNotations.
 From Coq Require Import Program.
 From Coq Require Import Eqdep_dec.
 From Coq Require Import Lia.
+From Coq Require Import Omega.
+Require Import Arith.
 
 (** Example of arithmetic expression **)
 
@@ -53,54 +58,7 @@ unfold plus2.
 apply E_Ass. reflexivity.
 Qed.
 
-(** Examples of proofs of Hoare Triples **)
-
-(* Factorial examples *)
-
-(*
-  EEX the result
-  EAX the current index
-  EBX the size of the first array
-  ECX the size of the second array
-  EDX the address of the first array
-  EFX the address of the second array
-  EGX helper register
-  EHX helper register
-*)
-
-Definition a1: assertion := fun s => 0 <= s(EAX) /\ s(EAX) <= s(EBX) /\
-                                                    s(EAX) <= s(ECX).
-
-Definition a2: assertion := fun s => 
-   (s(EEX) = 1 /\ (forall k, 0 <= k /\ k < s(EAX)-> s(s(EDX) + k) = s(s(EFX) + k))) \/
-   (s(EEX) = 0 /\ (s(EAX) > 0 -> s(s(EDX) + (s(EAX) - 1)) < s(s(EAX) + (s(EFX)-1)))) \/
-   (s(EEX) = 2 /\ (s(EAX) > 0 -> s(s(EDX) + (s(EAX) - 1)) > s(s(EAX) + (s(EFX)-1)))).
-
-Definition b := 
-[!EAX <= EBX && EAX <= ECX && EEX = 1 && (~ EAX = EBX) && (~ EAX = ECX)!]. 
-
-Definition compare : com := 
-<[ EEX := 1;
-   EAX := 0;
-   while { b } inv (fun s => a1 s /\ a2 s ) do
-         EGX := EDX + EAX;
-         EGX := °EGX ;
-         EHX := EFX + EAX;
-         EHX := °EHX;
-         assert (fun s => s EHX = s (s EFX + s EAX ) /\ 
-                          s EGX = s (s EDX + s EAX ) /\ b s);
-         if EGX <= EHX && ~ EGX = EHX then 
-            EEX := 0
-         else 
-            if EHX <= EGX && ~ EGX = EHX then 
-                  EEX := 2
-            else 
-                  skip 
-            end
-          end;
-         EAX := EAX + 1
-    end
- ]>.
+(** Some ltac to automatize the handling of memory states **)
 
 Ltac mem_s s l1 l2 v :=
        generalize (set'def s l1 v l2);
@@ -111,151 +69,148 @@ Ltac mem_s s l1 l2 v :=
 Ltac mem_d s l1 l2 v :=
        generalize (set'def s l1 v l2);
        intros Heax; destruct Heax as ( _ & Heax);
-       rewrite Heax; [ | try (intros HF; inversion HF)];
+       rewrite Heax; [ | first [ lia | (intros HF; inversion HF)]];
        clear Heax.
 
-Ltac mem_s_in s l1 l2 v H :=
+Ltac mem_s_in s l1 l2 v :=
        generalize (set'def s l1 v l2);
        intros Heax; destruct Heax as ( Heax & _);
-       rewrite Heax in H by lia;
-       clear Heax.
+       rewrite Heax; clear Heax.
 
-Ltac mem_d_in s l1 l2 v H:=
+Ltac mem_d_in s l1 l2 v:=
        generalize (set'def s l1 v l2);
        intros Heax; destruct Heax as ( _ & Heax);
-       rewrite Heax in H; [ | try (intros HF; inversion HF)];
-       clear Heax.
+       rewrite Heax; clear Heax.
 
-Example Hoare1 : hoare_triple (fun m => m(EDX) > 8 /\ m(EFX) > 8 ) 
-                              (fun m' => True) compare Psi.empty_psi.
+(** Examples of proofs of Hoare Triples with verification condition generator **)
+
+Parameter f : Proc.t.
+
+(* Body of procedure f: perfom multiplication *)
+
+Definition mult: com := <[
+  if 0 <= X1 && ~ X1 = 0 then
+      X2 := X2 + X3;
+      X1 := X1 - 1;
+      call(f)
+  else
+    skip
+  end ]>.
+
+(* Procedure environment *)
+
+Definition f_psi (x': Proc.t) :=
+        if Proc.eqb x' f then mult else Psi.empty_psi x'.
+
+(* Contract of pre and post condition of procedure f *)
+
+Definition f_pre: assertion := fun s =>
+   s(X2) = (s(X3)) * (s(X4) - s(X1)) /\
+   0 <= (s(X1)) /\ Nat.le (s(X1)) (s(X4)).
+
+Definition f_post: assertion := fun s =>
+  s(X2) = (s(X3)) * (s(X4)).
+
+(* Contract environment *)
+
+Definition f_phi (x': Proc.t) :=
+        if Proc.eqb x' f then (f_pre,f_post) else Phi.empty_phi x'.
+
+(* Program computing the multiplication of X3 and X4 and put the result in X2 *)
+
+Definition com_1 := <[
+  X1 := X4;
+  X2 := 0;
+  call(f)
+]>.
+
+Example hoare_triple_mult: hoare_triple (fun _ => True)
+                              (fun m => f_post m) com_1 f_psi.
 Proof.
-apply recursion_hoare_triple with Phi.empty_phi.
-* apply correct_proc.
-  apply tc_p_empty_psi.
-* apply correct;[ | simpl; auto].
-  intros.
-  apply Vcg_Opt.tc'_same.
-  apply Vcg_Opt.Test.tc_test_same.
-  intros.
-  simpl.
-  destruct n.
-  - unfold Vcg_Opt.Test.test.
-    simpl.
-    intros.
-    split.
-    + unfold a1.
-       rewrite H1.
-       mem_s m'' EAX EAX 0.
-       split; [auto | ].
-       mem_d m'' EAX EBX 0.
-       mem_d m'' EAX ECX 0.
-       split; [apply Proc.Proc.le_0_l | apply Proc.Proc.le_0_l].
-    + unfold a2.
-      left.
-      split.
-       ** rewrite H1.
-          mem_d m'' EAX EEX 0.
-          rewrite H0.
-          mem_s m EEX EEX 1.
-          reflexivity.
-        ** intros.
-           rewrite H1 in H2.
-           generalize (set'def m'' EAX 0 EAX).
-           intros Heax; destruct Heax as ( Heax & _).
-           rewrite Heax in H2 by reflexivity.
-           destruct H2 as ( _ & He) ;inversion He.
-  - destruct n.
-    Focus 2.
-    destruct n.
-    + unfold Vcg_Opt.Test.test.
+apply correct with f_phi.
+(* Verification of proof obligation for procedure*)
+* unfold f_psi, f_phi.
+  apply Vcg_Opt.tc_p_same.
+  intros f0.
+  destruct (Proc.eqb f0 f) eqn: E.
+  + split.
+     (* Verification of auxilliary proof obligation for procedure f*)
+    - apply Vcg_Opt.Tc'_list.tc'_list_same.
       simpl.
-      intros.
-      decompose [and] H4; clear H4.
-      destruct H13.
-      ** split.
-         ++ unfold a1.
-            rewrite H14.
-            mem_s m''7 EAX EAX (m''7 EAX + 1).
-            mem_d m''7 EAX EBX (m''7 EAX + 1).
-            mem_d m''7 EAX ECX (m''7 EAX + 1).
-            rewrite H10.
-            mem_d m''5 EEX EAX 0.
-            mem_d m''5 EEX EBX 0.
-            mem_d m''5 EEX ECX 0.
-            rewrite H8.
-            mem_d m''4 EHX EAX (m''4 (m''4 EHX)).
-            mem_d m''4 EHX EBX (m''4 (m''4 EHX)).
-            mem_d m''4 EHX ECX (m''4 (m''4 EHX)).
-            rewrite H6.
-            mem_d m''3 EHX EAX (m''3 EFX + m''3 EAX).
-            mem_d m''3 EHX EBX (m''3 EFX + m''3 EAX).
-            mem_d m''3 EHX ECX (m''3 EFX + m''3 EAX).
-            rewrite H7.
-            mem_d m''2 EGX EAX (m''2 (m''2 EGX)).
-            mem_d m''2 EGX EBX (m''2 (m''2 EGX)).
-            mem_d m''2 EGX ECX (m''2 (m''2 EGX)).
-            rewrite H5.
-            mem_d m' EGX EAX (m' EDX + m' EAX).
-            mem_d m' EGX EBX (m' EDX + m' EAX).
-            mem_d m' EGX ECX (m' EDX + m' EAX).
-            repeat split; lia.
-        ++ unfold a2.
-           right;left.
-           rewrite H11.
-           mem_d m''6 EAX EEX (m''6 EAX + 1).
-           mem_d m''6 EAX EDX (m''6 EAX + 1).
-           mem_d m''6 EAX EFX (m''6 EAX + 1).
-           mem_s m''6 EAX EAX (m''6 EAX + 1).
-           mem_d m''6 EAX (m''6 EDX + (m''6 EAX + 1 - 1)) (m''6 EAX + 1).
-           mem_d m''6 EAX (m''6 EAX + 1 + (m''6 EFX - 1)) (m''6 EAX + 1).
-           rewrite H10.
-           mem_s m''5 EEX EEX 0.
-           split;[reflexivity | ].
-           mem_d m''5 EEX EDX 0.
-           mem_d m''5 EEX EFX 0.
-           mem_d m''5 EEX EAX 0.
-           intros.
-           mem_d m''5 EEX (m''5 EDX + (m''5 EAX + 1 - 1)) 0.
-           mem_d m''5 EEX (m''5 EAX + 1 + (m''5 EFX - 1)) 0.
-           rewrite H8 in H9.
-           mem_d_in m''4 EHX EGX (m''4 (m''4 EHX)) H9.
-           mem_s_in m''4 EHX EHX (m''4 (m''4 EHX)) H9.
-           rewrite H6 in H9.
-           mem_d_in m''3 EHX EGX (m''3 EFX + m''3 EAX) H9.
-           mem_s_in m''3 EHX EHX (m''3 EFX + m''3 EAX) H9.
-           mem_d_in m''3 EHX (m''3 EFX + m''3 EAX) (m''3 EFX + m''3 EAX) H9.
-           rewrite H7 in H9.
-
-Qed.
-
-
-Definition assert3 : com := <[ assert (fun m => m EAX = 2) ;
-                               skip;
-                               assert (fun m => m EAX = 2) ]>.
-
-Example test_tc :
-forall m n,
-m EAX = 2 -> (nth n (tc_test assert3 Phi.empty_phi) (fun _ => True)) m.
-Proof.
-simpl.
-destruct n.
-  * auto.
-  * destruct n.
-    + unfold test.
-      simpl.
+      destruct n.
+      ** unfold Vcg_Opt.Tc'_list.continuation.
+         simpl.
+         intros.
+         rewrite Proc.eqb_refl.
+         simpl.
+         unfold f_pre.
+         rewrite H2.
+         mem_d m'' X1 X2 (m'' X1 - 1).
+         mem_d m'' X1 X3 (m'' X1 - 1).
+         mem_d m'' X1 X4 (m'' X1 - 1).
+         mem_s m'' X1 X1 (m'' X1 - 1).
+         rewrite H1.
+         mem_s m X2 X2 (m X2 + m X3).
+         mem_d m X2 X3 (m X2 + m X3).
+         mem_d m X2 X4 (m X2 + m X3).
+         mem_d m X2 X1 (m X2 + m X3).
+         simpl in H.
+         unfold f_pre in H.
+         split.
+         ++ destruct H.
+            replace ((m X4 - (m X1 - 1))) with (S (m X4 - m X1 )).
+            rewrite Loc.mul_succ_r.
+            all : try lia.
+         ++ split. all: try lia.
+      ** destruct n; [auto | auto].
+    (* Main proof obligation for procedure f : the postconditon hold*)
+    - simpl.
       intros.
       destruct H0.
-      subst.
-      assumption.
-    + intros.
-      destruct n; [auto|auto].
+      ** decompose [and] H1;clear H1.
+         rewrite Proc.eqb_refl in H6.
+         apply H6.
+      ** rewrite H1.
+         unfold f_post.
+         simpl in H.
+         unfold f_pre in H.
+         decompose [and] H;clear H.
+         lia.
+  + split.
+    - auto.
+    - simpl. intros. unfold empty_postcondition. auto.
+* unfold f_psi, f_phi.
+  (* Verification of auxilliary proof obligation for command com*)
+  intros. apply Vcg_Opt.tc'_same.
+    apply Vcg_Opt.Tc'_list.tc'_list_same.
+      simpl.
+      destruct n.
+      + unfold Vcg_Opt.Tc'_list.continuation.
+         simpl.
+         intros.
+         rewrite Proc.eqb_refl.
+         simpl.
+         unfold f_pre.
+         rewrite H1.
+         mem_s m'' X2 X2 0.
+         mem_d m'' X2 X3 0.
+         mem_d m'' X2 X4 0.
+         mem_d m'' X2 X1 0.
+         rewrite H0.
+         mem_d m X1 X3 (m X4).
+         mem_d m X1 X4 (m X4).
+         mem_s m X1 X1 (m X4).
+         lia.
+      + destruct n; [auto | auto].
+ (* Main proof obligation for command com : the post condition hold*)
+* unfold f_psi, f_phi.
+    simpl.  intros.
+    rewrite Proc.eqb_refl in H3.
+    simpl in H3.
+    apply H3.
 Qed.
 
-
-(* TODO *)
-
-
-(** Some ltac to mechanize the extraction of proof obligation from the list construct 
+(** Some ltac to automatize the extraction of proof obligation from the list construct
     in relational property verification **)
 
 Ltac ltc3 hy :=
@@ -270,9 +225,9 @@ Ltac ltc2 phi hy :=
          clear HYP hy;
          rename hyr into hy.
 
-Ltac ltc7 phi hy H:= 
+Ltac ltc7 phi hy H:=
   ltc2 phi hy;
-  split;[clear hy; inversion H; clear H; apply Vcg_Opt.tc'_same 
+  split;[clear hy; inversion H; clear H; apply Vcg_Opt.tc'_same
         | first [ ltc7 phi hy H| simpl;auto]].
 
 Ltac ltc1 phi hy ml H :=
@@ -305,8 +260,8 @@ Ltac ltc4 ml hy phi:=
                  | ltc4 ml hy phi]
           ].
 
-Ltac ltc0 phi := apply rcorrect with phi; 
-                 [ 
+Ltac ltc0 phi := apply rcorrect with phi;
+                 [
                  | intros ml hy H;
                    ltc1 phi hy ml H
                  | intros ml hy H;
@@ -316,11 +271,187 @@ Ltac ltc0 phi := apply rcorrect with phi;
                    clear H
                 ].
 
-(** Examples of proofs of Relational Properties **)
+(** Examples of proofs of Relational Properties
+    with verification condition generator **)
 
-Definition X1 : Loc.t:= 1.
-Definition X2 : Loc.t:= 2.
-Definition ret : Loc.t := 3.
+(* Example 1 *)
+
+(* Defintion of a swap functions *)
+
+Definition swap_1: com := <[ X3 := °X1;
+                             °X1 := °X2;
+                             °X2 := X3
+                           ]>.
+
+Definition swap_2: com := <[ °X1 := °X1 + °X2;
+                             °X2 := °X1 - °X2;
+                             °X1 := °X1 - °X2
+                           ]>.
+
+(* Defintion of relational pre and post condition *)
+
+Definition rela_pre (l : list Sigma.sigma) : Prop :=
+  match l with
+  | (m1 :: m2 :: []) => m1 (m1 X1) = m2 (m2 X1) /\ m1 (m1 X2) = m2 (m2 X2) /\
+                         m1 X1 > 3 /\ m1 X2 > 3 /\ m2 X1 > 3 /\ m2 X2 > 3 /\
+                         m1 X1 <> m1 X2 /\ m2 X1 <> m2 X2
+  | _ => False
+  end.
+
+Definition rela_post (l : list Sigma.sigma) : Prop :=
+  match l with
+  | (m1 :: m2 :: []) => m1 (m1 X1) = m2 (m2 X1) /\ m1 (m1 X2) = m2 (m2 X2)
+  | _ => False
+  end.
+
+Example relation_swap : relational_prop
+                            rela_pre rela_post
+                            (swap_1 :: swap_2 :: []) Psi.empty_psi.
+Proof.
+ltc0 Phi.empty_phi.
+(* Verification of proof obligation for procedure*)
++ apply tc_p_empty_psi.
+(* Verification of auxilliary proof obligation *)
++ simpl. auto.
++ simpl. auto.
+(* Main proof obligation *)
++ simpl.
+  intros.
+  unfold X1, X2, X3 in *.
+  decompose [and] H;clear H.
+  decompose [and] H2;clear H2.
+  decompose [and] H1;clear H1.
+  split.
+  * (*<1>*)
+    rewrite H6.
+    mem_d_in m''0 (m''0 2) 1 (m''0 3).
+    mem_d_in m''0 (m''0 2) (m''0 1) (m''0 3).
+    rewrite H5.
+    mem_d_in m'' (m'' 1) 1 (m'' (m'' 2)).
+    mem_s m'' (m'' 1) (m'' 1) (m'' (m'' 2)).
+    rewrite H3.
+    mem_d s 3 2 (s (s 1)).
+    mem_d s 3 (s 2) (s (s 1)).
+    (*<2>*)
+    rewrite H8.
+    mem_d_in m''2 (m''2 1) 1 (m''2 (m''2 1) - m''2 (m''2 2)).
+    mem_s m''2 (m''2 1) (m''2 1) (m''2 (m''2 1) - m''2 (m''2 2)).
+    rewrite H7.
+    mem_d_in m''1 (m''1 2) 2 (m''1 (m''1 1) - m''1 (m''1 2)).
+    mem_d_in m''1 (m''1 2) 1 (m''1 (m''1 1) - m''1 (m''1 2)).
+    mem_s m''1 (m''1 2) (m''1 2) (m''1 (m''1 1) - m''1 (m''1 2)).
+    mem_d_in m''1 (m''1 2) (m''1 1) (m''1 (m''1 1) - m''1 (m''1 2)).
+    rewrite H.
+    mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
+    mem_d s0 (s0 1) (s0 2) (s0 (s0 1) + s0 (s0 2)).
+    mem_d s0 (s0 1) 1 (s0 (s0 1) + s0 (s0 2)).
+    mem_s s0 (s0 1) (s0 1) (s0 (s0 1) + s0 (s0 2)).
+    - lia.
+    (* all the little things *)
+    - rewrite H.
+      mem_d s0 (s0 1) 1 (s0 (s0 1) + s0 (s0 2)).
+      mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
+      lia.
+    - rewrite H.
+      mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
+      lia.
+    - rewrite H.
+      mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
+      lia.
+    - rewrite H7.
+      mem_d_in m''1 (m''1 2) 1 (m''1 (m''1 1) - m''1 (m''1 2)).
+      rewrite H.
+      mem_d s0 (s0 1) 1 (s0 (s0 1) + s0 (s0 2)).
+      lia.
+      rewrite H.
+      mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
+      lia.
+    - rewrite H3.
+      mem_d s 3 1 (s (s 1)).
+      lia.
+    - rewrite H5.
+      mem_d_in m'' (m'' 1) 1 (m'' (m'' 2)).
+      mem_d_in m'' (m'' 1) 2 (m'' (m'' 2)).
+      rewrite H3.
+      mem_d s 3 1 (s (s 1)).
+      mem_d s 3 2 (s (s 1)).
+      lia.
+      rewrite H3.
+      mem_d s 3 1 (s (s 1)).
+      lia.
+      rewrite H3.
+      mem_d s 3 1 (s (s 1)).
+      lia.
+   - rewrite H5.
+      mem_d_in m'' (m'' 1) 2 (m'' (m'' 2)).
+      rewrite H3.
+      mem_d s 3 2 (s (s 1)).
+      lia.
+      rewrite H3.
+      mem_d s 3 1 (s (s 1)).
+      lia.
+ * (*<1>*)
+    rewrite H6.
+    mem_d_in m''0 (m''0 2) 2 (m''0 3).
+    mem_s m''0 (m''0 2) (m''0 2) (m''0 3).
+    rewrite H5.
+    mem_d_in m'' (m'' 1) 3 (m'' (m'' 2)).
+    rewrite H3.
+    mem_s s 3 3 (s (s 1)).
+    (*<2>*)
+    rewrite H8.
+    mem_d_in m''2 (m''2 1) 2 (m''2 (m''2 1) - m''2 (m''2 2)).
+    mem_d_in m''2 (m''2 1) (m''2 2) (m''2 (m''2 1) - m''2 (m''2 2)).
+    rewrite H7.
+    mem_d_in m''1 (m''1 2) 2 (m''1 (m''1 1) - m''1 (m''1 2)).
+    mem_s m''1 (m''1 2) (m''1 2)  (m''1 (m''1 1) - m''1 (m''1 2)).
+    rewrite H.
+    mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
+    mem_d s0 (s0 1) (s0 2) (s0 (s0 1) + s0 (s0 2)).
+    mem_d s0 (s0 1) 1 (s0 (s0 1) + s0 (s0 2)).
+    mem_s s0 (s0 1) (s0 1) (s0 (s0 1) + s0 (s0 2)).
+    - lia.
+      (* all the little things*)
+    - rewrite H.
+      mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
+      lia.
+    - rewrite H7.
+      mem_d_in m''1 (m''1 2) 1 (m''1 (m''1 1) - m''1 (m''1 2)).
+      mem_d_in m''1 (m''1 2) 2 (m''1 (m''1 1) - m''1 (m''1 2)).
+      rewrite H.
+      mem_d s0 (s0 1) 1 (s0 (s0 1) + s0 (s0 2)).
+      mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
+      lia.
+      rewrite H.
+      mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
+      lia.
+      rewrite H.
+      mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
+      lia.
+    - rewrite H7.
+      mem_d_in m''1 (m''1 2) 1 (m''1 (m''1 1) - m''1 (m''1 2)).
+      rewrite H.
+      mem_d s0 (s0 1) 1 (s0 (s0 1) + s0 (s0 2)).
+      lia.
+      rewrite H.
+      mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
+      lia.
+    - rewrite H3.
+      mem_d s 3 1 (s (s 1)).
+      lia.
+    - rewrite H5.
+      mem_d_in m'' (m'' 1) 2 (m'' (m'' 2)).
+      rewrite H3.
+      mem_d s 3 2 (s (s 1)).
+      lia.
+      rewrite H3.
+      mem_d s 3 1 (s (s 1)).
+      lia.
+Qed.
+
+(* Example 2 *)
+
+(* Defintion of a comparator function *)
 
 Definition comp: com := <[ if X1 <= X2 && ~ X1 = X2 then
                                  ret := 0
@@ -330,6 +461,8 @@ Definition comp: com := <[ if X1 <= X2 && ~ X1 = X2 then
                                  else ret := 1
                                  end
                               end ]>.
+
+(* Defintion of relational pre and post condition *)
 
 Definition rela_pre_comp (l : list Sigma.sigma) : Prop :=
   match l with
@@ -343,12 +476,12 @@ Definition rela_post_comp (l : list Sigma.sigma) : Prop :=
   | _ => False
   end.
 
-Example Relation_comp : relational_prop
+Example relation_comp : relational_prop
                             rela_pre_comp rela_post_comp
                             (comp :: comp :: []) Psi.empty_psi.
 Proof.
 ltc0 Phi.empty_phi.
-(* Verification of auxiliary proofs proof obligation for procedure*)
+(* Verification of proof obligation for procedure*)
 + apply tc_p_empty_psi.
 (* Verification of auxilliary proof obligation *)
 + simpl. auto.
@@ -362,59 +495,23 @@ ltc0 Phi.empty_phi.
      ** subst. lia.
      ** destruct H2.
         +++ subst.
-            rewrite (set''def _ _ _ 0).
-            rewrite (set''def _ _ _ 2).
-            all: try reflexivity.
+            mem_s s ret ret 0.
+            mem_s s0 ret ret 2.
+            reflexivity.
         +++ subst. lia.
   -- destruct H2.
      ** destruct H3.
         +++ subst.
-            rewrite (set''def _ _ _ 2).
-            rewrite (set''def _ _ _ 0).
-            all: try reflexivity.
+            mem_s s ret ret 2.
+            mem_s s0 ret ret 0.
+            reflexivity.
         +++ subst. lia.
      ** destruct H4.
         +++  subst. lia.
         +++ destruct H3.
            *** subst. lia.
            *** subst.
-               rewrite (set''def _ _ _ 1).
-               rewrite (set''def _ _ _ 1).
-               all: try reflexivity.
+               mem_s s ret ret 1.
+               mem_s s0 ret ret 1.
+               reflexivity.
 Qed.
-
-(* Tras **********************)
-
-(*Definition rela_pre3 (l : list Sigma.sigma) : Prop :=
-  match l with
-  | (m1 :: m2 :: m3 :: []) => m1 EAX = m2 EAX /\ m2 EAX = m3 EAX
-  | _ => False
-  end.
-
-Definition rela_post3 (l : list Sigma.sigma) : Prop :=
-  match l with
-  | (m1 :: m2 :: m3 :: []) => m1 EAX = m2 EAX /\ m2 EAX = m3 EAX
-  | _ => False
-  end.
-
-Example Relation3 : relational_prop rela_pre3 rela_post3 
-                    (plus2 :: plus2 :: plus2 :: []) Psi.empty_psi.
-Proof.
-ltc0 Phi.empty_phi.
-(* Verification of proofs obligation for procedure *)
-+ apply tc_p_empty_psi.
-(* Verification of auxilliary proof obligation *)
-+ simpl. auto.
-+ simpl. auto.
-+ simpl. auto.
-(* Main proof obligation *)
-+ simpl.
-  intros.
-  rewrite H3.
-  rewrite H.
-  rewrite H2.
-  rewrite H0.
-  rewrite H1.
-  split.
-  all: try apply Why3_Set.set'def;reflexivity.
-Qed.*)

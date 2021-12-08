@@ -4,7 +4,7 @@ From Rela Require Import Aexp.
 From Rela Require Import Bexp.
 From Rela Require Import Proc.
 From Rela Require Import Sigma.
-From Coq Require Import Arith.
+Import Arith.
 
 (** Function for procedure inlining in Com **)
 

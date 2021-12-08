@@ -7,6 +7,7 @@ From Rela Require Import Loc.
 From Rela Require Vcg.
 From Rela Require Import Hoare_Triple.
 Import Bool.Bool.
+Import Arith.
 
 From Coq Require Import Lists.List.
 Import ListNotations.
@@ -70,11 +71,11 @@ induction b.
 * destruct b;simpl.
   + auto.
   + auto.
-  + apply Proc.eqb_neq.
+  + apply Nat.eqb_neq.
     apply negb_true_iff.
     apply Is_true_eq_true.
     apply H.
-  + apply Proc.leb_gt.
+  + apply Nat.leb_gt.
     apply negb_true_iff.
     apply Is_true_eq_true.
     apply H.
@@ -113,14 +114,14 @@ induction b.
 * auto.
 * auto.
 * simpl.
-  apply Proc.eqb_neq.
+  apply Nat.eqb_neq.
   apply negb_true_iff.
   apply negb_prop_intro in H.
   apply Is_true_eq_true in H.
   apply H.
 * simpl.
-  apply Proc.nle_gt.
-  apply Proc.leb_gt.
+  apply Nat.nle_gt.
+  apply Nat.leb_gt.
   apply negb_true_iff.
   apply negb_prop_intro in H.
   apply Is_true_eq_true in H.
@@ -128,19 +129,19 @@ induction b.
 * destruct b;simpl.
   + auto.
   + auto.
-  + apply Proc.eq_dne.
+  + apply Nat.eq_dne.
     apply negb_prop_intro in H.
     apply Is_true_eq_true in H.
     simpl in H.
     rewrite negb_involutive in H.
-    apply Proc.eqb_eq.
+    apply Nat.eqb_eq.
     apply H.
-  + apply Proc.nlt_ge.
+  + apply Nat.nlt_ge.
     apply negb_prop_intro in H.
     apply Is_true_eq_true in H.
     simpl in H.
     rewrite negb_involutive in H.
-    apply Proc.leb_le.
+    apply Nat.leb_le.
     apply H.
   + auto.
   + auto.
@@ -435,7 +436,7 @@ induction p;simpl;intros.
 * apply H. apply H0. apply H0.
 * eapply consequence_tc_suite.
   + intros.
-    apply (consequence_tc_suite _ _ _ _ (fun f2 : Prop => (f1 /\ p) /\ f2 -> suite)).
+    apply consequence_tc_suite with (fun f2 : Prop => (f1 /\ p) /\ f2 -> suite).
     - intros. apply H1. split. split. apply H2. apply H2. apply H2.
     - apply IHp2.
       apply H0.
@@ -445,7 +446,7 @@ induction p;simpl;intros.
     eapply consequence_tc_suite.
     - intros p H2.
       apply intros_tc.
-      apply (consequence_tc_suite _ _ _ _ (fun f : Prop => p /\ f -> suite)).
+      apply consequence_tc_suite with (fun f : Prop => p /\ f -> suite).
       ++ intros. apply H1. split. apply H3. apply H4.
       ++ apply H2.
     - apply H.
@@ -459,7 +460,7 @@ induction p;simpl;intros.
          apply branch_simpl in H3.
          destruct H3.
          assert (H5: p).
-         { apply H3. 
+         { apply H3.
            apply bassn_simpl_bassn.
            apply bexp_eval_true.
            assumption.
@@ -472,17 +473,15 @@ induction p;simpl;intros.
     - apply IHp1.
       intros.
       specialize (H H0).
-      apply (consequence_tc_suite _ _ _ _ _  (fun f2 : Prop => f2 -> suite))
-      in H.
+      apply consequence_tc_suite with (suite2:= fun f2 : Prop => f2 -> suite) in H.
       ** apply H.
       ** intros.
-       apply (consequence_tc_suite _ _ _ _ _  (fun _ : Prop => p -> suite)) 
-       in H1.
+       apply consequence_tc_suite with (suite2:= fun _ : Prop => p -> suite) in H1.
        ++ apply simpl_tc in H1.
           apply H1. apply H2.
        ++ intros.
           apply H3.
-          apply Then;[ | apply H4]. 
+          apply Then;[ | apply H4].
           apply bassn_simpl_bassn.
           apply bexp_eval_true.
           assumption.
@@ -495,7 +494,7 @@ induction p;simpl;intros.
          apply branch_simpl in H3.
          destruct H3.
          assert (H5: p0).
-         { apply H4. 
+         { apply H4.
            apply bassn_not_simpl_bassn_not.
            apply bexp_eval_false.
            assumption.
@@ -508,14 +507,12 @@ induction p;simpl;intros.
     - apply rev_simpl_tc.
       intros.
       specialize (H H0).
-      apply (consequence_tc_suite _ _ _ _ _  
-      (fun _ : Prop => tc p2 m m' cl (fun p2 : Prop => p2 -> suite)))
-      in H.
+      apply consequence_tc_suite with
+      (suite2:=fun _ : Prop => tc p2 m m' cl (fun p2 : Prop => p2 -> suite)) in H.
       ** apply simpl_tc in H.
          apply H.
       ** intros.
-       apply (consequence_tc_suite _ _ _ _ _  (fun p0 : Prop => p0 -> suite)) 
-       in H1.
+         apply consequence_tc_suite with (suite2:=fun p0 : Prop => p0 -> suite) in H1.
        ++ apply H1.
        ++ intros.
           apply H2.
@@ -635,8 +632,7 @@ induction p; simpl.
     apply H.
   - apply tc_same.
     intros.
-    eapply consequence_tc_suite with
-    (fun f h  => f -> tc' p2 m' h cl).
+    eapply consequence_tc_suite with (fun f h  => f -> tc' p2 m' h cl).
     + intros.
       apply IHp2.
       auto.
@@ -677,7 +673,7 @@ Definition tc_p (ps: Psi.psi) (cl : Phi.phi) : Prop :=
 
 (* The optimized version implies the naive version *)
 
-Lemma tc_p_same :
+Theorem tc_p_same :
 forall ps cl,
 tc_p ps cl -> Vcg.tc_p ps cl.
 Proof.
@@ -718,14 +714,11 @@ match c with
 | CWhile b p i => [fun m h => i (m :: h)]
                    ++
                    (map (fun a: Vcg.suite =>
-                   fun _ h => forall m', simpl_bassn b m' -> 
-                                         i (m' :: h) ->
-                                         a m' h) (tc'_list p cl))
+                   fun _ h => forall m',
+                   simpl_bassn b m' -> i (m' :: h) ->a m' h) (tc'_list p cl))
                    ++
-                   [fun _ h => forall m' m'',  simpl_bassn b m' ->  
-                                             i (m' :: h) -> 
-                                             tc p m' m'' h cl (fun f _ => f -> i (m''::h))]
-
+                   [fun _ h => forall m' m'',  
+                   simpl_bassn b m' -> i (m' :: h) -> tc p m' m'' h cl (fun f _ => f -> i (m''::h))]
  | CCall f => [fun m _ => (get_pre (cl f)) m]
 end.
 
@@ -747,7 +740,7 @@ induction p;intros.
     simpl in H.
     intro n.
     specialize (H n).
-    destruct (Proc.lt_ge_cases n (length ((tc'_list p1 cl)))).
+    destruct (Nat.lt_ge_cases n (length ((tc'_list p1 cl)))).
     - rewrite app_nth1 in H; [assumption|assumption].
     - rewrite nth_overflow; [ auto | assumption].
   * intros.
@@ -763,7 +756,7 @@ induction p;intros.
       intro n.
       specialize (H ((length(tc'_list p1 cl))+n)).
       rewrite app_nth2_plus in H.
-      destruct (Proc.lt_ge_cases n (length ((tc'_list p2 cl)))).
+      destruct (Nat.lt_ge_cases n (length ((tc'_list p2 cl)))).
       ++ erewrite nth_indep in H;[|rewrite map_length;assumption].
          rewrite map_nth in H.
          apply H.
@@ -778,7 +771,7 @@ induction p;intros.
     simpl in H.
     intro n.
     specialize (H n).
-    destruct (Proc.lt_ge_cases n (length ((tc'_list p1 cl)))).
+    destruct (Nat.lt_ge_cases n (length ((tc'_list p1 cl)))).
     - rewrite app_nth1 in H;[ | rewrite map_length;assumption].
       erewrite nth_indep in H;[ | rewrite map_length;assumption].
       rewrite
@@ -793,7 +786,7 @@ induction p;intros.
     specialize (H ((length(tc'_list p1 cl))+n)).
     erewrite <- map_length in H.
     rewrite app_nth2_plus in H.
-    destruct (Proc.lt_ge_cases n (length ((tc'_list p2 cl)))).
+    destruct (Nat.lt_ge_cases n (length ((tc'_list p2 cl)))).
     - erewrite nth_indep in H;[ | rewrite map_length;assumption].
       rewrite
       (map_nth (fun (a : Vcg.suite) m h => ~simpl_bassn b m -> a m h)) in H.

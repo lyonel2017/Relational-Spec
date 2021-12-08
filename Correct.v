@@ -12,7 +12,7 @@ Import ListNotations.
 
 (** Proof that one can use a verification condition generator to proof Hoare Triples **)
 
-Lemma correct :
+Lemma correct_c :
   forall p cl ps l,
   forall (P :precondition) (Q: postcondition),
     (forall m, P m -> tc' p m l cl) ->
@@ -94,15 +94,35 @@ Proof.
    apply Hproc.
 Qed.
 
+(** Proof that one can use a verification condition 
+    generator to proof procedure contract **)
+
 Lemma correct_proc :
   forall cl ps,
-    tc_p cl ps ->
-    hoare_triple_proc_ctx ps cl.
+    tc_p ps cl ->
+    hoare_triple_proc_ctx cl ps.
 Proof.
   intros cl ps Htc.
   unfold hoare_triple_proc_ctx.
   intros.
-  apply correct with [].
+  apply correct_c with [].
   * apply Htc.
   * apply Htc.
+Qed.
+
+(** Proof that one can use a verification condition 
+    generator to proof Hoare triple **)
+
+Theorem correct :
+  forall (c: com) (cl: Phi.phi) (ps: Psi.psi) (l : history),
+  forall (P :precondition) (Q: postcondition),
+    tc_p ps cl ->
+    (forall m, P m -> tc' c m l cl) ->
+    (forall m, P m -> tc c m l cl (fun m' _ => Q m' m)) ->
+    hoare_triple P Q c ps.
+Proof.
+intros.
+apply recursion_hoare_triple with cl.
+* apply correct_proc. assumption.
+* apply correct_c with l. all: try assumption.
 Qed.

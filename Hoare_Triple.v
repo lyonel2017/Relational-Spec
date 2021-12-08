@@ -91,6 +91,9 @@ Definition get_post (an:clause) :=
           let (pre,post) := an in
           post.
 
+(** Defintion of contract environments :
+    a map from procedure name to clauses **)
+
 Module Phi.
 
   Definition phi : Type := Proc.t -> clause.
@@ -159,7 +162,7 @@ Qed.
 
 (* Verification of Hoare Triple with procedure *)
 
-Lemma recursion_hoare_triple :
+Theorem recursion_hoare_triple :
   forall P Q p ps cl,
     hoare_triple_proc_ctx cl ps  ->
     hoare_triple_ctx cl ps P Q p ->
@@ -169,4 +172,17 @@ intros.
 apply H0.
 apply recursive_proc.
 assumption.
+Qed.
+
+(* A corollaire from recursion_hoare_triple *)
+
+Theorem procedure_hoare_triple :
+  forall p cl ps,
+    hoare_triple_proc_ctx cl ps  ->
+    hoare_triple (get_pre (cl p)) (get_post (cl p)) (ps p) ps.
+Proof.
+intros.
+apply recursion_hoare_triple with cl.
+assumption.
+apply H.
 Qed.

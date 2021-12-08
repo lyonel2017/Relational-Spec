@@ -25,7 +25,8 @@ Inductive com : Type :=
 | CWhile (b : bexp) (p : com) (inv : assertion)
 | CCall (f: Proc.t).
 
-(** A map from procedure name to the associated commands *)
+(** Definition of procedure environment :
+    a map from procedure name to the associated commands **)
 
 Module Psi.
 
@@ -38,15 +39,15 @@ End Psi.
 
 Inductive ceval : com -> sigma -> Psi.psi -> sigma -> Prop :=
   | E_Skip : forall s ps,
-    ceval CSkip s ps s
+      ceval CSkip s ps s
   | E_Ass : forall s ps x a n,
-    aeval s a = n ->
-    ceval (CAss x a) s ps (x !-> n ; s)
+      aeval s a = n ->
+      ceval (CAss x a) s ps (x !-> n ; s)
   | E_Assr : forall s ps x a n,
-    aeval s a = n ->
-    ceval (CAssr x a) s ps ((s x) !-> n ; s)
+      aeval s a = n ->
+      ceval (CAssr x a) s ps ((s x) !-> n ; s)
   | E_Assert: forall s ps (b : assertion),
-    ceval (CAssert b) s ps s
+      ceval (CAssert b) s ps s
   | E_IfTrue : forall s s' ps b p1 p2,
       beval s b = true ->
       ceval p1 s ps s' ->
@@ -124,21 +125,3 @@ Notation "'call' f" := (CCall f)
             (in custom com at level 89,
             f constr at level 0) : com_scope.
 End ComNotations.
-
-Import ComNotations.
-
-(*Check <[ skip;
-         EAX := 3 ;
-         °EAX := EAX+1 ;
-         assert (fun _ => True);
-         if true && true then
-            skip
-         else
-           skip;
-           skip
-         end;
-         while EAX = 1 inv (fun _ => True) do
-           skip
-         end;
-         call P1
-       ]>.*)

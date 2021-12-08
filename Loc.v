@@ -2,7 +2,7 @@ From Coq Require Import Arith.
 From Coq Require Import FMaps.
 From Coq Require Import MSets.
 
-(** Variable (also called locations) are natural numbers **)
+(** Locations are natural numbers **)
 
 Module Loc := Nat.
 
@@ -17,22 +17,8 @@ Definition EFX : Loc.t:= 6.
 Definition EGX : Loc.t:= 7.
 Definition EHX : Loc.t:= 8.
 
-(** Definition of Locations maps **)
-
-Module Loc_Map.
-
-  Module LocMap := FMapWeakList.Make Loc.
-  Module LocMapFacts := FMapFacts.Facts LocMap.
-  Module LocMapProps := FMapFacts.Properties LocMap.
-
-End Loc_Map.
-
-(** Defintion of variable sets **)
-
-Module Loc_Set.
-
-  Module LocSet := MSetAVL.Make Loc.
-  Module LocSetFacts := MSetFacts.Facts LocSet.
-  Module LocSetProps := MSetProperties.Properties LocSet.
-
-End Loc_Set.
+Definition X1 : Loc.t:= 1.
+Definition X2 : Loc.t:= 2.
+Definition X3 : Loc.t:= 3.
+Definition ret : Loc.t := 3.
+Definition X4 : Loc.t:= 4.

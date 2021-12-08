@@ -9,6 +9,7 @@ From Coq Require Import Eqdep_dec.
 From Coq Require Import Lists.List.
 Import ListNotations.
 From Coq Require Import Lia.
+Import Arith.
 
 (** Definition of relational Precondition **)
 
@@ -39,7 +40,7 @@ Definition relational_prop (P: r_precondition) (Q: r_postcondition)
  forall s s',  length s = length c -> length s' = length c ->
                P s -> rceval c s ps s' -> Q s' s.
 
-(** A Hoare Triple is a Relational Property for one program **)
+(** A Hoare Triple is a Relational Property for a list of program of size one **)
 
 Module Single_Rela_Prop.
 
@@ -106,6 +107,9 @@ Definition get_r_post (an:r_clause) :=
           let (pre,post) := an in
           post.
 
+(** Defintion of relational contract environments :
+    a map from list of procedure name to relational clauses **)
+
 Module R_Phi.
 
   Definition r_phi : Type := list Proc.t -> r_clause.
@@ -122,7 +126,7 @@ Definition i_relational_prop (n: nat) (P: r_precondition) (Q: r_postcondition)
                 P s -> rceval c s (k_inliner_ps n ps) s'  -> Q s' s.
 
 Lemma n_inline_ps_rceval :
-forall (p : list com) (s : list Sigma.sigma) (ps : Proc.t -> com) 
+forall (p : list com) (s : list Sigma.sigma) (ps : Proc.t -> com)
         (s' : list Sigma.sigma) (n : nat),
 length s = length p -> length s' = length p ->
 rceval p s (k_inliner_ps n ps) s' -> rceval p s ps s'.
@@ -203,7 +207,7 @@ induction p;intros.
       specialize (IHp s0 ps s' H4 H5 H10).
       destruct H2.
       destruct IHp.
-      destruct (Proc.max_dec x0 x).
+      destruct (Nat.max_dec x0 x).
       ** exists x0.
          apply E_Seq;[ | apply H3].
          apply (ceval_n_inline_ps_S x).
@@ -255,8 +259,8 @@ Definition relational_prop_ctx (rcl:R_Phi.r_phi) (ps: Psi.psi)
 Definition fold_proc (ps: Psi.psi) := List.map (fun p => ps p).
 
 Definition relational_prop_proc_ctx (rcl : R_Phi.r_phi) (ps_init :Psi.psi):=
-  forall p ps, 
-     relational_prop_ctx rcl ps (get_r_pre (rcl p)) (get_r_post (rcl p)) (fold_proc ps_init p).
+  forall p ps,
+    relational_prop_ctx rcl ps (get_r_pre (rcl p)) (get_r_post (rcl p)) (fold_proc ps_init p).
 
 Lemma rceval_inf_loop p s ps s':
 length s = length p -> length s' = length p -> 0 < length p ->
@@ -285,7 +289,7 @@ Lemma r_n_inline_ps_inline:
   forall (n : nat) (f : list Proc.t) (s : list Sigma.sigma)
          (ps : Proc.t -> com) (s' : list Sigma.sigma),
   length s = length f -> length s' = length f ->
-  rceval (fold_call f) s (k_inliner_ps (S n) ps) s' -> 
+  rceval (fold_call f) s (k_inliner_ps (S n) ps) s' ->
   rceval (fold_proc ps f ) s (k_inliner_ps n ps) s'.
 Proof.
 induction f;intros.
@@ -311,7 +315,7 @@ Qed.
 
 Lemma r_recursive_proc ps rcl:
     relational_prop_proc_ctx rcl ps ->
-   (forall p, 0 < length p -> 
+   (forall p, 0 < length p ->
       relational_prop (get_r_pre (rcl p)) (get_r_post (rcl p)) (fold_call p) ps).
 Proof.
 intros.
