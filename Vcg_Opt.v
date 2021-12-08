@@ -61,7 +61,7 @@ induction b.
 * simpl.
   apply Is_true_eq_true in H.
   simpl in H.
-  apply OrdersEx.Nat_as_DT.eqb_eq in H.
+  apply Nat.eqb_eq in H.
   assumption.
 * simpl.
   apply Is_true_eq_true in H.

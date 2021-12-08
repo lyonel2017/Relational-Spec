@@ -1,6 +1,4 @@
 From Coq Require Import Arith.
-From Coq Require Import FMaps.
-From Coq Require Import MSets.
 
 (** Locations are natural numbers **)
 
