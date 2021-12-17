@@ -568,8 +568,9 @@ Qed.
 (** Definition of a verification condition generator for procedures **)
 
 Definition tc_p (ps: Psi.psi) (cl : Phi.phi) : Prop :=
-    forall f m m', (get_pre (cl f)) m -> tc' (ps f) m [] cl /\
-                tc (ps f) m m' [] cl (fun p _ => p -> (get_post (cl f)) m' m).
+   forall f m m', (get_pre (cl f)) m ->
+   tc' (ps f) m Vcg.empty_history cl /\
+   tc (ps f) m m' Vcg.empty_history cl (fun p _ => p -> (get_post (cl f)) m' m).
 
 (* The optimized version implies the naive version *)
 

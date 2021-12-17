@@ -213,8 +213,9 @@ Fixpoint tc' (c : com) (m : Sigma.sigma) (h : history)
 (** Definition of a verification condition generator for procedures **)
 
 Definition tc_p (ps: Psi.psi) (cl : Phi.phi) : Prop :=
-    forall f m, (get_pre (cl f)) m -> tc' (ps f) m empty_history cl /\
-                tc (ps f) m [] cl (fun m' _ => get_post (cl f) m' m).
+    forall f m, (get_pre (cl f)) m -> 
+    tc' (ps f) m empty_history cl /\
+    tc (ps f) m empty_history cl (fun m' _ => get_post (cl f) m' m).
 
 (** Facts about verification condition generator for procedures **)
 

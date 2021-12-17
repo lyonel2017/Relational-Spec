@@ -126,7 +126,7 @@ Proof.
   intros cl ps Htc.
   unfold relational_prop_proc_ctx.
   intros.
-  assert (H1:length (map ps p) = length (map (fun _ => ([] : history)) p)).
+  assert (H1:length (map ps p) = length (map (fun _ => empty_history) p)).
   {  rewrite map_length. rewrite map_length. reflexivity. }
   unfold rtc_p in Htc.
   eapply rcorrect_c;split;intros; specialize (Htc p ml ps1 hy H1 H);destruct Htc.

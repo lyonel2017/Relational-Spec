@@ -105,7 +105,7 @@ Proof.
   intros cl ps Htc.
   unfold hoare_triple_proc_ctx.
   intros.
-  apply correct_c with [].
+  apply correct_c with Vcg.empty_history.
   * apply Htc.
   * apply Htc.
 Qed.
