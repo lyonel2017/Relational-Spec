@@ -15,7 +15,7 @@ Import Arith.
 
 Definition r_precondition : Type := list sigma -> Prop.
 
-Definition empty_r_precondition : r_precondition := (fun _ => True).
+Definition empty_r_precondition : r_precondition := (fun _ => False).
 
 (** Defintion of relational Postcondition **)
 

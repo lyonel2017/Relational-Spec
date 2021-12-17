@@ -12,9 +12,9 @@ Import ListNotations.
 
 Definition precondition : Type := sigma -> Prop.
 
-Definition empty_precondition : precondition := (fun _ => True).
+Definition empty_precondition : precondition := (fun _ => False).
 
-(** Defintion of Postcondtion **)
+(** Definition of Postcondtion **)
 
 Definition postcondition : Type := sigma -> sigma -> Prop.
 

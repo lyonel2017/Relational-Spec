@@ -403,10 +403,12 @@ split.
 * apply Heval.
 Qed.
 
-(** Definition of a relational verification condition generator for procedures **)
+(** Extract standard procedure contract from relational procedure contract **)
 
 Definition extract rcl := fun y:Proc.Proc.t =>
   (fun m => get_r_pre (rcl [y]) [m], fun m' m =>  get_r_post (rcl [y]) [m'] [m]).
+
+(** Facts about Extract **)
 
 Lemma hd_length_1 s: length s = 1 -> [hd default_sigma s] = s.
 Proof.
@@ -440,10 +442,112 @@ rewrite hd_length_1 in Hpre by apply H2.
 assumption.
 Qed.
 
+(** Definition of a relational verification condition generator for procedures **)
+
 Definition rtc_p (ps: Psi.psi) (rcl : R_Phi.r_phi) : Prop :=
     forall f m ps', 
     let c := (map ps f) in
-    let h := (map (fun _ => []) f) in
+    let h := (map (fun _ => empty_history) f) in
     forall (hy1:length c = length m) (hy2:length c = length h),
-    (get_r_pre (rcl f)) m -> tr rcl ps' -> rtc' c m h (phi_call (extract rcl) ps') hy1 hy2 /\
-                             rtc c m h (phi_call (extract rcl) ps') (fun m' _ => (get_r_post (rcl f)) m' m) hy1 hy2.
+    (get_r_pre (rcl f)) m -> tr rcl ps' -> 
+              rtc' c m h (phi_call (extract rcl) ps') hy1 hy2 /\
+              rtc c m h (phi_call (extract rcl) ps')
+                                       (fun m' _ => (get_r_post (rcl f)) m' m) hy1 hy2.
+
+(** Facts about relational verification condition generator for procedures **)
+
+Lemma simpl_rtc' :
+  forall (a:Proc.Proc.t) f (s:sigma) m ps ps' phi
+   (hy1:length (map ps (a::f)) = length (s::m)) 
+   (hy2:length (map ps (a::f)) = 
+        length (map (fun _ : Proc.Proc.t => empty_history) (a :: f))),
+  exists H1, exists H2,
+       rtc' (map ps (a :: f))
+            (s :: m) 
+            (map (fun _ : Proc.Proc.t => empty_history) (a :: f))
+            (phi_call (extract phi) ps') hy1 hy2 =
+       rtc' (ps a :: map ps f)
+            (s :: m) 
+            (empty_history :: map (fun _ : Proc.Proc.t => empty_history) f)
+            (phi_call (extract phi) ps') H1 H2.
+Proof.
+ eexists. eexists. program_simpl.
+Qed.
+
+Lemma simpl_rtc :
+  forall (a:Proc.Proc.t) f (s:sigma) m ps
+   (hy1:length (map Psi.empty_psi (a::f)) = length (s::m)) 
+   (hy2:length (map Psi.empty_psi (a::f)) = 
+        length (map (fun _ : Proc.Proc.t => empty_history) (a :: f))),
+  exists H1, exists H2,
+  forall suite,
+       rtc (map Psi.empty_psi (a :: f))
+            (s :: m) 
+            (map (fun _ : Proc.Proc.t => empty_history) (a :: f))
+            (phi_call (extract R_Phi.empty_r_phi) ps) 
+            suite hy1 hy2 =
+       rtc (CSkip :: map Psi.empty_psi f)
+            (s :: m) 
+            (empty_history :: map (fun _ : Proc.Proc.t => empty_history) f)
+            (phi_call (extract R_Phi.empty_r_phi) ps) 
+            suite H1 H2.
+Proof.
+  eexists. eexists. intros. program_simpl.
+Qed.
+
+Lemma rtc_p_empty_psi : rtc_p Psi.empty_psi R_Phi.empty_r_phi.
+Proof.
+unfold rtc_p.
+intros.
+split.
+* generalize dependent m.
+  induction f;intros.
+  + inversion hy1.
+    symmetry in H2.
+    apply length_zero_iff_nil in H2.
+    subst.
+    simpl.
+    auto.
+  + destruct m;[ discriminate hy1 | ].
+    destruct (simpl_rtc' a f s m 
+                         Psi.empty_psi ps' R_Phi.empty_r_phi hy1 hy2) 
+       as (hyr1 & hyr2 & HYP).
+    rewrite HYP.
+    clear HYP.
+    destruct (mk_rtc'_def _ _ (phi_call (extract R_Phi.empty_r_phi) ps') 
+                          _ _  _ _ hyr1 hyr2) 
+          as (hyr3 & hyr4 & HYP).
+    rewrite HYP.
+    clear HYP.
+    split.
+    - simpl.
+      auto.
+    - apply IHf.
+      simpl.
+      unfold empty_r_precondition.
+      auto.
+* generalize dependent m.
+  induction f; intros.
+  + inversion hy1.
+    symmetry in H2.
+    apply length_zero_iff_nil in H2.
+    subst.
+    simpl.
+    unfold empty_r_postcondition.
+    auto.
+  + destruct m; [discriminate hy1 | ].
+    destruct (simpl_rtc a f s m ps' hy1 hy2) as (hyr1 & hyr2 & HYP).
+    rewrite HYP.
+    clear HYP.
+    destruct (mk_rtc_def _ _ (phi_call (extract R_Phi.empty_r_phi) ps') 
+                          _ _ _ _ hyr1 hyr2) 
+             as (hyr3 & hyr4 & HYP).
+    rewrite HYP.
+    clear HYP.
+    simpl.
+    intros.
+    apply IHf.
+    simpl.
+    unfold empty_r_precondition.
+    auto.
+Qed.

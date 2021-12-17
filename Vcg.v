@@ -88,6 +88,8 @@ Import Assn_b.
 
 Definition history: Type := list Sigma.sigma.
 
+Definition empty_history: history := [].
+
 Definition suite : Type := Sigma.sigma -> history -> Prop.
 
 Fixpoint tc (c : com) (m : Sigma.sigma) (h : history)
@@ -211,18 +213,18 @@ Fixpoint tc' (c : com) (m : Sigma.sigma) (h : history)
 (** Definition of a verification condition generator for procedures **)
 
 Definition tc_p (ps: Psi.psi) (cl : Phi.phi) : Prop :=
-    forall f m, (get_pre (cl f)) m -> tc' (ps f) m [] cl /\
+    forall f m, (get_pre (cl f)) m -> tc' (ps f) m empty_history cl /\
                 tc (ps f) m [] cl (fun m' _ => get_post (cl f) m' m).
 
 (** Facts about verification condition generator for procedures **)
 
-Lemma tc_p_empty_psi : tc_p Psi.empty_psi Phi.empty_phi.
+Lemma tc_p_empty_psi : forall psi, tc_p psi Phi.empty_phi.
 Proof.
 unfold tc_p.
 intros.
-split.
-* auto.
-* simpl. intros. unfold empty_postcondition. auto.
+simpl in H.
+unfold empty_precondition in H.
+contradiction.
 Qed.
 
 (** Verification of trivial procedure contract **)
@@ -232,7 +234,9 @@ Definition f_psi (x': Proc.t) :=
         if Proc.eqb x' f then CSkip else Psi.empty_psi x'.
 
 Definition f_phi (x': Proc.t) :=
-        if Proc.eqb x' f then empty_clause else Phi.empty_phi x'.
+        if Proc.eqb x' f then 
+        ((fun _ => True), (fun _ _ => True)) 
+        else Phi.empty_phi x'.
 
 Example tc_p_update : tc_p f_psi f_phi.
 Proof.
@@ -241,8 +245,12 @@ unfold f_psi, f_phi.
 intros.
 destruct (Proc.eqb f0 f).
 - split.
-  * now auto.
-  * simpl. intros. unfold empty_postcondition. auto.
-- apply tc_p_empty_psi.
-  assumption.
+  * simpl in H.
+    simpl. apply H.
+  * simpl in H.
+    simpl. intros. apply H.
+- intros.
+  simpl in H.
+  unfold empty_precondition in H.
+  contradiction.
 Qed.
