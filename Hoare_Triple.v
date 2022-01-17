@@ -75,7 +75,7 @@ Qed.
 
 Definition precondition : Type := assertion.
 
-Definition empty_precondition : precondition := (fun _ => True).
+Definition empty_precondition : precondition := (fun _ => False).
 
 (** Defintion of Postcondtion **)
 

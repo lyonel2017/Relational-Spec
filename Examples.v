@@ -124,8 +124,7 @@ Definition com_1 := <[
   call(f)
 ]>.
 
-Example hoare_triple_mult: hoare_triple (fun _ => True)
-                              (fun m => f_post m) com_1 f_psi.
+Example hoare_triple_mult: hoare_triple (fun _ => True) f_post com_1 f_psi.
 Proof.
 apply correct with f_phi.
 (* Verification of proof obligation for procedure*)
@@ -176,9 +175,8 @@ apply correct with f_phi.
          unfold f_pre in H.
          decompose [and] H;clear H.
          lia.
-  + split.
-    - auto.
-    - simpl. intros. unfold empty_postcondition. auto.
+  + intros. simpl in H. unfold empty_precondition in H.
+    contradiction.
 * unfold f_psi, f_phi.
   (* Verification of auxilliary proof obligation for command com*)
   intros. apply Vcg_Opt.tc'_same.
@@ -213,27 +211,21 @@ Qed.
 (** Some ltac to automatize the extraction of proof obligation from the list construct
     in relational property verification **)
 
-Ltac ltc3 hy :=
-  inversion hy as [H1];
-  symmetry in H1;
-  apply length_zero_iff_nil in H1;
-  subst.
-
 Ltac ltc2 phi hy :=
-         destruct (mk_rtc'_def _ _ phi _ _ hy) as (hyr & HYP);
-         rewrite HYP;
-         clear HYP hy;
-         rename hyr into hy.
+        destruct (mk_rtc'_def _ _ phi _ _ hy ) as (hyr & HYP);
+        rewrite HYP;
+        clear HYP hy;
+        rename hyr into hy.
 
 Ltac ltc7 phi hy H:=
-  ltc2 phi hy;
-  split;[clear hy; inversion H; clear H; apply Vcg_Opt.tc'_same
-        | first [ ltc7 phi hy H| simpl;auto]].
+  ltc2 phi hy ;
+  split; [ clear hy; simpl H; apply Vcg_Opt.tc'_same
+         | first [ltc7 phi hy H | simpl;auto] ].
 
 Ltac ltc1 phi hy ml H :=
          destruct ml;
-         [ discriminate hy
-         | first [ltc3 hy; ltc7 phi hy H| ltc1 phi hy ml H]
+         [ first [ discriminate hy | first [ltc7 phi hy H | simpl;auto] ]
+         | first [ discriminate hy | ltc1 phi hy ml H ]
          ].
 
 Ltac ltc6 phi hy :=
@@ -242,23 +234,26 @@ Ltac ltc6 phi hy :=
        clear HYP hy;
        rename hyr into hy.
 
-Ltac ltc5 phi hy :=
-    intro;
-    intros H1;
-    tryif ltc6 Phi.empty_phi hy;
-          eapply consequence_tc_suite;
-          [ clear H1; ltc5 phi hy | apply Vcg_Opt.tc_same; apply H1]
-    then auto
+Ltac ltc3 phi hy:=
+    intro; intros H1; 
+    tryif ltc6 phi hy
+    then 
+    eapply consequence_tc_suite;
+    [ clear H1; ltc3 phi hy
+    | apply Vcg_Opt.tc_same; apply H1 ]
     else simpl; apply H1.
+
+Ltac ltc5 phi hy :=
+    ltc6 phi hy;
+    eapply consequence_tc_suite;
+    [ ltc3 phi hy 
+    | apply Vcg_Opt.tc_same].
 
 Ltac ltc4 ml hy phi:=
          destruct ml;
-         [ discriminate hy
-         | first [ltc3 hy;
-                  ltc6 Phi.empty_phi hy;
-                  eapply consequence_tc_suite;[ ltc5 phi hy | apply Vcg_Opt.tc_same]
-                 | ltc4 ml hy phi]
-          ].
+         [ first [ discriminate hy | first [ltc5 phi hy | simpl; auto] ]
+         | first [ discriminate hy | ltc4 ml hy phi ]
+         ].
 
 Ltac ltc0 phi := apply rcorrect with phi;
                  [
@@ -267,8 +262,7 @@ Ltac ltc0 phi := apply rcorrect with phi;
                  | intros ml hy H;
                    ltc4 ml hy phi;
                    clear hy;
-                   inversion H;
-                   clear H
+                   simpl in H
                 ].
 
 (** Examples of proofs of Relational Properties
@@ -319,132 +313,132 @@ ltc0 Phi.empty_phi.
   intros.
   unfold X1, X2, X3 in *.
   decompose [and] H;clear H.
-  decompose [and] H2;clear H2.
+  decompose [and] H0;clear H0.
   decompose [and] H1;clear H1.
   split.
   * (*<1>*)
-    rewrite H6.
+    rewrite H12.
     mem_d_in m''0 (m''0 2) 1 (m''0 3).
     mem_d_in m''0 (m''0 2) (m''0 1) (m''0 3).
-    rewrite H5.
+    rewrite H11.
     mem_d_in m'' (m'' 1) 1 (m'' (m'' 2)).
     mem_s m'' (m'' 1) (m'' 1) (m'' (m'' 2)).
-    rewrite H3.
+    rewrite H.
     mem_d s 3 2 (s (s 1)).
     mem_d s 3 (s 2) (s (s 1)).
     (*<2>*)
-    rewrite H8.
+    rewrite H14.
     mem_d_in m''2 (m''2 1) 1 (m''2 (m''2 1) - m''2 (m''2 2)).
     mem_s m''2 (m''2 1) (m''2 1) (m''2 (m''2 1) - m''2 (m''2 2)).
-    rewrite H7.
+    rewrite H13.
     mem_d_in m''1 (m''1 2) 2 (m''1 (m''1 1) - m''1 (m''1 2)).
     mem_d_in m''1 (m''1 2) 1 (m''1 (m''1 1) - m''1 (m''1 2)).
     mem_s m''1 (m''1 2) (m''1 2) (m''1 (m''1 1) - m''1 (m''1 2)).
     mem_d_in m''1 (m''1 2) (m''1 1) (m''1 (m''1 1) - m''1 (m''1 2)).
-    rewrite H.
+    rewrite H0.
     mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
     mem_d s0 (s0 1) (s0 2) (s0 (s0 1) + s0 (s0 2)).
     mem_d s0 (s0 1) 1 (s0 (s0 1) + s0 (s0 2)).
     mem_s s0 (s0 1) (s0 1) (s0 (s0 1) + s0 (s0 2)).
     - lia.
     (* all the little things *)
-    - rewrite H.
+    - rewrite H0.
       mem_d s0 (s0 1) 1 (s0 (s0 1) + s0 (s0 2)).
       mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
       lia.
-    - rewrite H.
+    - rewrite H0.
       mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
       lia.
-    - rewrite H.
+    - rewrite H0.
       mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
       lia.
-    - rewrite H7.
+    - rewrite H13.
       mem_d_in m''1 (m''1 2) 1 (m''1 (m''1 1) - m''1 (m''1 2)).
-      rewrite H.
+      rewrite H0.
       mem_d s0 (s0 1) 1 (s0 (s0 1) + s0 (s0 2)).
       lia.
-      rewrite H.
+      rewrite H0.
       mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
       lia.
-    - rewrite H3.
+    - rewrite H.
       mem_d s 3 1 (s (s 1)).
       lia.
-    - rewrite H5.
+    - rewrite H11.
       mem_d_in m'' (m'' 1) 1 (m'' (m'' 2)).
       mem_d_in m'' (m'' 1) 2 (m'' (m'' 2)).
-      rewrite H3.
+      rewrite H.
       mem_d s 3 1 (s (s 1)).
       mem_d s 3 2 (s (s 1)).
       lia.
-      rewrite H3.
+      rewrite H.
       mem_d s 3 1 (s (s 1)).
       lia.
-      rewrite H3.
+      rewrite H.
       mem_d s 3 1 (s (s 1)).
       lia.
-   - rewrite H5.
-      mem_d_in m'' (m'' 1) 2 (m'' (m'' 2)).
-      rewrite H3.
-      mem_d s 3 2 (s (s 1)).
-      lia.
-      rewrite H3.
-      mem_d s 3 1 (s (s 1)).
-      lia.
+   - rewrite H11.
+     mem_d_in m'' (m'' 1) 2 (m'' (m'' 2)).
+     rewrite H.
+     mem_d s 3 2 (s (s 1)).
+     lia.
+     rewrite H.
+     mem_d s 3 1 (s (s 1)).
+     lia.
  * (*<1>*)
-    rewrite H6.
+    rewrite H12.
     mem_d_in m''0 (m''0 2) 2 (m''0 3).
     mem_s m''0 (m''0 2) (m''0 2) (m''0 3).
-    rewrite H5.
+    rewrite H11.
     mem_d_in m'' (m'' 1) 3 (m'' (m'' 2)).
-    rewrite H3.
+    rewrite H.
     mem_s s 3 3 (s (s 1)).
     (*<2>*)
-    rewrite H8.
+    rewrite H14.
     mem_d_in m''2 (m''2 1) 2 (m''2 (m''2 1) - m''2 (m''2 2)).
     mem_d_in m''2 (m''2 1) (m''2 2) (m''2 (m''2 1) - m''2 (m''2 2)).
-    rewrite H7.
+    rewrite H13.
     mem_d_in m''1 (m''1 2) 2 (m''1 (m''1 1) - m''1 (m''1 2)).
     mem_s m''1 (m''1 2) (m''1 2)  (m''1 (m''1 1) - m''1 (m''1 2)).
-    rewrite H.
+    rewrite H0.
     mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
     mem_d s0 (s0 1) (s0 2) (s0 (s0 1) + s0 (s0 2)).
     mem_d s0 (s0 1) 1 (s0 (s0 1) + s0 (s0 2)).
     mem_s s0 (s0 1) (s0 1) (s0 (s0 1) + s0 (s0 2)).
     - lia.
       (* all the little things*)
-    - rewrite H.
+    - rewrite H0.
       mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
       lia.
-    - rewrite H7.
+    - rewrite H13.
       mem_d_in m''1 (m''1 2) 1 (m''1 (m''1 1) - m''1 (m''1 2)).
       mem_d_in m''1 (m''1 2) 2 (m''1 (m''1 1) - m''1 (m''1 2)).
-      rewrite H.
+      rewrite H0.
       mem_d s0 (s0 1) 1 (s0 (s0 1) + s0 (s0 2)).
       mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
       lia.
-      rewrite H.
+      rewrite H0.
       mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
       lia.
-      rewrite H.
+      rewrite H0.
       mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
       lia.
-    - rewrite H7.
+    - rewrite H13.
       mem_d_in m''1 (m''1 2) 1 (m''1 (m''1 1) - m''1 (m''1 2)).
-      rewrite H.
+      rewrite H0.
       mem_d s0 (s0 1) 1 (s0 (s0 1) + s0 (s0 2)).
       lia.
-      rewrite H.
+      rewrite H0.
       mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
       lia.
-    - rewrite H3.
+    - rewrite H.
       mem_d s 3 1 (s (s 1)).
       lia.
-    - rewrite H5.
+    - rewrite H11.
       mem_d_in m'' (m'' 1) 2 (m'' (m'' 2)).
-      rewrite H3.
+      rewrite H.
       mem_d s 3 2 (s (s 1)).
       lia.
-      rewrite H3.
+      rewrite H.
       mem_d s 3 1 (s (s 1)).
       lia.
 Qed.
@@ -489,25 +483,24 @@ ltc0 Phi.empty_phi.
 (* Main proof obligation *)
 + simpl.
   intros.
-  destruct H.
   destruct H0.
-  -- destruct H2.
+  -- destruct H1.
      ** subst. lia.
-     ** destruct H2.
+     ** destruct H3.
         +++ subst.
             mem_s s ret ret 0.
             mem_s s0 ret ret 2.
             reflexivity.
         +++ subst. lia.
-  -- destruct H2.
-     ** destruct H3.
+  -- destruct H1.
+     ** destruct H2.
         +++ subst.
             mem_s s ret ret 2.
             mem_s s0 ret ret 0.
             reflexivity.
         +++ subst. lia.
-     ** destruct H4.
-        +++  subst. lia.
+     ** destruct H2.
+        +++ subst. lia.
         +++ destruct H3.
            *** subst. lia.
            *** subst.

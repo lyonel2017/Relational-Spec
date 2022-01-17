@@ -87,7 +87,7 @@ End Single_Rela_Prop.
 
 Definition r_precondition : Type := r_assertion.
 
-Definition empty_r_precondition : r_precondition := (fun _ => True).
+Definition empty_r_precondition : r_precondition := (fun _ => False).
 
 (** Defintion of relation Postcondtion **)
 

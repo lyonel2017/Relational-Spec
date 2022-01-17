@@ -206,9 +206,9 @@ Lemma tc_p_empty_psi : tc_p Psi.empty_psi Phi.empty_phi.
 Proof.
 unfold tc_p.
 intros.
-split.
-* auto.
-* simpl. intros. unfold empty_postcondition. auto.
+simpl in H. 
+unfold empty_precondition in H. 
+contradiction.
 Qed.
 
 (** Verification of trivial procedure contract **)
@@ -218,7 +218,9 @@ Definition f_psi (x': Proc.t) :=
         if Proc.eqb x' f then CSkip else Psi.empty_psi x'.
 
 Definition f_phi (x': Proc.t) :=
-        if Proc.eqb x' f then empty_clause else Phi.empty_phi x'.
+        if Proc.eqb x' f then 
+        ((fun _ => True), (fun _ => True)) 
+        else Phi.empty_phi x'.
 
 Example tc_p_update : tc_p f_psi f_phi.
 Proof.
@@ -227,8 +229,13 @@ unfold f_psi, f_phi.
 intros.
 destruct (Proc.eqb f0 f).
 - split.
-  * now auto.
-  * simpl. intros. unfold empty_postcondition. auto.
-- apply tc_p_empty_psi.
-  assumption.
+  * simpl in H. 
+    simpl.
+    apply H.
+  * simpl in H.
+    simpl. intros. apply H.
+- intros.
+  simpl in H. 
+  unfold empty_precondition in H. 
+  contradiction.
 Qed.
