@@ -293,7 +293,7 @@ Definition swap_2: com := <[ °X1 := °X1 + °X2;
 Definition rela_pre (l : list Sigma.sigma) : Prop :=
   match l with
   | (m1 :: m2 :: []) => m1 (m1 X1) = m2 (m2 X1) /\ m1 (m1 X2) = m2 (m2 X2) /\
-                         m1 X1 > 3 /\ m1 X2 > 3 /\ m2 X1 > 3 /\ m2 X2 > 3 /\
+                         m1 X1 > 3 /\ m1 X2 > 3 /\ m2 X1 > 2 /\ m2 X2 > 2 /\
                          m1 X1 <> m1 X2 /\ m2 X1 <> m2 X2
   | _ => False
   end.
