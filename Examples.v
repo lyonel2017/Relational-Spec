@@ -562,12 +562,11 @@ Definition f2_post : r_postcondition := fun l _ =>
   | _ => False
   end.
 
-
 (* Relational contract environment *)
 
 Scheme Equality for list.
 
-Definition f_r_phi (x': list Proc.t) :=
+Definition f2_r_phi (x': list Proc.t) :=
         if (list_beq  Proc.t) Proc.eqb x' (f2 :: f2 :: []) 
         then (f2_r_pre,f2_r_post) 
         else
@@ -584,7 +583,7 @@ Proof.
 assert (hyh :length (<[ call(f2) ]>:: <[ call(f2) ]> :: []) = 
              length (empty_history:: empty_history :: [])).
 {  simpl. reflexivity. }
-ltc0 f_r_phi (empty_history :: empty_history :: []) hyh.
+ltc0 f2_r_phi (empty_history :: empty_history :: []) hyh.
 (* Verification of proof obligation for procedure *)
 + unfold rtc_p.
   intros.
@@ -604,7 +603,7 @@ ltc0 f_r_phi (empty_history :: empty_history :: []) hyh.
          auto.
        (* Main proof obligation *)
        * simpl.
-         unfold f2_psi, f_r_phi.
+         unfold f2_psi, f2_r_phi.
          simpl.
          rewrite Proc.eqb_refl.
          simpl.
@@ -614,7 +613,7 @@ ltc0 f_r_phi (empty_history :: empty_history :: []) hyh.
          mem_s s0 X1 X1 (s0 X1 + 1).
          simpl in H.
          apply plus_lt_compat_r.
-         unfold f_r_phi in H.
+         unfold f2_r_phi in H.
          simpl in H.
          rewrite Proc.eqb_refl in H.
          simpl in H.
@@ -634,13 +633,13 @@ ltc0 f_r_phi (empty_history :: empty_history :: []) hyh.
              auto.
           (* Main proof obligation *)
           ** simpl.
-             unfold f2_psi, f_r_phi.
+             unfold f2_psi, f2_r_phi.
              simpl.
              rewrite Proc.eqb_refl.
              simpl.
              intros.
              auto.
-         * unfold f_r_phi in H.
+         * unfold f2_r_phi in H.
            rewrite E1 in H.
            rewrite E2 in H.
            simpl in H.
@@ -650,12 +649,12 @@ ltc0 f_r_phi (empty_history :: empty_history :: []) hyh.
       {f2_r_pre} <[ call(f2) ]> ~ <[ call(f2) ]> {f2_r_post} 
 *)
 (* Verification of auxilliary proof obligation *)
-+ simpl. unfold f_r_phi. simpl.
++ simpl. unfold f2_r_phi. simpl.
   rewrite Bool.andb_false_r.
   rewrite Proc.eqb_refl.
   simpl.
   auto.
-+ simpl. unfold f_r_phi. simpl.
++ simpl. unfold f2_r_phi. simpl.
   rewrite Bool.andb_false_r.
   rewrite Proc.eqb_refl.
   simpl.
@@ -664,7 +663,7 @@ ltc0 f_r_phi (empty_history :: empty_history :: []) hyh.
 + simpl.
   intros.
   specialize (Hr (f2 :: f2 :: [])).
-  unfold f_r_phi in Hr.
+  unfold f2_r_phi in Hr.
   replace (list_beq Proc.t Proc.eqb [f2; f2] [f2; f2]) with true in Hr.
   - specialize (Hr (s :: s0 :: []) (m' :: m'0 :: [])).
     simpl in Hr.
@@ -682,4 +681,258 @@ ltc0 f_r_phi (empty_history :: empty_history :: []) hyh.
     split.
     apply Proc.eqb_eq. reflexivity.
     auto.
- Qed. 
+ Qed.
+
+(* Example 4 *)
+
+(* Defintion of a sum functions *)
+
+Parameter f3 : Proc.t.
+
+Definition f3_body: com := <[
+  if X1 <= X2 && ~ X1 = 0 then
+      X3 := X3 + X1;
+      X1 := X1 + 1;
+      call(f3)
+  else
+    skip
+  end ]>.
+
+(* Procedure environment *)
+
+Definition f3_psi (x': Proc.t) :=
+        if Proc.eqb x' f3 then f3_body else Psi.empty_psi x'.
+
+(* Definition of relational contract for procedure f *)
+
+Definition f3_r_pre : r_precondition := fun l =>
+  match l with
+  | (m1 :: m2 :: []) => m1 X2 = m2 X2 /\
+                        m1 X1 = m2 X1 + 1 /\
+                        m1 X3 = m2 X3 + m1 X1
+  | _ => False
+  end.
+
+Definition f3_r_post : r_postcondition := fun l _ =>
+  match l with
+  | (m1 :: m2 :: []) => m1 X3 = m2 X3
+  | _ => False
+  end.
+
+(* Definition of standard contract for procedure f *)
+
+Definition f3_pre : r_precondition := fun l =>
+  match l with
+  | (m :: []) => True
+  | _ => False
+  end.
+
+Definition f3_post : r_postcondition := fun l _ =>
+  match l with
+  | (m1 :: []) => True
+  | _ => False
+  end.
+
+(* Definition of relational pre and post condition *)
+
+Definition r_pre : r_precondition := fun l =>
+  match l with
+  | (m1 :: m2 :: []) => m1 X2 = m2 X2 /\
+                        m1 X1 = 0 /\ m2 X1 = 1 /\
+                        m1 X3 = 0 /\ m2 X3 = 0
+  | _ => False
+  end.
+
+Definition r_post : r_postcondition := fun l _ =>
+  match l with
+  | (m1 :: m2 :: []) => m1 X3 = m2 X3
+  | _ => False
+  end.
+
+(* Relational contract environment *)
+
+Definition f3_r_phi (x': list Proc.t) :=
+        if (list_beq  Proc.t) Proc.eqb x' (f3 :: f3 :: []) 
+        then (f3_r_pre,f3_r_post) 
+        else
+            if (list_beq  Proc.t) Proc.eqb x' (f3 :: []) 
+            then (f2_pre,f2_post) 
+            else R_Phi.empty_r_phi x'.
+
+(** Relation Propery **)
+
+Example relation_sum : relational_prop
+                  r_pre r_post
+                  (<[ X1:= 0; X3 := 0; call(f3) ]> :: 
+                   <[ X1:= 1; X3 := 0; call(f3) ]> :: []) f3_psi.
+Proof.
+assert (hyh :length  (<[ X1:= 0; X3 := 0; call(f3) ]> :: 
+                   <[ X1:= 1; X3 := 0; call(f3) ]> :: []) = 
+             length (empty_history:: empty_history :: [])).
+{  simpl. reflexivity. }
+ltc0 f3_r_phi (empty_history :: empty_history :: []) hyh.
+(* Verification of proof obligation for procedure *)
++ unfold rtc_p.
+  intros.
+  destruct (list_beq Proc.t Proc.eqb f0 [f3; f3]) eqn: E1.
+   (* Proof oblication for relational property {f2_r_pre} f2 ~ f2 {f2_r_post} *)
+    - apply internal_list_dec_bl in E1 ;[ | apply Proc.eqb_eq ].
+      subst.
+      destruct m;[ discriminate hy1 | ].
+      destruct m;[ discriminate hy1 | ].
+      destruct m;[ | discriminate hy1 ].
+      split.
+       (* Verification of auxilliary proof obligation *)
+       * simpl.
+         unfold f3_psi.
+         rewrite Proc.eqb_refl.
+         split.
+         ++ apply Vcg_Opt.tc'_same.
+            apply Vcg_Opt.Tc'_list.tc'_list_same.
+            simpl.
+            destruct n.
+            ** unfold Vcg_Opt.Tc'_list.continuation.
+               simpl.
+               intros.
+               unfold f3_r_phi.
+               simpl.
+               rewrite Proc.eqb_refl.
+               simpl.
+               auto.
+            **  destruct n; [auto | auto].
+         ++ split; [ | auto].
+            apply Vcg_Opt.tc'_same.
+            apply Vcg_Opt.Tc'_list.tc'_list_same.
+            simpl.
+            destruct n.
+            ** unfold Vcg_Opt.Tc'_list.continuation.
+               simpl.
+               intros.
+               unfold f3_r_phi.
+               simpl.
+               rewrite Proc.eqb_refl.
+               simpl.
+               auto.
+            **  destruct n; [auto | auto].
+       (* Main proof obligation *)
+       * ltc5 f3_r_phi ps' hy1 hy2.
+         unfold f3_psi, f3_r_phi.
+         simpl.
+         rewrite Proc.eqb_refl.
+         simpl.
+         rewrite Proc.eqb_refl.
+         simpl.
+         intros.
+         destruct H2.
+         ++ destruct H1.
+          ** specialize (H0 (f3 :: f3 :: [])).
+             unfold f3_r_phi in H0.
+             replace (list_beq Proc.t Proc.eqb [f3; f3] [f3; f3]) with true in H0.
+             specialize (H0 (m''0 :: m''2 :: []) (m' :: m'0 :: [])).
+             simpl in H0.
+             apply H0; clear H0.
+             all: try Lia.lia.
+             split. apply H4.
+             split. apply H3.
+             auto.
+             decompose [and] H3;clear H3.
+             decompose [and] H4;clear H4.
+             rewrite H10.
+             mem_d_in m'' X1 X2 (m'' X1 + 1).
+             mem_d_in m'' X1 X3 (m'' X1 + 1).
+             mem_s m'' X1 X1 (m'' X1 + 1).
+             rewrite H3.
+             mem_d_in s X3 X2 (s X3 + s X1).
+             mem_d_in s X3 X1 (s X3 + s X1).
+             mem_s s X3 X3 (s X3 + s X1).
+             rewrite H6.
+             mem_d_in m''1 X1 X2 (m''1 X1 + 1).
+             mem_d_in m''1 X1 X3 (m''1 X1 + 1).
+             mem_s m''1 X1 X1 (m''1 X1 + 1).
+             rewrite H0.
+             mem_d_in s0 X3 X2 (s0 X3 + s0 X1).
+             mem_d_in s0 X3 X1 (s0 X3 + s0 X1).
+             mem_s s0 X3 X3 (s0 X3 + s0 X1).
+             unfold f3_r_phi in H.
+             replace (list_beq Proc.t Proc.eqb [f3; f3] [f3; f3]) with true in H.
+             simpl in H.
+             Lia.lia.
+             simpl.
+             rewrite Proc.eqb_refl.
+             auto.
+             all: unfold X1, X2, X3.
+             all: try Lia.lia.
+             simpl.
+             rewrite Proc.eqb_refl.
+             auto.
+          **
+             
+         
+         
+         
+         
+         
+   (* Verification of proof obligation for procedure f2*)
+    - destruct (list_beq Proc.t Proc.eqb f0 [f2]) eqn: E2.
+        * apply internal_list_dec_bl in E2 ;[ | apply Proc.eqb_eq ].
+          subst.
+          destruct m;[ discriminate hy1 | ].
+          destruct m;[ | discriminate hy1 ].
+          split.
+          (* Verification of auxilliary proof obligation *)
+          ** simpl.
+             unfold f2_psi.
+             rewrite Proc.eqb_refl.
+             simpl.
+             auto.
+          (* Main proof obligation *)
+          ** simpl.
+             unfold f2_psi, f2_r_phi.
+             simpl.
+             rewrite Proc.eqb_refl.
+             simpl.
+             intros.
+             auto.
+         * unfold f2_r_phi in H.
+           rewrite E1 in H.
+           rewrite E2 in H.
+           simpl in H.
+           unfold empty_r_precondition in H.
+           contradiction.
+(* Proof obligation for relational property 
+      {f2_r_pre} <[ call(f2) ]> ~ <[ call(f2) ]> {f2_r_post} 
+*)
+(* Verification of auxilliary proof obligation *)
++ simpl. unfold f2_r_phi. simpl.
+  rewrite Bool.andb_false_r.
+  rewrite Proc.eqb_refl.
+  simpl.
+  auto.
++ simpl. unfold f2_r_phi. simpl.
+  rewrite Bool.andb_false_r.
+  rewrite Proc.eqb_refl.
+  simpl.
+  auto.
+(* Main proof obligation *)
++ simpl.
+  intros.
+  specialize (Hr (f2 :: f2 :: [])).
+  unfold f2_r_phi in Hr.
+  replace (list_beq Proc.t Proc.eqb [f2; f2] [f2; f2]) with true in Hr.
+  - specialize (Hr (s :: s0 :: []) (m' :: m'0 :: [])).
+    simpl in Hr.
+    apply Hr.
+    all: try Lia.lia.
+    split. apply H0.
+    split. apply H1.
+    auto.
+  - simpl.
+    symmetry.
+    eapply Bool.andb_true_iff.
+    split.
+    apply Proc.eqb_eq. reflexivity.
+    eapply Bool.andb_true_iff.
+    split.
+    apply Proc.eqb_eq. reflexivity.
+    auto.
+ Qed.
