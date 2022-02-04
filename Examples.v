@@ -18,7 +18,6 @@ Import ListNotations.
 From Coq Require Import Program.
 From Coq Require Import Eqdep_dec.
 From Coq Require Import Lia.
-From Coq Require Import Omega.
 Require Import Arith.
 
 (** Example of arithmetic expression **)
@@ -118,13 +117,13 @@ Definition f_phi (x': Proc.t) :=
 
 (* Program computing the multiplication of X3 and X4 and put the result in X2 *)
 
-Definition com_1 := <[
+Definition com_rec := <[
   X1 := X4;
   X2 := 0;
   call(f)
 ]>.
 
-Example hoare_triple_mult: hoare_triple (fun _ => True) f_post com_1 f_psi.
+Example hoare_triple_mult: hoare_triple (fun _ => True) f_post com_rec f_psi.
 Proof.
 apply correct with f_phi.
 (* Verification of proof obligation for procedure*)
@@ -235,9 +234,9 @@ Ltac ltc6 phi hy :=
        rename hyr into hy.
 
 Ltac ltc3 phi hy:=
-    intro; intros H1; 
+    intro; intros H1;
     tryif ltc6 phi hy
-    then 
+    then
     eapply consequence_tc_suite;
     [ clear H1; ltc3 phi hy
     | apply Vcg_Opt.tc_same; apply H1 ]
@@ -246,7 +245,7 @@ Ltac ltc3 phi hy:=
 Ltac ltc5 phi hy :=
     ltc6 phi hy;
     eapply consequence_tc_suite;
-    [ ltc3 phi hy 
+    [ ltc3 phi hy
     | apply Vcg_Opt.tc_same].
 
 Ltac ltc4 ml hy phi:=
@@ -268,7 +267,7 @@ Ltac ltc0 phi := apply rcorrect with phi;
 (** Examples of proofs of Relational Properties
     with verification condition generator **)
 
-(* Example 1 *)
+(** Swap **)
 
 (* Defintion of a swap functions *)
 
@@ -443,7 +442,7 @@ ltc0 Phi.empty_phi.
       lia.
 Qed.
 
-(* Example 2 *)
+(** Compare **)
 
 (* Defintion of a comparator function *)
 
