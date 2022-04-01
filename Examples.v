@@ -600,9 +600,10 @@ Definition f2_r_phi (x': list Proc.t) :=
 
 Example relation_mono : relational_prop
                   f2_r_pre f2_r_post
-                  [<[ call(f2) ]>; <[ call(f2) ]> ] f2_psi.
+                  [<[ call(f2);call(f2) ]>;
+                   <[ call(f2);call(f2) ]> ] f2_psi.
 Proof.
-assert (hyh :length [<[ call(f2) ]>; <[ call(f2) ]>] = 
+assert (hyh :length [<[ call(f2);call(f2) ]>; <[ call(f2);call(f2) ]>] = 
              length [empty_history; empty_history]).
 {  simpl. reflexivity. }
 ltc0 f2_r_phi [empty_history; empty_history] hyh.
@@ -688,16 +689,24 @@ ltc0 f2_r_phi [empty_history; empty_history] hyh.
   specialize (Hr [f2; f2]).
   unfold f2_r_phi in Hr.
   rewrite internal_list_dec_lb in Hr; [ | apply Proc.eqb_eq | reflexivity].
-  - specialize (Hr [s; s0 ] [m'; m'0]).
+  - generalize (Hr [s; s0 ] [m''; m''0]).
+    intros H2.
+    specialize (Hr [m''; m''0 ] [m'; m'0]).
     simpl in Hr.
+    simpl in H2.
     apply Hr.
+    all: try lia.
+    split. apply H0.
+    split. apply H1.
+    auto.
+    apply H2.
     all: try lia.
     split. apply H0.
     split. apply H1.
     auto.
  Qed.
 
-(** Example 4: Mult **)
+(** Example 4: Sum **)
 
 (** Examples of proofs of relational properties using relational contract **)
 
@@ -843,7 +852,8 @@ ltc0 f3_r_phi [empty_history; empty_history] hyh.
           ** specialize (H0 [f3; f3] [m''0;m''2] [m'; m'0]).
              simpl in H0.
              unfold f3_r_phi in H0.
-             rewrite internal_list_dec_lb in H0; [ | apply Proc.eqb_eq | reflexivity].
+             rewrite internal_list_dec_lb in H0; 
+             [ | apply Proc.eqb_eq | reflexivity].
              simpl in H0.
              apply H0; clear H0.
              all: try lia.
@@ -869,12 +879,14 @@ ltc0 f3_r_phi [empty_history; empty_history] hyh.
              mem_d s0 X3 X1 (s0 X3 + s0 X1).
              mem_s s0 X3 X3 (s0 X3 + s0 X1).
              unfold f3_r_phi in H.
-             rewrite internal_list_dec_lb in H; [ | apply Proc.eqb_eq | reflexivity].
+             rewrite internal_list_dec_lb in H; 
+             [ | apply Proc.eqb_eq | reflexivity].
              simpl in H.
              lia.
           ** decompose [and] H3;clear H3.
              unfold f3_r_phi in H.
-             rewrite internal_list_dec_lb in H; [ | apply Proc.eqb_eq | reflexivity].
+             rewrite internal_list_dec_lb in H; 
+             [ | apply Proc.eqb_eq | reflexivity].
              simpl in H.
              destruct H.
              destruct H3.
@@ -894,11 +906,13 @@ ltc0 f3_r_phi [empty_history; empty_history] hyh.
              lia.
          ++ destruct H1.
           ** unfold f3_r_phi in H.
-             rewrite internal_list_dec_lb in H; [ | apply Proc.eqb_eq | reflexivity].
+             rewrite internal_list_dec_lb in H; 
+             [ | apply Proc.eqb_eq | reflexivity].
              simpl in H.
              lia.
           ** unfold f3_r_phi in H.
-             rewrite internal_list_dec_lb in H; [ | apply Proc.eqb_eq | reflexivity].
+             rewrite internal_list_dec_lb in H; 
+             [ | apply Proc.eqb_eq | reflexivity].
              simpl in H.
              lia.
     - destruct (list_beq Proc.t Proc.eqb f0 [f3]) eqn: E2.
