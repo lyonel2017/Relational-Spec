@@ -84,9 +84,7 @@ Ltac mem_d_in s l1 l2 v:=
 
 (** Examples of proofs of Hoare Triples with verification condition generator **)
 
-Parameter f : Proc.t.
-
-(* Body of procedure f (multiplication) *)
+(* Body of procedure for multiplication *)
 
 Definition mult: com := <[
   if 0 <= X1 && ~ X1 = 0 then
@@ -549,8 +547,6 @@ Qed.
 
 (** Examples of proofs of relational properties using relational contract **)
 
-Parameter f2 : Proc.t.
-
 (* Procedure environment *)
 
 Definition f2_psi (x': Proc.t) :=
@@ -610,7 +606,7 @@ ltc0 f2_r_phi [empty_history; empty_history] hyh.
 (* Verification of proof obligation for procedure *)
 + unfold rtc_p.
   intros.
-  destruct (list_beq Proc.t Proc.eqb f0 [f2; f2]) eqn: E1.
+  destruct (list_beq Proc.t Proc.eqb f [f2; f2]) eqn: E1.
    (* Proof oblication for relational property {f2_r_pre} f2 ~ f2 {f2_r_post} *)
     - apply internal_list_dec_bl in E1 ;[ | apply Proc.eqb_eq ].
       subst.
@@ -619,29 +615,17 @@ ltc0 f2_r_phi [empty_history; empty_history] hyh.
       destruct m;[ | discriminate hy1 ].
       split.
        (* Verification of auxilliary proof obligation *)
-       * simpl.
-         unfold f2_psi.
-         rewrite Proc.eqb_refl.
-         simpl.
-         auto.
+       * simpl.  auto.
        (* Main proof obligation *)
-       * simpl.
-         unfold f2_psi, f2_r_phi.
-         simpl.
-         rewrite Proc.eqb_refl.
-         simpl.
-         intros.
-         subst.
+       * simpl. intros.  subst.
          mem_s s X1 X1 (s X1 + 1).
          mem_s s0 X1 X1 (s0 X1 + 1).
          simpl in H.
          apply plus_lt_compat_r.
          unfold f2_r_phi in H.
          simpl in H.
-         rewrite Proc.eqb_refl in H.
-         simpl in H.
          assumption.
-    - destruct (list_beq Proc.t Proc.eqb f0 [f2]) eqn: E2.
+    - destruct (list_beq Proc.t Proc.eqb f [f2]) eqn: E2.
        (* Verification of proof obligation for procedure f2*)
         * apply internal_list_dec_bl in E2 ;[ | apply Proc.eqb_eq ].
           subst.
@@ -649,19 +633,9 @@ ltc0 f2_r_phi [empty_history; empty_history] hyh.
           destruct m;[ | discriminate hy1 ].
           split.
           (* Verification of auxilliary proof obligation *)
-          ** simpl.
-             unfold f2_psi.
-             rewrite Proc.eqb_refl.
-             simpl.
-             auto.
+          ** simpl. auto.
           (* Main proof obligation *)
-          ** simpl.
-             unfold f2_psi, f2_r_phi.
-             simpl.
-             rewrite Proc.eqb_refl.
-             simpl.
-             intros.
-             auto.
+          ** simpl. auto.
          (* Nothing to do for other procedure *)
          * unfold f2_r_phi in H.
            rewrite E1 in H.
@@ -670,49 +644,36 @@ ltc0 f2_r_phi [empty_history; empty_history] hyh.
            unfold empty_r_precondition in H.
            contradiction.
 (* Proof obligation for relational property 
-      {f2_r_pre} <[ call(f2) ]> ~ <[ call(f2) ]> {f2_r_post} 
+      {f2_r_pre} <[ call(f2);call(f2) ]> ~ <[ call(f2);call(f2) ]> {f2_r_post} 
 *)
 (* Verification of auxilliary proof obligation *)
-+ simpl. unfold f2_r_phi. simpl.
-  rewrite Bool.andb_false_r.
-  rewrite Proc.eqb_refl.
-  simpl.
-  auto.
-+ simpl. unfold f2_r_phi. simpl.
-  rewrite Bool.andb_false_r.
-  rewrite Proc.eqb_refl.
-  simpl.
-  auto.
++ simpl. auto.
++ simpl. auto.
 (* Main proof obligation *)
-+ simpl.
-  intros.
++ simpl. intros.
   specialize (Hr [f2; f2]).
-  unfold f2_r_phi in Hr.
-  rewrite internal_list_dec_lb in Hr; [ | apply Proc.eqb_eq | reflexivity].
-  - generalize (Hr [s; s0 ] [m''; m''0]).
-    intros H2.
-    specialize (Hr [m''; m''0 ] [m'; m'0]).
-    simpl in Hr.
-    simpl in H2.
-    apply Hr.
-    all: try lia.
-    split. apply H0.
-    split. apply H1.
-    auto.
-    apply H2.
-    all: try lia.
-    split. apply H0.
-    split. apply H1.
-    auto.
+  generalize (Hr [s; s0 ] [m''; m''0]).
+  intros H2.
+  specialize (Hr [m''; m''0 ] [m'; m'0]).
+  simpl in Hr.
+  simpl in H2.
+  apply Hr.
+  all: try lia.
+  split. apply H0.
+  split. apply H1.
+  auto.
+  apply H2.
+  all: try lia.
+  split. apply H0.
+  split. apply H1.
+  auto.
  Qed.
 
-(** Example 4: Sum **)
+(** Example 4: Nat Sum **)
 
 (** Examples of proofs of relational properties using relational contract **)
 
-(* Defintion of a sum functions *)
-
-Parameter f3 : Proc.t.
+(* Defintion of a functions that sum up all natural from 0 to X2*)
 
 Definition f3_body: com := <[
   if X1 <= X2 && ~ X1 = X2 then
@@ -798,7 +759,7 @@ ltc0 f3_r_phi [empty_history; empty_history] hyh.
 (* Verification of proof obligation for procedure *)
 + unfold rtc_p.
   intros.
-  destruct (list_beq Proc.t Proc.eqb f0 [f3; f3]) eqn: E1.
+  destruct (list_beq Proc.t Proc.eqb f [f3; f3]) eqn: E1.
    (* Proof oblication for relational property {f2_r_pre} f2 ~ f2 {f2_r_post} *)
     - apply internal_list_dec_bl in E1 ;[ | apply Proc.eqb_eq ].
       subst.
@@ -807,53 +768,27 @@ ltc0 f3_r_phi [empty_history; empty_history] hyh.
       destruct m;[ | discriminate hy1 ].
       split.
        (* Verification of auxilliary proof obligation *)
-       * simpl.
-         unfold f3_psi.
-         rewrite Proc.eqb_refl.
-         split.
+       * split.
          ++ apply Vcg_Opt.tc'_same.
             apply Vcg_Opt.Tc'_list.tc'_list_same.
-            simpl.
             destruct n.
-            ** unfold Vcg_Opt.Tc'_list.continuation.
-               simpl.
-               intros.
-               unfold f3_r_phi.
-               simpl.
-               rewrite Proc.eqb_refl.
-               simpl.
-               auto.
-           **  destruct n; [auto | auto].
-         ++ split; [ | auto].
+            ** simpl. unfold Vcg_Opt.Tc'_list.continuation.
+               simpl. intros. auto.
+           **  destruct n; [simpl;auto | simpl;auto].
+         ++ split; [| simpl; auto].
             apply Vcg_Opt.tc'_same.
             apply Vcg_Opt.Tc'_list.tc'_list_same.
-            simpl.
             destruct n.
-            ** unfold Vcg_Opt.Tc'_list.continuation.
-               simpl.
-               intros.
-               unfold f3_r_phi.
-               simpl.
-               rewrite Proc.eqb_refl.
-               simpl.
-               auto.
-           **  destruct n; [auto | auto].
+            ** simpl. unfold Vcg_Opt.Tc'_list.continuation.
+               simpl. auto.
+            ** destruct n; [simpl;auto | simpl;auto].
        (* Main proof obligation *)
        * ltc5 f3_r_phi ps' hy1 hy2.
-         unfold f3_psi, f3_r_phi.
-         simpl.
-         rewrite Proc.eqb_refl.
-         simpl.
-         rewrite Proc.eqb_refl.
          simpl.
          intros.
          destruct H2.
          ++ destruct H1.
           ** specialize (H0 [f3; f3] [m''0;m''2] [m'; m'0]).
-             simpl in H0.
-             unfold f3_r_phi in H0.
-             rewrite internal_list_dec_lb in H0; 
-             [ | apply Proc.eqb_eq | reflexivity].
              simpl in H0.
              apply H0; clear H0.
              all: try lia.
@@ -878,18 +813,11 @@ ltc0 f3_r_phi [empty_history; empty_history] hyh.
              mem_d s0 X3 X2 (s0 X3 + s0 X1).
              mem_d s0 X3 X1 (s0 X3 + s0 X1).
              mem_s s0 X3 X3 (s0 X3 + s0 X1).
-             unfold f3_r_phi in H.
-             rewrite internal_list_dec_lb in H; 
-             [ | apply Proc.eqb_eq | reflexivity].
              simpl in H.
              lia.
           ** decompose [and] H3;clear H3.
-             unfold f3_r_phi in H.
-             rewrite internal_list_dec_lb in H; 
-             [ | apply Proc.eqb_eq | reflexivity].
              simpl in H.
-             destruct H.
-             destruct H3.
+             decompose [and] H;clear H.
              rewrite H4.
              rewrite <- H8.
              rewrite H7.
@@ -905,17 +833,9 @@ ltc0 f3_r_phi [empty_history; empty_history] hyh.
              mem_d s0 X3 X2 (s0 X3 + s0 X1).
              lia.
          ++ destruct H1.
-          ** unfold f3_r_phi in H.
-             rewrite internal_list_dec_lb in H; 
-             [ | apply Proc.eqb_eq | reflexivity].
-             simpl in H.
-             lia.
-          ** unfold f3_r_phi in H.
-             rewrite internal_list_dec_lb in H; 
-             [ | apply Proc.eqb_eq | reflexivity].
-             simpl in H.
-             lia.
-    - destruct (list_beq Proc.t Proc.eqb f0 [f3]) eqn: E2.
+          ** simpl in H. lia.
+          ** simpl in H. lia.
+    - destruct (list_beq Proc.t Proc.eqb f [f3]) eqn: E2.
        (* Verification of proof obligation for procedure f3*)
         * apply internal_list_dec_bl in E2 ;[ | apply Proc.eqb_eq ].
           subst.
@@ -923,30 +843,16 @@ ltc0 f3_r_phi [empty_history; empty_history] hyh.
           destruct m;[ | discriminate hy1 ].
           split.
           (* Verification of auxilliary proof obligation *)
-          ** simpl.
-             unfold f3_psi.
-             rewrite Proc.eqb_refl.
-             split; [ | auto].
-             apply Vcg_Opt.tc'_same.
-             apply Vcg_Opt.Tc'_list.tc'_list_same.
-             simpl.
-             destruct n.
-             ++ unfold Vcg_Opt.Tc'_list.continuation.
-                simpl.
-                intros.
-                unfold f3_r_phi.
-                simpl.
-                rewrite Proc.eqb_refl.
-                simpl.
-                auto.
-             ++ destruct n; [auto | auto].
+          ** split.
+             ++ apply Vcg_Opt.tc'_same.
+                apply Vcg_Opt.Tc'_list.tc'_list_same.
+                destruct n.
+                -- simpl. unfold Vcg_Opt.Tc'_list.continuation.
+                   simpl. auto.
+                -- destruct n; [simpl;auto | simpl;auto].
+             ++ simpl. auto.
           (* Main proof obligation *)
           ** ltc5 f3_r_phi ps' hy1 hy2.
-             unfold f3_psi, f3_r_phi.
-             simpl.
-             rewrite Proc.eqb_refl.
-             simpl.
-             rewrite Proc.eqb_refl.
              simpl.
              intros.
              destruct H1.
@@ -963,44 +869,23 @@ ltc0 f3_r_phi [empty_history; empty_history] hyh.
 (* Proof obligation for main relational property *)
 (* Verification of auxilliary proof obligation *)
 + apply Vcg_Opt.Tc'_list.tc'_list_same.
-  simpl.
   destruct n.
-  ++ unfold Vcg_Opt.Tc'_list.continuation.
-     simpl.
-     intros.
-     unfold f3_r_phi.
-     simpl.
-     rewrite Proc.eqb_refl.
-     simpl.
-     auto.
-  ++ destruct n; [auto | auto].
+  ++ simpl. unfold Vcg_Opt.Tc'_list.continuation.
+     simpl. intros. auto.
+  ++ destruct n; [simpl; auto | simpl; auto].
 + apply Vcg_Opt.Tc'_list.tc'_list_same.
   simpl.
   destruct n.
-  ++ unfold Vcg_Opt.Tc'_list.continuation.
-     simpl.
-     intros.
-     unfold f3_r_phi.
-     simpl.
-     rewrite Proc.eqb_refl.
-     simpl.
-     auto.
-  ++ destruct n; [auto | auto].
+  ++ simpl; unfold Vcg_Opt.Tc'_list.continuation.
+     simpl. auto.
+  ++ destruct n; [simpl; auto | simpl; auto].
 (* Main proof obligation *)
 + simpl.
   intros.
   decompose [and] H0;clear H0.
   decompose [and] H1;clear H1.
   destruct (s X2) eqn:Horig.
-  * unfold f3_r_phi in H9.
-    simpl in H9. 
-    rewrite Proc.eqb_refl in H9.
-    simpl in H9.
-    unfold f3_r_phi in H5.
-    simpl in H5. 
-    rewrite Proc.eqb_refl in H5.
-    simpl in H5.
-    rewrite <- H9.
+  * rewrite <- H9.
     rewrite <- H5.
     rewrite H4.
     mem_s m'' X3 X3 0.
@@ -1021,10 +906,7 @@ ltc0 f3_r_phi [empty_history; empty_history] hyh.
       mem_s s0 X1 X1 0.
       mem_d s0 X1 X2 0.
       lia.
- * specialize (Hr [f3; f3]).
-   unfold f3_r_phi in Hr.
-   rewrite internal_list_dec_lb in Hr; [ | apply Proc.eqb_eq | reflexivity].
-  - specialize (Hr [m''0; m''2] [m'; m'0]).
+ * specialize (Hr [f3; f3] [m''0; m''2] [m'; m'0]).  
     simpl in Hr.
     apply Hr.
     all: try lia.
@@ -1046,4 +928,134 @@ ltc0 f3_r_phi [empty_history; empty_history] hyh.
     mem_s s X1 X1 1.
     mem_d s X1 X2 1.
     lia.
+ Qed.
+
+(** Example 5: Monotone diff **)
+
+(** Examples of proofs of relational properties using relational contract **)
+
+(* Procedure environment *)
+
+Definition f24_psi (x': Proc.t) :=
+        if Proc.eqb x' f2 then  <[ X1 := X1 + 1 ]> else
+        if Proc.eqb x' f4 then  <[ X1 := X1 + 2 ]> else
+        Psi.empty_psi x'.
+
+(* Definition of relational contract for procedure f *)
+
+Definition f24_r_pre : r_precondition := fun l =>
+  match l with
+  | [m1; m2] => m1 X1 < m2 X1
+  | _ => False
+  end.
+
+Definition f24_r_post : r_postcondition := fun l _ =>
+  match l with
+  | [m1; m2] => m1 X1 < m2 X1
+  | _ => False
+  end.
+
+(* Definition of standard contract for procedure f *)
+
+Definition f4_pre : r_precondition := fun l =>
+  match l with
+  | [m] => True
+  | _ => False
+  end.
+
+Definition f4_post : r_postcondition := fun l _ =>
+  match l with
+  | [m1] => True
+  | _ => False
+  end.
+
+(* Relational contract environment *)
+
+Definition f24_r_phi (x': list Proc.t) :=
+        if (list_beq  Proc.t) Proc.eqb x' [f2; f4]
+        then (f2_r_pre,f2_r_post) 
+        else
+            if (list_beq  Proc.t) Proc.eqb x' [f2]
+            then (f2_pre,f2_post) else
+                if (list_beq  Proc.t) Proc.eqb x' [f4]
+                then (f4_pre,f4_post) 
+                else R_Phi.empty_r_phi x'.
+
+(* Relation Propery *)
+
+Example relation_mono_diff : relational_prop
+                  f24_r_pre f24_r_post
+                  [<[ call(f2)]>;
+                   <[ call(f4)]> ] f24_psi.
+Proof.
+assert (hyh :length [<[ call(f2) ]>; <[ call(f4) ]>] = 
+             length [empty_history; empty_history]).
+{  simpl. reflexivity. }
+ltc0 f24_r_phi [empty_history; empty_history] hyh.
+(* Verification of proof obligation for procedure *)
++ unfold rtc_p.
+  intros.
+  destruct (list_beq Proc.t Proc.eqb f [f2; f4]) eqn: E1.
+   (* Proof oblication for relational property {f2_r_pre} f2 ~ f4 {f2_r_post} *)
+    - apply internal_list_dec_bl in E1 ;[ | apply Proc.eqb_eq ].
+      subst.
+      destruct m;[ discriminate hy1 | ].
+      destruct m;[ discriminate hy1 | ].
+      destruct m;[ | discriminate hy1 ].
+      split.
+       (* Verification of auxilliary proof obligation *)
+       * simpl. auto.
+       (* Main proof obligation *)
+       * simpl.
+         intros.  subst.
+         mem_s s X1 X1 (s X1 + 1).
+         mem_s s0 X1 X1 (s0 X1 + 2).
+         simpl in H.
+         apply Nat.add_lt_mono;[assumption| auto].
+    - destruct (list_beq Proc.t Proc.eqb f [f2]) eqn: E2.
+       (* Verification of proof obligation for procedure f2*)
+        * apply internal_list_dec_bl in E2 ;[ | apply Proc.eqb_eq ].
+          subst.
+          destruct m;[ discriminate hy1 | ].
+          destruct m;[ | discriminate hy1 ].
+          split.
+          (* Verification of auxilliary proof obligation *)
+          ** simpl. auto.
+          (* Main proof obligation *)
+          ** simpl. intros. auto.
+         * destruct (list_beq Proc.t Proc.eqb f [f4]) eqn: E3.
+       (* Verification of proof obligation for procedure f2*)
+          ++ apply internal_list_dec_bl in E3 ;[ | apply Proc.eqb_eq ].
+             subst.
+             destruct m;[ discriminate hy1 | ].
+             destruct m;[ | discriminate hy1 ].
+             split.
+             (* Verification of auxilliary proof obligation *)
+             *** simpl. auto.
+             (* Main proof obligation *)
+             *** simpl. intros. auto.
+          (* Nothing to do for other procedure *)
+           ++ unfold f24_r_phi in H.
+              rewrite E1 in H.
+              rewrite E2 in H.
+              rewrite E3 in H.
+              simpl in H.
+              unfold empty_r_precondition in H.
+              contradiction.
+(* Proof obligation for relational property 
+      {f24_r_pre} <[ call(f2) ]> ~ <[ call(f4) ]> {f24_r_post} 
+*)
+(* Verification of auxilliary proof obligation *)
++ simpl. auto.
++ simpl. auto.
+(* Main proof obligation *)
++ simpl.
+  intros.
+  specialize (Hr [f2; f4] [s; s0 ] [m'; m'0]).
+  simpl in Hr.
+  apply Hr.
+  all: try lia.
+  split. apply H0.
+  split. apply H1.
+  auto.
  Qed.

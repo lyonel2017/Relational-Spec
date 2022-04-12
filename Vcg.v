@@ -229,8 +229,10 @@ contradiction.
 Qed.
 
 (** Verification of trivial procedure contract **)
+Module Trivial_proc.
 
 Parameter f : Proc.t.
+
 Definition f_psi (x': Proc.t) :=
         if Proc.eqb x' f then CSkip else Psi.empty_psi x'.
 
@@ -255,3 +257,5 @@ destruct (Proc.eqb f0 f).
   unfold empty_precondition in H.
   contradiction.
 Qed.
+
+End Trivial_proc.
