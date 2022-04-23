@@ -107,7 +107,7 @@ Definition get_r_post (an:r_clause) :=
           let (pre,post) := an in
           post.
 
-(** Defintion of relational contract environments :
+(** Definition of relational contract environments :
     a map from list of procedure name to relational clauses **)
 
 Module R_Phi.
@@ -118,7 +118,7 @@ Module R_Phi.
 
 End R_Phi.
 
-(* Defintion of a Relational Properties with inliner*)
+(** Defintion of a relational properties with inliner **)
 
 Definition i_relational_prop (n: nat) (P: r_precondition) (Q: r_postcondition) 
                              (c : list com) (ps : Psi.psi) : Prop :=
@@ -244,7 +244,7 @@ unfold relational_prop, i_relational_prop;split;intros H.
   + apply H0.
 Qed.
 
-(* Relational property for a com list with procedure context *)
+(** Relational property for a com list with procedure context **)
 
 Definition fold_call := List.map (fun p => CCall p).
 
@@ -254,7 +254,7 @@ Definition relational_prop_ctx (rcl:R_Phi.r_phi) (ps: Psi.psi)
             relational_prop (get_r_pre (rcl p)) (get_r_post (rcl p)) (fold_call p) ps) ->
       relational_prop P Q c ps.
 
-(* Relational property for a procedure list with the procedure context *)
+(** Relational property for a procedure list with the procedure context **)
 
 Definition fold_proc (ps: Psi.psi) := List.map (fun p => ps p).
 
@@ -357,7 +357,7 @@ induction n.
     reflexivity.
 Qed.
 
-(* Verification of Relational properties with procedure *)
+(** Verification of Relational properties with procedure **)
 
 Lemma recursion_relational :
   forall P Q p ps rcl,

@@ -18,7 +18,6 @@ Import ListNotations.
 From Coq Require Import Program.
 From Coq Require Import Eqdep_dec.
 From Coq Require Import Lia.
-From Coq Require Import Omega.
 Require Import Arith.
 
 (** Example of arithmetic expression **)
@@ -412,6 +411,14 @@ ltc0 R_Phi.empty_r_phi [empty_history; empty_history] hyh.
       rewrite H.
       mem_d s 3 1 (s (s 1)).
       lia.
+   - rewrite H11.
+     mem_d_in m'' (m'' 1) 2 (m'' (m'' 2)).
+     rewrite H.
+     mem_d s 3 2 (s (s 1)).
+     lia.
+     rewrite H.
+     mem_d s 3 1 (s (s 1)).
+     lia.
  * (*<1>*)
     rewrite H12.
     mem_d_in m''0 (m''0 2) 2 (m''0 3).
