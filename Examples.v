@@ -121,7 +121,7 @@ Definition com_mult := <[
   call(f)
 ]>.
 
-(* Proof that command com_mult satisfies the 
+(* Proof that command com_mult satisfies the
    postcondition f_post ( X2 = X3 * X4) *)
 Example hoare_triple_mult: hoare_triple (fun _ => True) f_post com_mult f_psi.
 Proof.
@@ -224,7 +224,7 @@ apply correct with (cl:=f_phi) (l:=[]).
     reflexivity.
 Qed.
 
-(** Some ltac to automatize the extraction of proof obligation from 
+(** Some ltac to automatize the extraction of proof obligation from
     the list construct in relational property verification **)
 
 Ltac ltc2 phi ps hy hyh:=
@@ -239,7 +239,7 @@ Ltac ltc7 phi ps hy hyh H:=
   ltc2 phi ps hy hyh;
   split; [ clear hy hyh; simpl H; apply Vcg_Opt.tc'_same
          | first [ltc7 phi ps hy hyh H | simpl;auto] ].
-  
+
 Ltac ltc1 phi ps hy hyh ml H :=
          destruct ml;
          [ first [ discriminate hy | first [ltc7 phi ps hy hyh H | simpl;auto] ]
@@ -247,7 +247,7 @@ Ltac ltc1 phi ps hy hyh ml H :=
          ].
 
 Ltac ltc6 phi ps hy hyh :=
-       destruct (mk_rtc_def _ _ (phi_call (extract phi) ps) _ _ _ _ hy hyh) 
+       destruct (mk_rtc_def _ _ (phi_call (extract phi) ps) _ _ _ _ hy hyh)
            as (hyr1 & hyr2 & HYP);
        rewrite HYP;
        clear HYP hy hyh;
@@ -255,7 +255,7 @@ Ltac ltc6 phi ps hy hyh :=
        rename hyr2 into hyh.
 
 Ltac ltc3 phi ps hy hyh:=
-    intro; intro; intros H1; 
+    intro; intro; intros H1;
     tryif ltc6 phi ps hy hyh
     then 
     eapply consequence_tc_suite;
@@ -275,7 +275,7 @@ Ltac ltc4 ml hy hyh phi ps :=
          | first [ discriminate hy | ltc4 ml hy hyh phi ps ]
          ].
 
-Ltac ltc0 phi l hyh := apply rcorrect 
+Ltac ltc0 phi l hyh := apply rcorrect
                 with (rcl:=phi) (h:=l) (hyh:=hyh);
                  [
                  | intros ps;
@@ -328,7 +328,7 @@ Example relation_swap : relational_prop
                             rela_pre rela_post
                             [swap_1; swap_2] Psi.empty_psi.
 Proof.
-assert (hyh :length [swap_1; swap_2] = 
+assert (hyh :length [swap_1; swap_2] =
              length [empty_history; empty_history]).
 {  simpl. reflexivity. }
 ltc0 R_Phi.empty_r_phi [empty_history; empty_history] hyh.
@@ -476,16 +476,16 @@ Qed.
 
 (* Defintion of a comparator procedure *)
 
-Definition comp: com := 
+Definition comp: com :=
 <[ if X1 <= X2 && ~ X1 = X2 then
       ret := 0
    else
       if X2 <= X1 && ~ X1 = X2  then
          ret := 2
-      else 
+      else
          ret := 1
       end
-   end 
+   end
 ]>.
 
 (* Defintion of relational pre and post condition *)
@@ -508,7 +508,7 @@ Example relation_comp : relational_prop
                             rela_pre_comp rela_post_comp
                             [comp; comp] Psi.empty_psi.
 Proof.
-assert (hyh :length [comp; comp] = 
+assert (hyh :length [comp; comp] =
              length [empty_history; empty_history]).
 {  simpl. reflexivity. }
 ltc0 R_Phi.empty_r_phi [empty_history; empty_history] hyh.
@@ -589,10 +589,10 @@ Scheme Equality for list.
 
 Definition f2_r_phi (x': list Proc.t) :=
         if (list_beq  Proc.t) Proc.eqb x' [f2; f2]
-        then (f2_r_pre,f2_r_post) 
+        then (f2_r_pre,f2_r_post)
         else
             if (list_beq  Proc.t) Proc.eqb x' [f2]
-            then (f2_pre,f2_post) 
+            then (f2_pre,f2_post)
             else R_Phi.empty_r_phi x'.
 
 (* We proof monotony of procedure f2 *)
@@ -602,7 +602,7 @@ Example relation_mono : relational_prop
                   [<[ call(f2);call(f2) ]>;
                    <[ call(f2);call(f2) ]> ] f2_psi.
 Proof.
-assert (hyh :length [<[ call(f2);call(f2) ]>; <[ call(f2);call(f2) ]>] = 
+assert (hyh :length [<[ call(f2);call(f2) ]>; <[ call(f2);call(f2) ]>] =
              length [empty_history; empty_history]).
 {  simpl. reflexivity. }
 ltc0 f2_r_phi [empty_history; empty_history] hyh.
@@ -646,8 +646,8 @@ ltc0 f2_r_phi [empty_history; empty_history] hyh.
            simpl in H.
            unfold empty_r_precondition in H.
            contradiction.
-(* Proof obligation for relational property 
-      {f2_r_pre} <[ call(f2);call(f2) ]> ~ <[ call(f2);call(f2) ]> {f2_r_post} 
+(* Proof obligation for relational property
+      {f2_r_pre} <[ call(f2);call(f2) ]> ~ <[ call(f2);call(f2) ]> {f2_r_post}
 *)
 (* Verification of auxilliary proof obligation *)
 + simpl. auto.
@@ -740,11 +740,11 @@ Definition r_post : r_postcondition := fun l _ =>
 (* Relational contract environment *)
 
 Definition f3_r_phi (x': list Proc.t) :=
-        if (list_beq  Proc.t) Proc.eqb x' [f3;f3] 
-        then (f3_r_pre,f3_r_post) 
+        if (list_beq  Proc.t) Proc.eqb x' [f3;f3]
+        then (f3_r_pre,f3_r_post)
         else
             if (list_beq  Proc.t) Proc.eqb x' [f3]
-            then (f3_pre,f3_post) 
+            then (f3_pre,f3_post)
             else R_Phi.empty_r_phi x'.
 
 (* We proof that summing all natural starting from 0 or 1 is equivalent *)
@@ -755,7 +755,7 @@ Example relation_sum : relational_prop
                    <[ X1:= 0; X3 := 0; call(f3) ]> ] f3_psi.
 Proof.
 assert (hyh :length  [<[ X1:= 1; X3 := 0; call(f3) ]>;
-                      <[ X1:= 0; X3 := 0; call(f3) ]> ] = 
+                      <[ X1:= 0; X3 := 0; call(f3) ]> ] =
              length [empty_history; empty_history]).
 {  simpl. reflexivity. }
 ltc0 f3_r_phi [empty_history; empty_history] hyh.
@@ -909,7 +909,7 @@ ltc0 f3_r_phi [empty_history; empty_history] hyh.
       mem_s s0 X1 X1 0.
       mem_d s0 X1 X2 0.
       lia.
- * specialize (Hr [f3; f3] [m''0; m''2] [m'; m'0]).  
+ * specialize (Hr [f3; f3] [m''0; m''2] [m'; m'0]).
     simpl in Hr.
     apply Hr.
     all: try lia.
@@ -976,12 +976,12 @@ Definition f4_post : r_postcondition := fun l _ =>
 
 Definition f24_r_phi (x': list Proc.t) :=
         if (list_beq  Proc.t) Proc.eqb x' [f2; f4]
-        then (f2_r_pre,f2_r_post) 
+        then (f2_r_pre,f2_r_post)
         else
             if (list_beq  Proc.t) Proc.eqb x' [f2]
             then (f2_pre,f2_post) else
                 if (list_beq  Proc.t) Proc.eqb x' [f4]
-                then (f4_pre,f4_post) 
+                then (f4_pre,f4_post)
                 else R_Phi.empty_r_phi x'.
 
 (* We proof monotonie of procedure f2 in respect to f4 *)
@@ -991,7 +991,7 @@ Example relation_mono_diff : relational_prop
                   [<[ call(f2)]>;
                    <[ call(f4)]> ] f24_psi.
 Proof.
-assert (hyh :length [<[ call(f2) ]>; <[ call(f4) ]>] = 
+assert (hyh :length [<[ call(f2) ]>; <[ call(f4) ]>] =
              length [empty_history; empty_history]).
 {  simpl. reflexivity. }
 ltc0 f24_r_phi [empty_history; empty_history] hyh.
@@ -1045,8 +1045,8 @@ ltc0 f24_r_phi [empty_history; empty_history] hyh.
               simpl in H.
               unfold empty_r_precondition in H.
               contradiction.
-(* Proof obligation for relational property 
-      {f24_r_pre} <[ call(f2) ]> ~ <[ call(f4) ]> {f24_r_post} 
+(* Proof obligation for relational property
+      {f24_r_pre} <[ call(f2) ]> ~ <[ call(f4) ]> {f24_r_post}
 *)
 (* Verification of auxilliary proof obligation *)
 + simpl. auto.
