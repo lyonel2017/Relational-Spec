@@ -254,7 +254,7 @@ Definition relational_prop_ctx (rcl:R_Phi.r_phi) (ps: Psi.psi)
             relational_prop (get_r_pre (rcl p)) (get_r_post (rcl p)) (fold_call p) ps) ->
       relational_prop P Q c ps.
 
-(** Relational property for a procedure list with the procedure context **)
+(** Relational property for a procedure list with procedure context **)
 
 Definition fold_proc (ps: Psi.psi) := List.map (fun p => ps p).
 
@@ -357,7 +357,7 @@ induction n.
     reflexivity.
 Qed.
 
-(** Verification of Relational properties with procedure **)
+(** Modular Relational properties Verification **)
 
 Lemma recursion_relational :
   forall P Q p ps rcl,

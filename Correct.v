@@ -111,7 +111,7 @@ Proof.
 Qed.
 
 (** Proof that one can use a verification condition 
-    generator to proof Hoare triple **)
+    generator for modular Hoare triple verification **)
 
 Theorem correct :
   forall (c: com) (cl: Phi.phi) (ps: Psi.psi) (l : history),

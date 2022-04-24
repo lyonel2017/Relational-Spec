@@ -102,7 +102,7 @@ Module Phi.
 
 End Phi.
 
-(* Defintion of a Hoare Triple with inliner*)
+(** Defintion of a Hoare Triple with inliner **)
 
 Definition i_hoare_triple (n: nat) 
   (P: precondition) (Q: postcondition) 
@@ -127,14 +127,14 @@ unfold hoare_triple, i_hoare_triple;split;intros H.
   + apply H0.
 Qed.
 
-(* Hoare triple for a com  with procedure context *)
+(** Hoare triple for a com with procedure context **)
 
 Definition hoare_triple_ctx (cl : Phi.phi) (ps: Psi.psi)
       (P: precondition) (Q: postcondition)  (c: com) :=
     (forall p, hoare_triple (get_pre (cl p)) (get_post (cl p)) (CCall p) ps) ->
       hoare_triple P Q c ps.
 
-(* Hoare triple for a procedure with the procedure context *)
+(** Hoare triple for a procedure with procedure context **)
 
 Definition hoare_triple_proc_ctx (cl : Phi.phi) (ps_init :Psi.psi):=
   forall p ps, hoare_triple_ctx cl ps (get_pre (cl p)) (get_post (cl p)) (ps_init p).
@@ -160,7 +160,7 @@ induction n.
     apply Heval.
 Qed.
 
-(* Verification of Hoare Triple with procedure *)
+(** Modular Hoare Triple Verification **)
 
 Theorem recursion_hoare_triple :
   forall P Q p ps cl,
@@ -174,7 +174,7 @@ apply recursive_proc.
 assumption.
 Qed.
 
-(* A corollaire from recursion_hoare_triple *)
+(** Corollaire from recursion_hoare_triple **)
 
 Theorem procedure_hoare_triple :
   forall p cl ps,

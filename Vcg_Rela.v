@@ -10,7 +10,7 @@ From Coq Require Import Lists.List.
 Import ListNotations.
 
 (** Defintion of the verification condition generator for relational properties,
-   using the verification condition generator for Hoare Triples **)
+    using the verification condition generator for Hoare Triples **)
 
 Definition r_suite : Type := list Sigma.sigma -> list history -> Prop.
 
@@ -389,7 +389,7 @@ Qed.
 Definition phi_call (cl : Phi.phi) ps := 
     fun x => (get_pre (cl x), (fun m' m => (get_post (cl x)) m' m /\ proc_call x m m' ps)).
 
-(** Facts about phi_call **)
+(* Facts about phi_call *)
 
 Lemma phi_call_hoare (ps: Psi.psi) (cl : Phi.phi) :
   (forall p, hoare_triple (get_pre (cl p)) (get_post (cl p)) (CCall p) ps) ->
@@ -408,7 +408,7 @@ Qed.
 Definition extract rcl := fun y:Proc.Proc.t =>
   (fun m => get_r_pre (rcl [y]) [m], fun m' m =>  get_r_post (rcl [y]) [m'] [m]).
 
-(** Facts about Extract **)
+(* Facts about Extract *)
 
 Lemma hd_length_1 s: length s = 1 -> [hd default_sigma s] = s.
 Proof.
@@ -454,7 +454,7 @@ Definition rtc_p (ps: Psi.psi) (rcl : R_Phi.r_phi) : Prop :=
               rtc c m h (phi_call (extract rcl) ps')
                                        (fun m' _ => (get_r_post (rcl f)) m' m) hy1 hy2.
 
-(** Facts about relational verification condition generator for procedures **)
+(* Facts about relational verification condition generator for procedures *)
 
 Lemma simpl_rtc' :
   forall (a:Proc.Proc.t) f (s:sigma) m ps ps' phi

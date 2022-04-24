@@ -118,6 +118,9 @@ induction p;intros.
      ** apply Hproc.
 Qed.
 
+(** Proof that one can use a verification condition 
+    generator to proof relational procedure contract **)
+
 Lemma rcorrect_proc :
   forall rcl ps,
     rtc_p ps rcl ->
@@ -137,7 +140,7 @@ Proof.
 Qed.
 
 (** Proof that one can use a verification condition 
-    generator to proof Relatioanl Properties **)
+    generator for modular Relatioanl Properties verification **)
 
 Theorem rcorrect :
   forall rcl ps p h (hyh :length p = length h),

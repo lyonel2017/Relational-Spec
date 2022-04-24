@@ -203,7 +203,7 @@ Fixpoint tc (c: com) (m m': Sigma.sigma) (h: Vcg.history)
     | CAssr x a => fin (m' = set m (m x) (aeval m a)) (m :: h)
     | CAssert b =>  fin (b (m :: h) /\ m = m') (m :: h)
     | CSeq p1 p2 => forall m'',
-        tc p1 m m'' h cl (fun f1 h => tc p2 m'' m' h cl 
+        tc p1 m m'' h cl (fun f1 h => tc p2 m'' m' h cl
                                    (fun f2 h => fin (f1 /\ f2) h ))
     | CIf b p1 p2 =>
         tc p1 m m' h cl (fun p1 _ =>

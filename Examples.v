@@ -224,8 +224,8 @@ apply correct with (cl:=f_phi) (l:=[]).
     reflexivity.
 Qed.
 
-(** Some ltac to automatize the extraction of proof obligation from the list construct
-    in relational property verification **)
+(** Some ltac to automatize the extraction of proof obligation from 
+    the list construct in relational property verification **)
 
 Ltac ltc2 phi ps hy hyh:=
         destruct (mk_rtc'_def _ _ (phi_call (extract phi) ps) _ _ _ _ hy hyh)
@@ -294,7 +294,7 @@ Ltac ltc0 phi l hyh := apply rcorrect
 
 (** Example 1: Swap **)
 
-(* Defintion of a swap functions *)
+(* Defintion of two swap functions *)
 
 Definition swap_1: com := <[ X3 := °X1;
                              °X1 := °X2;
@@ -321,6 +321,8 @@ Definition rela_post : r_postcondition := fun l _ =>
   | [m1; m2] => m1 (m1 X1) = m2 (m2 X1) /\ m1 (m1 X2) = m2 (m2 X2)
   | _ => False
   end.
+
+(* We proof that the swap function are equivalent *)
 
 Example relation_swap : relational_prop
                             rela_pre rela_post
@@ -411,14 +413,6 @@ ltc0 R_Phi.empty_r_phi [empty_history; empty_history] hyh.
       rewrite H.
       mem_d s 3 1 (s (s 1)).
       lia.
-   - rewrite H11.
-     mem_d_in m'' (m'' 1) 2 (m'' (m'' 2)).
-     rewrite H.
-     mem_d s 3 2 (s (s 1)).
-     lia.
-     rewrite H.
-     mem_d s 3 1 (s (s 1)).
-     lia.
  * (*<1>*)
     rewrite H12.
     mem_d_in m''0 (m''0 2) 2 (m''0 3).
@@ -480,7 +474,7 @@ Qed.
 
 (** Example 2: Compare **)
 
-(* Defintion of a comparator function *)
+(* Defintion of a comparator procedure *)
 
 Definition comp: com := 
 <[ if X1 <= X2 && ~ X1 = X2 then
@@ -507,6 +501,8 @@ Definition rela_post_comp : r_postcondition := fun l _ =>
   | [m1; m2] => m1 ret + (m2 ret) = 2
   | _ => False
   end.
+
+(* We proof anti-symmetry of the compare procedure *)
 
 Example relation_comp : relational_prop
                             rela_pre_comp rela_post_comp
@@ -599,7 +595,7 @@ Definition f2_r_phi (x': list Proc.t) :=
             then (f2_pre,f2_post) 
             else R_Phi.empty_r_phi x'.
 
-(* Relation Propery *)
+(* We proof monotony of procedure f2 *)
 
 Example relation_mono : relational_prop
                   f2_r_pre f2_r_post
@@ -751,7 +747,7 @@ Definition f3_r_phi (x': list Proc.t) :=
             then (f3_pre,f3_post) 
             else R_Phi.empty_r_phi x'.
 
-(** Relation Propery **)
+(* We proof that summing all natural starting from 0 or 1 is equivalent *)
 
 Example relation_sum : relational_prop
                   r_pre r_post
@@ -988,7 +984,7 @@ Definition f24_r_phi (x': list Proc.t) :=
                 then (f4_pre,f4_post) 
                 else R_Phi.empty_r_phi x'.
 
-(* Relation Propery *)
+(* We proof monotonie of procedure f2 in respect to f4 *)
 
 Example relation_mono_diff : relational_prop
                   f24_r_pre f24_r_post
