@@ -7,14 +7,16 @@ From Rela Require Import Sigma.
 From Rela Require Import Loc.
 Import Why3_Set.
 Import Assn_b.
+From Coq Require Import Lists.List.
+Import ListNotations.
 
 (** Proof that one can use a verification condition generator to proof Hoare Triples **)
 
 Lemma correct_c :
-  forall p cl ps,
-  forall (P Q: assertion),
-    (forall m, P m -> tc' p m cl) ->
-    (forall m, P m -> tc p m cl Q) ->
+  forall p cl ps l,
+  forall (P :precondition) (Q: postcondition),
+    (forall m, P m -> tc' p m l cl) ->
+    (forall m, P m -> tc p m l cl (fun m' _ => Q m' m)) ->
     hoare_triple_ctx cl ps P Q p.
 Proof.
   unfold hoare_triple_ctx.
@@ -25,62 +27,64 @@ Proof.
   * unfold hoare_triple. intros. eapply H0. apply H2. inversion H3;subst. reflexivity.
   * unfold hoare_triple. intros. eapply H0. apply H2.
     apply H. apply H2. inversion H3;subst. reflexivity.
-  * intros P Q Htc' Htc Hproc. eapply seq_hoare_triple2.
-    apply IHp1; [ apply Htc' | | apply Hproc].
+  * intros l P Q Htc' Htc Hproc. eapply seq_hoare_triple.
+    apply (IHp1 l).
+    - apply Htc'.
     - intros.
-      apply (consequence_tc_suite _ _ _ 
-      (fun m' => tc' p2 m' cl /\ tc p2 m' cl (fun m'' => Q m''))).
-      + intros s H0 s''.
+      apply (consequence_tc_suite _ _ _ _ 
+      (fun m' h => tc' p2 m' h cl /\ tc p2 m' h cl (fun m'' _  => Q m'' m))).
+      + intros s l0 H0 s''.
         generalize dependent H0.
         generalize dependent s''.
         generalize dependent s.
-        apply IHp2.
+        apply (IHp2 l0 ).
         ** intros. apply H0.
         ** intros. apply H0.
         ** apply Hproc.
       + apply tc_split.
         ** apply Htc'. apply H.
         ** apply Htc. apply H.
-  * intros P Q Htc' Htc Hproc. apply if_hoare_triple.
-    + apply IHp1.
+    - apply Hproc.
+  * intros l P Q Htc' Htc Hproc. apply if_hoare_triple.
+    + apply (IHp1 l).
       - intros. apply Htc'. apply H. apply bexp_eval_true. apply H.
       - intros. simpl in Htc. destruct H. specialize (Htc m H). destruct Htc.
         apply H1. apply bexp_eval_true. assumption.
       - assumption.
-    + apply IHp2.
+    + apply (IHp2 l).
       - intros. apply Htc'. apply H. destruct H. apply bexp_eval_false in H0. apply H0.
       - intros. simpl in H. destruct H. specialize (Htc m H). destruct Htc.
-       apply H2. apply bexp_eval_false. assumption.
+        apply H2. apply bexp_eval_false. assumption.
       - assumption.
- * intros P Q Htc' Htc.
-   specialize (IHp (fun s => inv s /\ beval s b = true) inv).
-   intros Hproc s s' Pre Heval.
-   specialize (Htc' s Pre).
-   simpl in Htc'.
-   destruct Htc'.
-   specialize (Htc s Pre H).
-   assert (H1 : inv s' /\ beval s' b = false -> Q s').
-   { intros. apply Htc. apply H1. apply H1. }
-   apply H1.
-   generalize Heval.
-   generalize H.
-   apply while_hoare_triple.
-   destruct H0.
-   apply IHp.
-   ** intros.
-      apply H0.
-      destruct H3.
-      apply bexp_eval_true in H4.
-      assumption.
-      apply H3.
-   ** intros.
-      apply H2.
-      destruct H3.
-      apply bexp_eval_true in H4.
-      assumption.
-      apply H3.
-   ** assumption.
- * intros P Q Htc' Htc Hproc.
+  * intros l P Q Htc' Htc.
+      specialize (IHp l (fun s => inv (s :: l) /\ beval s b = true) (fun s _ => inv (s :: l))).
+      intros Hproc s s' Pre Heval.
+      specialize (Htc' s Pre).
+      simpl in Htc'.
+      destruct Htc'.
+      specialize (Htc s Pre H).
+      assert (H1 : inv (s' :: l) /\ beval s' b = false -> Q s' s).
+      { intros. apply Htc. apply H1. apply H1. }
+      apply H1.
+      generalize Heval.
+      generalize H.
+      apply while_triple.
+      destruct H0.
+      apply IHp.
+      ** intros.
+         apply H0.
+         destruct H3.
+         apply bexp_eval_true in H4.
+         assumption.
+         apply H3.
+      ** intros.
+         apply H2.
+         destruct H3.
+         apply bexp_eval_true in H4.
+         assumption.
+         apply H3.
+    ** assumption.
+ * intros l P Q Htc' Htc Hproc.
    intros s s' Pre Heval.
    specialize (Htc' s Pre).
    specialize (Htc s Pre).
@@ -101,24 +105,24 @@ Proof.
   intros cl ps Htc.
   unfold hoare_triple_proc_ctx.
   intros.
-  apply correct_c.
+  apply correct_c with Vcg.empty_history.
   * apply Htc.
   * apply Htc.
 Qed.
 
 (** Proof that one can use a verification condition 
-    generator to proof Hoare triple **)
+    generator for modular Hoare triple verification **)
 
 Theorem correct :
-  forall (c: com) (cl: Phi.phi) (ps: Psi.psi),
-  forall (P Q: assertion),
+  forall (c: com) (cl: Phi.phi) (ps: Psi.psi) (l : history),
+  forall (P :precondition) (Q: postcondition),
     tc_p ps cl ->
-    (forall m, P m -> tc' c m cl) ->
-    (forall m, P m -> tc c m cl Q) ->
+    (forall m, P m -> tc' c m l cl) ->
+    (forall m, P m -> tc c m l cl (fun m' _ => Q m' m)) ->
     hoare_triple P Q c ps.
 Proof.
 intros.
 apply recursion_hoare_triple with cl.
 * apply correct_proc. assumption.
-* apply correct_c. all: try assumption.
+* apply correct_c with l. all: try assumption.
 Qed.

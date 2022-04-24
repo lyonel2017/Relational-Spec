@@ -6,10 +6,12 @@ Import BexpNotations.
 From Rela Require Import Proc.
 From Rela Require Import Sigma.
 From Coq Require Import Lia.
+From Coq Require Import Lists.List.
+Import ListNotations.
 
 (** Definition of assertion **)
 
-Definition assertion : Type := sigma -> Prop.
+Definition assertion : Type := list sigma -> Prop.
 
 (** Defintion of command and program **)
 
@@ -77,7 +79,7 @@ Lemma ceval_inf_loop s ps s' :
 ceval (CWhile BTrue CSkip (fun _ => True)) s ps s' -> False.
 Proof.
   intros Heval.
-  remember (CWhile BTrue CSkip (fun _ : Sigma.sigma => True)) as original_command eqn:Horig.
+  remember (CWhile BTrue CSkip (fun _ : list Sigma.sigma => True)) as original_command eqn:Horig.
   induction Heval;try inversion Horig.
   * inversion Horig;subst. inversion H.
   * inversion Horig;subst.

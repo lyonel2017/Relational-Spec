@@ -11,9 +11,17 @@ Import ListNotations.
 From Coq Require Import Lia.
 Import Arith.
 
-(** Definition of relational assertion **)
+(** Definition of relational Precondition **)
 
-Definition r_assertion : Type := list sigma  -> Prop.
+Definition r_precondition : Type := list sigma -> Prop.
+
+Definition empty_r_precondition : r_precondition := (fun _ => False).
+
+(** Defintion of relational Postcondition **)
+
+Definition r_postcondition : Type :=  list sigma -> list sigma -> Prop.
+
+Definition empty_r_postcondition :  r_postcondition := (fun _ _ => True).
 
 (** Definition of the relational evaluation of program **)
 
@@ -27,13 +35,14 @@ Inductive rceval : list com -> list sigma -> Psi.psi -> list sigma -> Prop :=
 
 (** Definition of relational properties **)
 
-Definition relational_prop (P Q: r_assertion) (c : list com) (ps : Psi.psi) : Prop :=
+Definition relational_prop (P: r_precondition) (Q: r_postcondition)
+                           (c : list com) (ps : Psi.psi) : Prop :=
  forall s s',  length s = length c -> length s' = length c ->
-               P s -> rceval c s ps s' -> Q s'.
+               P s -> rceval c s ps s' -> Q s' s.
 
 (** A Hoare Triple is a Relational Property for a list of program of size one **)
 
-Section Single_Rela_Prop.
+Module Single_Rela_Prop.
 
 Lemma list_length_one:
 forall (A: Type) (h:A) (q : list A), length (h :: q) = 1 -> q = [].
@@ -47,7 +56,7 @@ Qed.
 
 Lemma hoare_is_rela :
 forall P Q c ps,
-hoare_triple (fun s => P [s]) (fun s => Q [s]) c ps ->
+hoare_triple (fun s => P [s]) (fun s' s => Q [s'] [s]) c ps ->
 relational_prop P Q [c] ps.
 Proof.
 unfold hoare_triple.
@@ -63,8 +72,9 @@ assumption.
 Qed.
 
 Lemma one_rela_is_hoare :
-forall (P Q: assertion) c ps,
-relational_prop (fun s: list sigma => P (hd default_sigma s)) (fun s => Q (hd default_sigma s)) [c] ps ->
+forall (P: precondition) (Q: postcondition) c ps,
+relational_prop (fun s: list sigma => P (hd default_sigma s)) 
+                  (fun s' s => Q (hd default_sigma s') (hd default_sigma s)) [c] ps ->
 hoare_triple P Q c ps.
 Proof.
 unfold hoare_triple.
@@ -82,18 +92,6 @@ apply E_Empty.
 Qed.
 
 End Single_Rela_Prop.
-
-(** Definition of relation Precondition **)
-
-Definition r_precondition : Type := r_assertion.
-
-Definition empty_r_precondition : r_precondition := (fun _ => False).
-
-(** Definition of relation Postcondition **)
-
-Definition r_postcondition : Type := r_assertion.
-
-Definition empty_r_postcondition :  r_postcondition := (fun _ => True).
 
 (** Definition of a relational contract **)
 
@@ -122,9 +120,10 @@ End R_Phi.
 
 (** Defintion of a relational properties with inliner **)
 
-Definition i_relational_prop (n: nat) (P Q: r_assertion) (c : list com) (ps : Psi.psi) : Prop :=
+Definition i_relational_prop (n: nat) (P: r_precondition) (Q: r_postcondition) 
+                             (c : list com) (ps : Psi.psi) : Prop :=
   forall s s', length s = length c -> length s' = length c ->
-                P s -> rceval c s (k_inliner_ps n ps) s'  -> Q s'.
+                P s -> rceval c s (k_inliner_ps n ps) s'  -> Q s' s.
 
 Lemma n_inline_ps_rceval :
 forall (p : list com) (s : list Sigma.sigma) (ps : Proc.t -> com)
@@ -250,12 +249,12 @@ Qed.
 Definition fold_call := List.map (fun p => CCall p).
 
 Definition relational_prop_ctx (rcl:R_Phi.r_phi) (ps: Psi.psi)
-                            (P Q : r_assertion) (c: list com) :=
+                            (P: r_precondition) (Q : r_postcondition) (c: list com) :=
     (forall p, 0 < length p ->
             relational_prop (get_r_pre (rcl p)) (get_r_post (rcl p)) (fold_call p) ps) ->
       relational_prop P Q c ps.
 
-(** Relational property for a procedure list with the procedure context **)
+(** Relational property for a procedure list with procedure context **)
 
 Definition fold_proc (ps: Psi.psi) := List.map (fun p => ps p).
 
@@ -358,7 +357,7 @@ induction n.
     reflexivity.
 Qed.
 
-(** Verification of Relational properties with procedure **)
+(** Modular Relational properties Verification **)
 
 Lemma recursion_relational :
   forall P Q p ps rcl,
