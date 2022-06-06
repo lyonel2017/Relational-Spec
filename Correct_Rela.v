@@ -139,7 +139,7 @@ Proof.
   * apply H3.
 Qed.
 
-(** Proof that one can use a verification condition 
+(** Proof that one can use a verification condition
     generator for modular Relatioanl Properties verification **)
 
 Theorem rcorrect :
@@ -149,8 +149,8 @@ Theorem rcorrect :
   (forall ps,
     (forall ml (hy:length p = length ml),
        P ml -> tr rcl ps -> rtc' p ml h (phi_call (extract rcl) ps) hy hyh) /\
-    (forall ml (hy:length p = length ml), 
-       P ml -> tr rcl ps -> 
+    (forall ml (hy:length p = length ml),
+       P ml -> tr rcl ps ->
        rtc p ml h (phi_call (extract rcl) ps ) (fun ml' _ => Q ml' ml) hy hyh)) ->
     relational_prop P Q p ps.
 Proof.

@@ -63,10 +63,10 @@ Qed.
 
 Lemma while_triple :
   forall (inv: assertion) b c ps l,
-    (forall s1 s2, inv (s1 :: l) /\ beval s1 b = true -> 
+    (forall s1 s2, inv (s1 :: l) /\ beval s1 b = true ->
                      ceval c s1 ps s2 -> inv (s2 :: l)) ->
-    hoare_triple (fun s => inv (s :: l)) 
-                ( fun s' _ => inv (s' :: l) /\ beval s'  b = false ) 
+    hoare_triple (fun s => inv (s :: l))
+                ( fun s' _ => inv (s' :: l) /\ beval s'  b = false )
                 (CWhile b c inv) ps.
 Proof.
   intros P b c ps l st Hhoare st' HP Heval.
