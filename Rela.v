@@ -73,7 +73,7 @@ Qed.
 
 Lemma one_rela_is_hoare :
 forall (P: precondition) (Q: postcondition) c ps,
-relational_prop (fun s: list sigma => P (hd default_sigma s)) 
+relational_prop (fun s: list sigma => P (hd default_sigma s))
                   (fun s' s => Q (hd default_sigma s') (hd default_sigma s)) [c] ps ->
 hoare_triple P Q c ps.
 Proof.
@@ -120,7 +120,7 @@ End R_Phi.
 
 (** Defintion of a relational properties with inliner **)
 
-Definition i_relational_prop (n: nat) (P: r_precondition) (Q: r_postcondition) 
+Definition i_relational_prop (n: nat) (P: r_precondition) (Q: r_postcondition)
                              (c : list com) (ps : Psi.psi) : Prop :=
   forall s s', length s = length c -> length s' = length c ->
                 P s -> rceval c s (k_inliner_ps n ps) s'  -> Q s' s.

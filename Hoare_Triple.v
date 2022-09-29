@@ -104,8 +104,8 @@ End Phi.
 
 (** Defintion of a Hoare Triple with inliner **)
 
-Definition i_hoare_triple (n: nat) 
-  (P: precondition) (Q: postcondition) 
+Definition i_hoare_triple (n: nat)
+  (P: precondition) (Q: postcondition)
   (c : com) (ps : Psi.psi) : Prop :=
   forall s s',  P s -> ceval c s (k_inliner_ps n ps) s'  -> Q s' s.
 
@@ -117,8 +117,7 @@ unfold hoare_triple, i_hoare_triple;split;intros H.
 * intros n s s' Pre Heval.
   eapply H.
   apply Pre.
-  apply n_inline_ps_ceval in Heval.
-  assumption.
+  eapply (n_inline_ps_ceval _ _ _ _ _ Heval).
 * intros s s' HPre Heval.
   apply ceval_n_inline_ps in Heval.
   destruct Heval.
@@ -170,8 +169,7 @@ Theorem recursion_hoare_triple :
 Proof.
 intros.
 apply H0.
-apply recursive_proc.
-assumption.
+eapply (recursive_proc _ _ H).
 Qed.
 
 (** Corollaire from recursion_hoare_triple **)

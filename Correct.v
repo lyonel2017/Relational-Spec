@@ -94,7 +94,7 @@ Proof.
    apply Hproc.
 Qed.
 
-(** Proof that one can use a verification condition 
+(** Proof that one can use a verification condition
     generator to proof procedure contract **)
 
 Lemma correct_proc :
@@ -110,7 +110,7 @@ Proof.
   * apply Htc.
 Qed.
 
-(** Proof that one can use a verification condition 
+(** Proof that one can use a verification condition
     generator for modular Hoare triple verification **)
 
 Theorem correct :

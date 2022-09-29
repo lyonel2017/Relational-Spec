@@ -128,12 +128,10 @@ induction p;intros.
       assumption.
       apply IHp2. apply H7.
    + remember (inliner (CWhile b p inv) ps) as original_command eqn:Horig.
-     induction H; try inversion Horig.
-     * inversion Horig;subst.
-       eapply E_WhileFalse.
+     induction H; inversion Horig;subst.
+     * eapply E_WhileFalse.
        assumption.
-     * inversion Horig;subst.
-       eapply E_WhileTrue.
+     *  eapply E_WhileTrue.
        assumption.
        apply IHp. apply H0.
        apply IHceval2.
@@ -142,7 +140,7 @@ induction p;intros.
       simpl in H. assumption.
 Qed.
 
-(* Inlinig on Com "n+1" times is equivalent to inline on Psi.psi "n" times *)
+(* Inlining on Com "n+1" times is equivalent to inline on Psi.psi "n" times *)
 
 Lemma n_inline_n_inline_ps n p s ps_init s' :
    (forall ps, ceval (k_inliner (S n) p ps_init) s ps s') ->
