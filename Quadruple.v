@@ -465,13 +465,13 @@ Proof.
     + destruct HP.
       rewrite H5 in H0.
       rewrite H7 in H0.
-      inversion H0.
+      discriminate H0.
   - remember (k_inliner (S n) (CSeq c2 (CWhile b2 c2 (fun _ : list sigma => True)))) as ident.
     inversion Heval2;clear Heval2; subst.
     + destruct HP.
       rewrite H5 in H0.
       rewrite H7 in H0.
-      inversion H0.
+      discriminate H0.
     + inversion H6;subst.
       inversion H8;subst.
       split. apply HP.
@@ -522,8 +522,42 @@ Qed.
 
 Definition r_cond: Type := sigma -> sigma -> bool.
 
+Lemma simpl_side_condition b1 b2 L R s1 s2 :
+  (beval s1 b1 = beval s2 b2 \/ (beval s1 b1 = true /\ L s1 s2 = true ) \/
+   (beval s2 b2 = true /\ R s1 s2 = true)) ->
+  ((beval s1 b1 = true /\ beval s2 b2 = true /\ L s1 s2 = false /\ R s1 s2 = false) \/
+    (beval s1 b1 = false /\ beval s2 b2 = false) \/  (beval s1 b1 = true /\ L s1 s2 = true ) \/
+    (beval s2 b2 = true /\ R s1 s2 = true)).
+Proof.
+  intros H.
+  destruct H.
+  * destruct (beval s1 b1) eqn: Hb1.
+    + destruct (L s1 s2) eqn: HL.
+     -  auto.
+     - destruct (R s1 s2) eqn: HR.
+       ** rewrite <- H. auto.
+       ** rewrite <- H. auto.
+    + rewrite <- H. auto.
+  * destruct H.
+    + destruct H. rewrite H,H0. auto.
+    + destruct H. rewrite H,H0. auto.
+Qed.
+
+(* Possible instation of L and R are :
+   L = X /\ (not b1 \/ not Y)
+   R = Y /\ (not b2 \/ not X)
+
+   where X and Y are the condition for executiong left or right.
+   In addition following side condition must be ensured:
+   b1 /\ b2 -> X \/ Y
+   b1 /\ not b2 -> X
+   not b1 /\ b2 -> Y
+
+*)
+
 Lemma while_skedule_quadruple (inv : r_assertion) (L R : r_cond) b1 b2 c1 c2 ps:
-  quadruple (fun s1 s2 => inv s1 s2 /\ beval s1 b1 = true /\ beval s2 b2 = true)
+  quadruple (fun s1 s2 => inv s1 s2 /\ beval s1 b1 = true /\ beval s2 b2 = true /\
+                         L s1 s2 = false /\ R s1 s2 = false)
             (fun s1' s2' => inv s1' s2')
             c1 c2 ps ->
   quadruple (fun s1 s2 => inv s1 s2 /\ beval s1 b1 = true  /\ L s1 s2 = true )
@@ -533,7 +567,7 @@ Lemma while_skedule_quadruple (inv : r_assertion) (L R : r_cond) b1 b2 c1 c2 ps:
             (fun s1' s2' => inv s1' s2')
             CSkip c2 ps ->
   (forall s1 s2, inv s1 s2 ->
-            (beval s1 b1 = beval s2 b2) \/
+            beval s1 b1 = beval s2 b2 \/
             (beval s1 b1 = true /\ L s1 s2 = true ) \/
             (beval s2 b2 = true /\ R s1 s2 = true)) ->
   quadruple inv
@@ -559,6 +593,7 @@ Proof.
   destruct m.
   apply ceval_inf_loop in Heval2.
   contradiction Heval2.
+  apply simpl_side_condition in Hinv.
   destruct Hinv.
   * rewrite  inline_cwhile in Heval1.
     rewrite inline_cwhile in Heval2.
@@ -589,7 +624,7 @@ Proof.
       apply H12.
       eapply Hinv1.
       split. apply HP.
-      split. assumption. assumption.
+      assumption.
       apply inline_n_ceval in H2. apply H2.
       apply inline_n_ceval in H3. apply H3.
       assumption.
@@ -598,18 +633,53 @@ Proof.
       lia.
     + rewrite H6 in H.
       rewrite H8 in H.
-      inversion H.
+      decompose [and] H.
+      discriminate H2.
   - remember (k_inliner (S n) (CSeq c2 (CWhile b2 c2 (fun _ : list sigma => True)))) as ident.
     inversion Heval2;clear Heval2; subst.
     + rewrite H6 in H.
       rewrite H8 in H.
-      inversion H.
+      decompose [and] H.
+      discriminate H0.
     + inversion H7;subst.
       inversion H9;subst.
       split. apply HP.
       split. assumption. assumption.
  * destruct H.
   - rewrite  inline_cwhile in Heval1.
+    rewrite inline_cwhile in Heval2.
+    destruct n.
+    apply ceval_inf_loop in Heval1.
+    contradiction Heval1.
+    destruct m.
+    apply ceval_inf_loop in Heval2.
+    contradiction Heval2.
+    rewrite inline_cif in Heval1.
+    rewrite inline_cif in Heval2.
+    remember (k_inliner (S n) (CSeq c1 (CWhile b1 c1 (fun _ : list sigma => True)))) as ident.
+    inversion Heval1;clear Heval1;subst.
+    + remember (k_inliner (S m) (CSeq c2 (CWhile b2 c2 (fun _ : list sigma => True)))) as ident.
+    inversion Heval2;clear Heval2; subst.
+    ** rewrite H6 in H.
+      rewrite H8 in H.
+      decompose [and] H.
+      discriminate H0.
+    ** rewrite H6 in H.
+      rewrite H8 in H.
+      decompose [and] H.
+      discriminate H0.
+  + remember (k_inliner (S n) (CSeq c2 (CWhile b2 c2 (fun _ : list sigma => True)))) as ident.
+    inversion Heval2;clear Heval2; subst.
+    ** rewrite H6 in H.
+      rewrite H8 in H.
+      decompose [and] H.
+      discriminate H1.
+    ** inversion H7;subst.
+      inversion H9;subst.
+      split. apply HP.
+      split. assumption. assumption.
+  - destruct H.
+    rewrite  inline_cwhile in Heval1.
     destruct n.
     apply ceval_inf_loop in Heval1.
     contradiction Heval1.
@@ -632,15 +702,15 @@ Proof.
       assumption.
     + destruct H.
       rewrite H6 in H.
-      inversion H.
-  - rewrite  inline_cwhile in Heval2.
+      discriminate H.
+  + rewrite  inline_cwhile in Heval2.
     destruct m.
     apply ceval_inf_loop in Heval2.
     contradiction Heval2.
     rewrite inline_cif in Heval2.
     remember (k_inliner (S m) (CSeq c2 (CWhile b2 c2 (fun _ : list sigma => True)))) as ident.
     inversion Heval2;clear Heval2;subst.
-    + rewrite inline_cseq in H7.
+    ** rewrite inline_cseq in H7.
       remember (k_inliner (S m) (CWhile b2 c2 (fun _ : list sigma => True))) as ident1.
       remember (k_inliner (S m) c2) as ident2.
       inversion H7;subst.
@@ -652,9 +722,8 @@ Proof.
       split. apply HP. assumption.
       apply E_Skip.
       apply inline_n_ceval in H2. apply H2.
-      assumption.
-      assumption.
-    + destruct H.
+      assumption.  assumption.
+    ** destruct H.
       rewrite H6 in H.
-      inversion H.
+      discriminate H.
 Qed.
