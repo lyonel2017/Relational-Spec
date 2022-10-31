@@ -71,7 +71,7 @@ Lemma while_triple :
 Proof.
   intros P b c ps l st Hhoare st' HP Heval.
   remember (CWhile b c P) as original_command eqn:Horig.
-  induction Heval; try inversion Horig.
+  induction Heval; inversion Horig.
   * inversion Horig;subst. eauto.
   * inversion Horig;subst.
     eauto.

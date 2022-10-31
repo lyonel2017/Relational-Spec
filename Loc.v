@@ -20,3 +20,10 @@ Definition X2 : Loc.t:= 2.
 Definition X3 : Loc.t:= 3.
 Definition ret : Loc.t := 3.
 Definition X4 : Loc.t:= 4.
+
+Definition a : Loc.t:= 1.
+Definition b : Loc.t:= 2.
+Definition x : Loc.t := 4.
+Definition y : Loc.t:= 5.
+Definition l : Loc.t:= 6.
+Definition r : Loc.t:= 7.

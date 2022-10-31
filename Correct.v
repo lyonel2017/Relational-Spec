@@ -31,7 +31,7 @@ Proof.
     apply (IHp1 l).
     - apply Htc'.
     - intros.
-      apply (consequence_tc_suite _ _ _ _ 
+      apply (consequence_tc_suite _ _ _ _
       (fun m' h => tc' p2 m' h cl /\ tc p2 m' h cl (fun m'' _  => Q m'' m))).
       + intros s l0 H0 s''.
         generalize dependent H0.

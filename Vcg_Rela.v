@@ -100,7 +100,7 @@ Defined.
 (** Connect between Hoare Triple and Relational Properties **)
 
 Lemma hoare_rela :
-forall (P: r_precondition) (Q: r_postcondition) 
+forall (P: r_precondition) (Q: r_postcondition)
 h q ps pi sl hl (hy1:length q = length sl) (hy2:length q = length hl),
 (forall s2 s3 : sigma,
 P (s2 :: sl) -> ceval h s2 ps s3 ->
@@ -203,7 +203,7 @@ Defined.
 (** Facts about rtc and rtc' **)
 
 Lemma mk_rtc_def :
-forall c q pi s sl h hl 
+forall c q pi s sl h hl
 (hy1:length (c::q) = length (s::sl)) (hy2:length (c::q) = length (h::hl)),
 exists (hyr1:length q = length sl),
 exists (hyr2:length q = length hl),
@@ -218,7 +218,7 @@ program_simpl.
 Qed.
 
 Lemma mk_rtc'_def :
-forall c q pi s sl h hl 
+forall c q pi s sl h hl
 (hy1:length (c::q) = length (s::sl))
 (hy2:length (c::q) = length (h::hl)),
 exists (hyr1:length q = length sl),
@@ -342,11 +342,11 @@ generalize dependent hy1.
 generalize dependent s'.
 generalize dependent s.
 induction p; intros.
-  + destruct s;[| inversion hy1].
-    destruct s';[| inversion hy2].
+  + destruct s;[| discriminate hy1].
+    destruct s';[| discriminate hy2].
     simpl. apply E_Empty.
-  + destruct s;[inversion hy1| ].
-    destruct s';[inversion hy2| ].
+  + destruct s;[discriminate hy1| ].
+    destruct s';[discriminate hy2| ].
     specialize (mk_proc_to_pred_def a p s s0 s1 s' ps hy1 hy2) as (hyr1 & hyr2 & HYP).
     rewrite HYP in H.
     simpl.
@@ -368,7 +368,7 @@ Definition tr (rcl:R_Phi.r_phi) ps :=
 (** Facts about tr **)
 
 Lemma tr_relational_prop (rcl:R_Phi.r_phi) (ps: Psi.psi):
-(forall p, 0 < length p -> 
+(forall p, 0 < length p ->
      relational_prop (get_r_pre (rcl p)) (get_r_post (rcl p)) (fold_call p) ps)
           -> tr rcl ps.
 Proof.
@@ -380,13 +380,13 @@ intros H p s s' hy1 hy2 hy Hcall Hrp.
   + rewrite fold_call_length.
     symmetry. assumption.
   + assumption.
-  + eapply rceval_proc_to_prod in Hcall. 
+  + eapply rceval_proc_to_prod in Hcall.
     apply Hcall.
 Qed.
 
 (** Adding proc_call to post condition of procedure contract **)
 
-Definition phi_call (cl : Phi.phi) ps := 
+Definition phi_call (cl : Phi.phi) ps :=
     fun x => (get_pre (cl x), (fun m' m => (get_post (cl x)) m' m /\ proc_call x m m' ps)).
 
 (* Facts about phi_call *)
@@ -414,7 +414,7 @@ Lemma hd_length_1 s: length s = 1 -> [hd default_sigma s] = s.
 Proof.
 intros.
 destruct s.
-* inversion H.
+* discriminate H.
 * inversion H.
   rewrite length_zero_iff_nil in H1.
   subst.
@@ -424,7 +424,7 @@ Qed.
 
 Lemma rela_hoare_extract rcl ps:
   (forall p : list Proc.Proc.t,
-    0 < length p -> relational_prop (get_r_pre (rcl p)) (get_r_post (rcl p)) (fold_call p) ps) ->  
+    0 < length p -> relational_prop (get_r_pre (rcl p)) (get_r_post (rcl p)) (fold_call p) ps) ->
    (forall p, hoare_triple (get_pre ((extract rcl) p)) (get_post ((extract rcl) p)) (CCall p) ps).
 Proof.
 intros.
@@ -445,11 +445,11 @@ Qed.
 (** Definition of a relational verification condition generator for procedures **)
 
 Definition rtc_p (ps: Psi.psi) (rcl : R_Phi.r_phi) : Prop :=
-    forall f m ps', 
+    forall f m ps',
     let c := (map ps f) in
     let h := (map (fun _ => empty_history) f) in
     forall (hy1:length c = length m) (hy2:length c = length h),
-    (get_r_pre (rcl f)) m -> tr rcl ps' -> 
+    (get_r_pre (rcl f)) m -> tr rcl ps' ->
               rtc' c m h (phi_call (extract rcl) ps') hy1 hy2 /\
               rtc c m h (phi_call (extract rcl) ps')
                                        (fun m' _ => (get_r_post (rcl f)) m' m) hy1 hy2.
@@ -458,16 +458,16 @@ Definition rtc_p (ps: Psi.psi) (rcl : R_Phi.r_phi) : Prop :=
 
 Lemma simpl_rtc' :
   forall (a:Proc.Proc.t) f (s:sigma) m ps ps' phi
-   (hy1:length (map ps (a::f)) = length (s::m)) 
-   (hy2:length (map ps (a::f)) = 
+   (hy1:length (map ps (a::f)) = length (s::m))
+   (hy2:length (map ps (a::f)) =
         length (map (fun _ : Proc.Proc.t => empty_history) (a :: f))),
   exists H1, exists H2,
        rtc' (map ps (a :: f))
-            (s :: m) 
+            (s :: m)
             (map (fun _ : Proc.Proc.t => empty_history) (a :: f))
             (phi_call (extract phi) ps') hy1 hy2 =
        rtc' (ps a :: map ps f)
-            (s :: m) 
+            (s :: m)
             (empty_history :: map (fun _ : Proc.Proc.t => empty_history) f)
             (phi_call (extract phi) ps') H1 H2.
 Proof.
@@ -476,20 +476,20 @@ Qed.
 
 Lemma simpl_rtc :
   forall (a:Proc.Proc.t) f (s:sigma) m ps
-   (hy1:length (map Psi.empty_psi (a::f)) = length (s::m)) 
-   (hy2:length (map Psi.empty_psi (a::f)) = 
+   (hy1:length (map Psi.empty_psi (a::f)) = length (s::m))
+   (hy2:length (map Psi.empty_psi (a::f)) =
         length (map (fun _ : Proc.Proc.t => empty_history) (a :: f))),
   exists H1, exists H2,
   forall suite,
        rtc (map Psi.empty_psi (a :: f))
-            (s :: m) 
+            (s :: m)
             (map (fun _ : Proc.Proc.t => empty_history) (a :: f))
-            (phi_call (extract R_Phi.empty_r_phi) ps) 
+            (phi_call (extract R_Phi.empty_r_phi) ps)
             suite hy1 hy2 =
        rtc (CSkip :: map Psi.empty_psi f)
-            (s :: m) 
+            (s :: m)
             (empty_history :: map (fun _ : Proc.Proc.t => empty_history) f)
-            (phi_call (extract R_Phi.empty_r_phi) ps) 
+            (phi_call (extract R_Phi.empty_r_phi) ps)
             suite H1 H2.
 Proof.
   eexists. eexists. intros. program_simpl.
@@ -509,13 +509,13 @@ split.
     simpl.
     auto.
   + destruct m;[ discriminate hy1 | ].
-    destruct (simpl_rtc' a f s m 
-                         Psi.empty_psi ps' R_Phi.empty_r_phi hy1 hy2) 
+    destruct (simpl_rtc' a f s m
+                         Psi.empty_psi ps' R_Phi.empty_r_phi hy1 hy2)
        as (hyr1 & hyr2 & HYP).
     rewrite HYP.
     clear HYP.
-    destruct (mk_rtc'_def _ _ (phi_call (extract R_Phi.empty_r_phi) ps') 
-                          _ _  _ _ hyr1 hyr2) 
+    destruct (mk_rtc'_def _ _ (phi_call (extract R_Phi.empty_r_phi) ps')
+                          _ _  _ _ hyr1 hyr2)
           as (hyr3 & hyr4 & HYP).
     rewrite HYP.
     clear HYP.
@@ -539,8 +539,8 @@ split.
     destruct (simpl_rtc a f s m ps' hy1 hy2) as (hyr1 & hyr2 & HYP).
     rewrite HYP.
     clear HYP.
-    destruct (mk_rtc_def _ _ (phi_call (extract R_Phi.empty_r_phi) ps') 
-                          _ _ _ _ hyr1 hyr2) 
+    destruct (mk_rtc_def _ _ (phi_call (extract R_Phi.empty_r_phi) ps')
+                          _ _ _ _ hyr1 hyr2)
              as (hyr3 & hyr4 & HYP).
     rewrite HYP.
     clear HYP.

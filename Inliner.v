@@ -177,7 +177,7 @@ induction p ;intros.
     - apply IHp2.
       apply H7.
 * remember (k_inliner (S n) (CWhile b p inv) ps_init) as original_command eqn:Horig.
-  induction H;rewrite inline_cwhile in Horig; try inversion Horig.
+  induction H;rewrite inline_cwhile in Horig; inversion Horig.
   + inversion Horig;subst.
      eapply E_WhileFalse.
      assumption.
@@ -237,7 +237,7 @@ induction n.
       apply IHp2.
       apply H7.
   + remember (k_inliner (S n) (CWhile b p inv) ps) as original_command eqn:Horig.
-    induction H;rewrite inline_cwhile in Horig; try inversion Horig.
+    induction H;rewrite inline_cwhile in Horig; inversion Horig.
     - inversion Horig;subst.
       eapply E_WhileFalse.
       assumption.

@@ -6,12 +6,12 @@ Definition sigma : Type := Loc.t -> nat.
 
 (** A default memory state **)
 
-Definition default_sigma : sigma := fun _ => 0. 
+Definition default_sigma : sigma := fun _ => 0.
 
 (** Notation for updating  memory states **)
 
-Definition update_sigma (x:Loc.Loc.t) (v: nat) (l:sigma) : sigma :=  
-fun (x': Loc.t) => if Loc.Loc.eq_dec x x' then v else l x'. 
+Definition update_sigma (x:Loc.Loc.t) (v: nat) (l:sigma) : sigma :=
+fun (x': Loc.t) => if Loc.Loc.eq_dec x x' then v else l x'.
 
 Notation "x '!->' v ';' l" := (update_sigma x v l)(at level 100, v at next level, right associativity).
 
