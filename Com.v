@@ -80,10 +80,178 @@ ceval (CWhile BTrue CSkip (fun _ => True)) s ps s' -> False.
 Proof.
   intros Heval.
   remember (CWhile BTrue CSkip (fun _ : list Sigma.sigma => True)) as original_command eqn:Horig.
-  induction Heval;try inversion Horig.
+  induction Heval;inversion Horig.
   * inversion Horig;subst. inversion H.
   * inversion Horig;subst.
     apply IHHeval2. reflexivity.
+Qed.
+
+(** Evaluation function for command **)
+
+Fixpoint ceval_step (s : sigma) (c : com) (i : nat) (ps : Psi.psi)
+                    : option sigma :=
+  match i with
+  | 0 => None
+  | S i' =>
+    match c with
+      | CSkip => Some s
+      | CAss x a => Some (x !-> aeval s a ; s)
+      | CAssr x a => Some ((s x) !-> aeval s a ; s)
+      | CAssert b => Some s
+      | CSeq c1 c2 =>
+          match (ceval_step s c1 i' ps) with
+          | Some s' => ceval_step s' c2 i' ps
+          | None => None
+          end
+      | CIf b c1 c2 =>
+          if (beval s b)
+            then ceval_step s c1 i' ps
+            else ceval_step s c2 i' ps
+      | CWhile b1 c1 inv =>
+          if (beval s b1)
+          then match (ceval_step s c1 i' ps) with
+               | Some s' => ceval_step s' c i' ps
+               | None => None
+               end
+          else Some s
+      | CCall f => ceval_step s (ps f) i' ps
+    end
+  end.
+
+(** Facts about ceval_step **)
+
+Lemma ceval_step_ceval: forall c s s' ps,
+      (exists i, ceval_step s c i ps = Some s')->
+      ceval c s ps s'.
+Proof.
+  intros.
+  destruct H.
+  generalize dependent s.
+  generalize dependent s'.
+  generalize  dependent c.
+  induction x; intros.
+  + simpl in H.
+    discriminate H.
+  + destruct c.
+  * inversion H. apply E_Skip.
+  * inversion H. apply E_Ass. reflexivity.
+  * inversion H. apply E_Assr. reflexivity.
+  * inversion H. apply E_Assert.
+  *  inversion H.
+    destruct (ceval_step s c1 x ps) eqn: H2.
+    - eapply E_Seq.
+      apply IHx. apply H2.
+      apply IHx. apply H1.
+    - discriminate H1.
+* inversion H.
+  destruct (beval s b) eqn: Hb.
+    - apply (E_IfTrue _ _ _ _ _ _ Hb).
+      apply IHx. apply H1.
+    - apply (E_IfFalse _ _ _ _ _ _ Hb).
+      apply IHx. apply H1.
+* inversion H.
+  destruct (beval s b) eqn: Hb.
+  - destruct (ceval_step s c x ps) eqn: Hcevalstep.
+    ++ apply (E_WhileTrue _ s s0 _ _ _ _ Hb).
+       apply IHx. apply Hcevalstep.
+       apply IHx. apply H1.
+    ++ discriminate H1.
+  - inversion H1. rewrite <- H2.
+    apply (E_WhileFalse _ _ _ _ _ Hb).
+* inversion H. apply E_Call. apply IHx.  apply H1.
+Qed.
+
+Lemma ceval_step_more: forall i1 i2 s s' c ps,
+  i1 <= i2 ->
+  ceval_step s c i1 ps = Some s' ->
+  ceval_step s c i2 ps = Some s'.
+Proof.
+induction i1 as [|i1']; intros i2 s s' c ps Hle Hceval.
+  - simpl in Hceval. discriminate Hceval.
+  - destruct i2 as [|i2']. inversion Hle.
+    assert (Hle': i1' <= i2') by lia.
+    destruct c.
+    +  simpl in Hceval. inversion Hceval.
+      reflexivity.
+    + simpl in Hceval. inversion Hceval.
+      reflexivity.
+    + simpl in Hceval. inversion Hceval.
+      reflexivity.
+    + simpl in Hceval. inversion Hceval.
+      reflexivity.
+    + simpl in Hceval. simpl.
+      destruct (ceval_step s c1 i1') eqn:Hcevalstep.
+      * rewrite (IHi1' _ _ _ _ _ Hle' Hcevalstep).
+        apply (IHi1' _ _ _ _ _ Hle' Hceval).
+      * discriminate Hceval.
+    + simpl. simpl in Hceval.
+      destruct (beval s b).
+      * apply (IHi1' _ _ _ _ _ Hle' Hceval).
+      * apply (IHi1' _ _ _ _ _ Hle' Hceval).
+    + simpl in Hceval. simpl.
+      destruct (beval s b).
+      * destruct (ceval_step s c i1') eqn: Hcevalstep.
+        -- rewrite (IHi1' _ _ _ _ _ Hle' Hcevalstep).
+           apply (IHi1' _ _ _ _ _ Hle' Hceval).
+        -- discriminate Hceval.
+      * assumption.
+    + simpl. simpl in Hceval.
+      apply (IHi1' _ _ _ _ _ Hle' Hceval).
+Qed.
+
+Lemma ceval_ceval_step: forall c s s' ps,
+      ceval c s ps s'  ->
+      exists i, ceval_step s c i ps = Some s'.
+Proof.
+  intros c s s' pc Hce.
+  induction Hce.
+  * exists 1. reflexivity.
+  * exists 1. simpl. rewrite H. reflexivity.
+  * exists 1. simpl. rewrite H. reflexivity.
+  * exists 1. simpl. reflexivity.
+  * destruct IHHce. exists (S x).
+    simpl. rewrite H. assumption.
+  * destruct IHHce. exists (S x).
+    simpl. rewrite H. assumption.
+  * destruct IHHce1.  destruct IHHce2.
+    exists (S (x + x0)). simpl.
+    destruct (ceval_step s p1 (x + x0) ps) eqn: Hceval_step.
+  - apply (ceval_step_more x0);[lia |].
+    apply (ceval_step_more _ (x + x0)) in H;[|lia].
+    rewrite H in Hceval_step.
+    inversion Hceval_step.
+    rewrite <- H2.
+    assumption.
+  - apply (ceval_step_more _ (x + x0)) in H;[|lia].
+    rewrite H in Hceval_step.
+    discriminate Hceval_step.
+  * exists 1. simpl. rewrite H. reflexivity.
+  * destruct IHHce1.
+    destruct IHHce2.
+    exists (S (x + x0)). simpl.
+    destruct (beval s b).
+    + destruct (ceval_step s p (x + x0) ps) eqn : Hcval_step.
+      - apply (ceval_step_more x0);[lia|].
+        apply (ceval_step_more _ (x + x0)) in H0;[| lia].
+        rewrite H0 in Hcval_step.
+        inversion Hcval_step. rewrite <- H3.
+        assumption.
+      - apply (ceval_step_more _ (x + x0)) in H0;[| lia].
+        rewrite H0 in Hcval_step.
+        discriminate Hcval_step.
+   + discriminate H.
+  * destruct IHHce.
+    exists (S x). simpl.
+    assumption.
+Qed.
+
+(** Both evaluation are equivalent **)
+
+Theorem ceval_and_ceval_step_coincide: forall c s s' ps,
+            ceval c s ps s' <-> exists i, ceval_step s c i ps = Some s'.
+Proof.
+  intros c s s' ps.
+  split. apply ceval_ceval_step. apply ceval_step_ceval.
 Qed.
 
 (** Notations for program **)
