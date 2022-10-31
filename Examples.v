@@ -73,7 +73,7 @@ Ltac mem_s_in s l1 l2 v :=
 Ltac mem_d s l1 l2 v :=
        generalize (set'def s l1 v l2);
        intros Heax; destruct Heax as ( _ & Heax);
-       rewrite Heax; [ | first [ lia | (intros HF; inversion HF)]];
+       rewrite Heax; [ | first [ lia | (intros HF; discriminate HF)]];
        clear Heax.
 
 Ltac mem_d_in s l1 l2 v:=
@@ -1062,3 +1062,223 @@ ltc0 f24_r_phi [empty_history; empty_history] hyh.
   split. apply H1.
   auto.
  Qed.
+
+(** Example 6: Monotone diff **)
+
+Parameter op : Com.com.
+
+Definition op_psi (x': Proc.t) :=
+        if Proc.eqb x' Proc.op then op else Psi.empty_psi x'.
+
+(* Definition of relational contract for procedure op *)
+
+Definition op_r_contract_det : r_postcondition := fun l1 l2 =>
+  match l1,l2 with
+  | [m1; m2], [m1'; m2'] => m1'(l) = m2'(l) /\ m1'(r) = m2'(r) -> m1(ret) = m2(ret)
+  | _,_ => False
+  end.
+
+Definition op_r_contract_comm : r_postcondition := fun l1 l2 =>
+  match l1,l2 with
+  | [m1; m2], [m1'; m2'] => m1'(l) = m2'(r) /\ m1'(r) = m2'(l) -> m1(ret) = m2(ret)
+  | _,_ => False
+  end.
+
+Definition op_r_pre : r_precondition := fun l =>
+  match l with
+  | [m1; m2] => m1(a) = m2(a) /\ m1(b) = m2(b)
+  | _ => False
+  end.
+
+Definition op_r_post : r_postcondition := fun l _ =>
+  match l with
+  | [m1; m2] => m1(ret) = m2(ret)
+  | _ => False
+  end.
+
+Definition op_post : r_postcondition :=  fun l1 l2 =>
+  match l1, l2 with
+  | [m],[m'] =>  m(x) = m'(x) /\ m(y) = m'(y) /\
+                 m(a) = m'(a) /\ m(b) = m'(b)
+  | _,_ => False
+  end.
+
+Definition com1 := <[l := a; r := b; call(Proc.op); l := ret ; r := ret; call(Proc.op)]>.
+Definition com2 := <[l := a; r := b; call(Proc.op); x := ret ;
+                     l := b; r := a; call(Proc.op); y := ret;
+                     l := x; r := y; call(Proc.op) ]>.
+
+(* Relational contract environment *)
+
+Definition op_r_phi (x': list Proc.t) :=
+        if (list_beq  Proc.t) Proc.eqb x' [Proc.op; Proc.op]
+        then (fun _ => True ,fun l l' => op_r_contract_det l l' /\ op_r_contract_comm l l')
+        else if (list_beq  Proc.t) Proc.eqb x' [Proc.op]
+            then (fun _ => True,op_post)
+            else R_Phi.empty_r_phi x'.
+
+(* We proof monotonie of procedure f2 in respect to f4 *)
+
+Example relation_op_goal : relational_prop
+                  op_r_pre op_r_post [com1; com2] op_psi.
+Proof.
+assert (hyh :length [com1; com2] =
+             length [empty_history; empty_history]).
+{  simpl. reflexivity. }
+ltc0 op_r_phi [empty_history; empty_history] hyh.
+(* Verification of proof obligation for procedure *)
++ admit.
++ admit.
++ admit.
+(* Main proof obligation *)
++ simpl.
+  intros.
+  decompose [and] H0;clear H0.
+  decompose [and] H1;clear H1.
+  clear H5 H12 H20 H29 H37.
+  assert(H44: 2 = 2) by lia.
+  assert(H45: 0 < 2) by lia.
+  assert(H46: proc_call Proc.op m''3 m' ps /\ proc_call Proc.op m''13 m'0 ps /\ True).
+  { split. assumption. split. assumption. auto. }
+  generalize (Hr [Proc.op; Proc.op] [m''3; m''13] [m'; m'0] H44 H44 H45 H46 I); simpl; intro.
+  destruct H1.
+  apply H1.
+  clear H1 H5 H46.
+  rewrite H6.
+  mem_s m''2 r r (m''2 ret).
+  mem_d m''2 r l (m''2 ret).
+  rewrite H10.
+  mem_s m''1 l l (m''1 ret).
+  mem_d m''1 l ret (m''1 ret).
+  rewrite H36.
+  mem_d m''12 r l (m''12 y).
+  mem_s m''12 r r (m''12 y).
+  rewrite H30.
+  mem_s m''11 l l (m''11 x).
+  mem_d m''11 l y (m''11 x).
+  rewrite H34.
+  mem_d m''10 y x (m''10 ret).
+  mem_s m''10 y y (m''10 ret).
+  split.
+  * rewrite H31.
+    rewrite H27.
+    mem_d m''8 r x (m''8 a).
+    rewrite H21.
+    mem_d m''7 l x (m''7 b).
+    rewrite H25.
+    mem_s m''6 x x (m''6 ret).
+    assert(H46: proc_call Proc.op m''0 m''1 ps /\ proc_call Proc.op m''5 m''6 ps /\ True).
+    { split. assumption. split. assumption. auto. }
+    generalize (Hr [Proc.op; Proc.op] [m''0; m''5] [m''1; m''6] H44 H44 H45 H46 I); simpl; intro.
+    destruct H1.
+    apply H1.
+    clear H1 H5 H46.
+    rewrite H4.
+    mem_d m'' r l (m'' b).
+    mem_s m'' r r (m'' b).
+    rewrite H2.
+    mem_s s l l (s a).
+    mem_d s l b (s a).
+    rewrite H19.
+    mem_d m''4 r l (m''4 b).
+    mem_s m''4 r r (m''4 b).
+    rewrite H0.
+    mem_s s0 l l (s0 a).
+    mem_d s0 l b (s0 a).
+    assumption.
+  * assert(H46: proc_call Proc.op m''0 m''1 ps /\ proc_call Proc.op m''9 m''10 ps /\ True).
+    { split. assumption. split. assumption. auto. }
+    generalize (Hr [Proc.op; Proc.op] [m''0; m''9] [m''1; m''10] H44 H44 H45 H46 I); simpl; intro.
+    destruct H1.
+    apply H5.
+    clear H1 H5 H46.
+    rewrite H4.
+    mem_d m'' r l (m'' b).
+    mem_s m'' r r (m'' b).
+    rewrite H2.
+    mem_s s l l (s a).
+    mem_d s l b (s a).
+    rewrite H27.
+    mem_d m''8 r l (m''8 a).
+    mem_s m''8 r r (m''8 a).
+    rewrite H21.
+    mem_s m''7 l l (m''7 b).
+    mem_d m''7 l a (m''7 b).
+    rewrite H25.
+    mem_d m''6 x b (m''6 ret).
+    mem_d m''6 x a (m''6 ret).
+    rewrite H26.
+    rewrite H24.
+    rewrite H19.
+    mem_d m''4 r a (m''4 b).
+    mem_d m''4 r b (m''4 b).
+    rewrite H0.
+    mem_d s0 l a (s0 a).
+    mem_d s0 l b (s0 a).
+    assumption.
+Admitted.
+
+
+(*Two procedure that performes a recursice operation twice on two location but not in
+the same order on the location
+
+Generalize the skeduling rule for loops to recursive procedure.
+
+*)
+
+
+(* Definition op_psi (x': Proc.t) := *)
+(*         if Proc.eqb x' Proc.op then op else Psi.empty_psi x'. *)
+
+(* (* Definition of relational contract for procedure op *) *)
+
+(* Definition op_r_contract_det : r_postcondition := fun l1 l2 => *)
+(*   match l1,l2 with *)
+(*   | [m1; m2], [m1'; m2'] => m1'(l) = m2'(l) /\ m1'(r) = m2'(r) -> m1(ret) = m2(ret) *)
+(*   | _,_ => False *)
+(*   end. *)
+
+(* Definition op_r_contract_comm : r_postcondition := fun l1 l2 => *)
+(*   match l1,l2 with *)
+(*   | [m1; m2], [m1'; m2'] => m1'(l) = m2'(r) /\ m1'(r) = m2'(l) -> m1(ret) = m2(ret) *)
+(*   | _,_ => False *)
+(*   end. *)
+
+(* Definition op_r_pre : r_precondition := fun l => *)
+(*   match l with *)
+(*   | [m1; m2] => m1(a) = m2(a) /\ m1(b) = m2(b) *)
+(*   | _ => False *)
+(*   end. *)
+
+(* Definition op_r_post : r_postcondition := fun l _ => *)
+(*   match l with *)
+(*   | [m1; m2] => m1(ret) = m2(ret) *)
+(*   | _ => False *)
+(*   end. *)
+
+(* Definition op_post : r_postcondition :=  fun l1 l2 => *)
+(*   match l1, l2 with *)
+(*   | [m],[m'] =>  m(x) = m'(x) /\ m(y) = m'(y) /\ *)
+(*                  m(a) = m'(a) /\ m(b) = m'(b) *)
+(*   | _,_ => False *)
+(*   end. *)
+
+(* Definition com1 := <[l := a; r := b; call(Proc.op); l := ret ; r := ret; call(Proc.op)]>. *)
+(* Definition com2 := <[l := a; r := b; call(Proc.op); x := ret ; *)
+(*                      l := b; r := a; call(Proc.op); y := ret; *)
+(*                      l := x; r := y; call(Proc.op) ]>. *)
+
+(* (* Relational contract environment *) *)
+
+(* Definition op_r_phi (x': list Proc.t) := *)
+(*         if (list_beq  Proc.t) Proc.eqb x' [Proc.op; Proc.op] *)
+(*         then (fun _ => True ,fun l l' => op_r_contract_det l l' /\ op_r_contract_comm l l') *)
+(*         else if (list_beq  Proc.t) Proc.eqb x' [Proc.op] *)
+(*             then (fun _ => True,op_post) *)
+(*             else R_Phi.empty_r_phi x'. *)
+
+(* (* We proof monotonie of procedure f2 in respect to f4 *) *)
+
+(* Example relation_op_goal : relational_prop *)
+(*                   op_r_pre op_r_post [com1; com2] op_psi. *)
+Proof.

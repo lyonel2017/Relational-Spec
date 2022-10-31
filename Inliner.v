@@ -131,7 +131,7 @@ induction p;intros.
      induction H; inversion Horig;subst.
      * eapply E_WhileFalse.
        assumption.
-     *  eapply E_WhileTrue.
+     * eapply E_WhileTrue.
        assumption.
        apply IHp. apply H0.
        apply IHceval2.
