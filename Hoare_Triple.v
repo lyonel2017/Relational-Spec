@@ -20,7 +20,7 @@ Definition postcondition : Type := sigma -> sigma -> Prop.
 
 Definition empty_postcondition :  postcondition := (fun _ _ => True).
 
-(** Defintion of a Hoare Triple **)
+(** Defintion of functional correcness i.e Hoare Triples **)
 
 Definition hoare_triple (P : precondition) (Q: postcondition) (c : com) (ps : Psi.psi) : Prop :=
   forall s s',  P s -> ceval c s ps s' -> Q s' s.
@@ -184,3 +184,42 @@ apply recursion_hoare_triple with cl.
 assumption.
 apply H.
 Qed.
+
+(** Definition of total correcness **)
+
+Definition total (P : precondition) (Q: postcondition) (c : com) (ps : Psi.psi) : Prop :=
+  forall s,  P s -> (exists s', ceval c s ps s' /\ Q s' s).
+
+
+(** Facts about Hoare Triples **)
+
+Lemma test (P : precondition) (Q: postcondition) (c : com) (ps : Psi.psi) :
+  hoare_triple P Q c ps ->
+ (forall s ,  P s -> (exists i, ceval_step s c i ps <> None)) ->
+ total P Q c ps.
+Proof.
+  intros Hp Hf s HPre.
+  specialize (Hf s HPre).
+  destruct Hf.
+Admitted.
+(*   split. *)
+(*   * apply (Hf s s' HPre). *)
+(*   * apply (Hp s s' HPre). *)
+(*     apply ceval_and_ceval_step_coincide. *)
+(*     apply (Hf s s' HPre). *)
+(* Qed. *)
+
+Definition variant : Type := sigma -> Type. (*we can use intger to simplify*)
+
+Lemma while_total :
+  forall (inv: assertion) (var: variant) b c ps l,
+    (forall s1 s2, inv (s1 :: l) /\ beval s1 b = true ->
+              ceval c s1 ps s2 -> inv (s2 :: l)) ->
+    (forall s1 s2 z, inv (s1 :: l) /\ beval s1 b = true /\ var (s1 :: l ) = z ->
+                ceval c s1 ps s2 -> var (s2 :: l) < z ) (*the variant is ordered by some < *) ->
+    (forall s1, inv (s1 :: l) -> var(s1 l) >= 0) (*the variant has a bottom*)->
+    total (fun s => inv (s :: l))
+                ( fun s' _ => inv (s' :: l) /\ beval s'  b = false )
+                (CWhile b c inv) ps.
+Proof.
+Admitted.
