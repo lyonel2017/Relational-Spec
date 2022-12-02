@@ -727,3 +727,108 @@ Proof.
       rewrite H6 in H.
       discriminate H.
 Qed.
+
+
+(** Definition of a relational contract **)
+
+Definition r_clause : Type := r_precondition * r_postcondition * r_cond * r_cond.
+
+Definition empty_clause : r_clause :=
+  (empty_r_precondition, empty_r_postcondition, fun _ _ => true, fun _ _ => true).
+
+Definition get_r_pre (an: r_clause) :=
+  let (l,_) := an in
+  let (l,_) := l in
+  let (pre,_) := l in
+  pre.
+
+Definition get_r_post (an:r_clause) :=
+  let (l,_) := an in
+  let (l,_) := l in
+  let (_,post) := l in
+  post.
+
+Definition get_L (an:r_clause) :=
+  let (l,_) := an in
+  let (_,L) := l in
+  L.
+
+Definition get_R (an:r_clause) :=
+  let (_,R) := an in
+  R.
+
+
+(** Definition of relational contract environments :
+    a map from two procedure name to relational clauses **)
+
+Module R_Phi.
+
+  Definition r_phi : Type := Proc.t -> Proc.t -> r_clause.
+
+  Definition empty_r_phi: r_phi := fun _ _ => empty_clause.
+
+End R_Phi.
+
+
+Definition quadruple_prop_ctx (rcl:R_Phi.r_phi) (ps: Psi.psi)
+                            (P: r_precondition) (Q : r_postcondition) (c1 c2:  com) :=
+  (forall p1 p2, quadruple (get_r_pre (rcl p1 p2))
+                      (get_r_post (rcl p1 p2)) (CCall p1) (CCall p2) ps) ->
+      quadruple P Q c1 c2 ps.
+
+Definition quadruple_prop_proc_ctx (rcl : R_Phi.r_phi) (ps_init :Psi.psi):=
+  forall p1 p2 ps,
+    quadruple_prop_ctx rcl ps (fun s1 s2 => get_r_pre (rcl p1 p2) s1 s2 /\
+                                          get_L(rcl p1 p2) s1 s2 = false /\
+                                          get_R(rcl p1 p2) s1 s2 = false)
+      (get_r_post (rcl p1 p2)) (ps_init p1) (ps_init p2) /\
+    quadruple_prop_ctx rcl ps (fun s1 s2 => get_r_pre (rcl p1 p2) s1 s2 /\
+                                          get_L(rcl p1 p2) s1 s2 = true)
+      (get_r_post (rcl p1 p2)) (ps_init p1) (CCall p2) /\
+    quadruple_prop_ctx rcl ps (fun s1 s2 => get_r_pre (rcl p1 p2) s1 s2 /\
+                                          get_R(rcl p1 p2) s1 s2 = true)
+      (get_r_post (rcl p1 p2)) (CCall p1) (ps_init p2).
+
+Lemma test ps rcl:
+  quadruple_prop_proc_ctx rcl ps ->
+  (forall p1 p2, quadruple (get_r_pre (rcl p1 p2))
+              (get_r_post (rcl p1 p2)) (CCall p1) (CCall p2) ps).
+Proof.
+  intros.
+apply i_relational_prop_relational_prop.
+intros n.
+generalize dependent p.
+induction n.
+* intros p Hp s s' H1 H2 HPre Heval.
+  destruct p.
+  + inversion Hp.
+  + apply rceval_inf_loop in Heval.
+    - contradiction Heval.
+    - rewrite H1.
+      rewrite fold_call_length.
+      reflexivity.
+    - rewrite H2.
+      rewrite fold_call_length.
+      reflexivity.
+    - assumption.
+* intros p Hp s s' H1 H2 HPre Heval.
+  apply r_n_inline_ps_inline in Heval.
+  eapply H.
+  + apply IHn.
+  + rewrite H1.
+    rewrite fold_call_length.
+    rewrite fold_proc_length.
+    reflexivity.
+  + rewrite H2.
+    rewrite fold_call_length.
+    rewrite fold_proc_length.
+    reflexivity.
+  + apply HPre.
+  + apply Heval.
+  + rewrite H1.
+    rewrite fold_call_length.
+    reflexivity.
+  + rewrite H2.
+    rewrite fold_call_length.
+    reflexivity.
+Qed.
