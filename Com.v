@@ -121,8 +121,7 @@ Fixpoint ceval_step (s : sigma) (c : com) (i : nat) (ps : Psi.psi)
 (** Facts about ceval_step **)
 
 Lemma ceval_step_ceval: forall c s s' ps,
-      (exists i, ceval_step s c i ps = Some s')->
-      ceval c s ps s'.
+      (exists i, ceval_step s c i ps = Some s') -> ceval c s ps s'.
 Proof.
   intros.
   destruct H.
