@@ -412,7 +412,7 @@ induction n.
             reflexivity.
   - rewrite inline_ccall.
     apply IHn.
-    now apply Le.le_S_n.
+    now apply Nat.succ_le_mono.
     apply H.
 Qed.
 

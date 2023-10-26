@@ -3,6 +3,7 @@ From Rela Require Import Bexp.
 From Rela Require Import Com.
 From Rela Require Import Sigma.
 From Rela Require Import Hoare_Triple.
+From Rela Require Import Inliner.
 
 From Coq Require Import Lia.
 Import Arith.
@@ -329,7 +330,7 @@ Proof.
       apply H.
 Qed.
 
-(** Defintion of a Hoare Triple with inliner **)
+(** Defintion of a Hoare Triple with inliner for loops **)
 
 Definition i_hoare_triple (n: nat)
            (P: precondition) (Q: postcondition)
@@ -373,7 +374,7 @@ Definition quadruple (P: r_precondition) (Q: r_postcondition)
            (c1 c2: com) (ps : Psi.psi) : Prop :=
   forall s1 s2 s1' s2', P s1 s2 -> ceval c1 s1 ps s1' -> ceval c2 s2 ps s2' -> Q s1' s2'.
 
-(** Defintion of a relational properties with inliner **)
+(** Definition of a relational properties with inliner for loops **)
 
 Definition i_quadruple (n: nat) (P: r_precondition) (Q: r_postcondition)
            (c1 c2 : com) (ps : Psi.psi) : Prop :=
@@ -586,67 +587,16 @@ Proof.
   apply ceval_inf_loop in Heval1.
   contradiction Heval1.
   intros s1 s2 s1' s2' n m Hi HP Heval1 Heval2.
-  specialize (Hinv _ _ HP).
   destruct n.
   apply ceval_inf_loop in Heval1.
   contradiction Heval1.
   destruct m.
   apply ceval_inf_loop in Heval2.
   contradiction Heval2.
+  specialize (Hinv _ _ HP).
   apply simpl_side_condition in Hinv.
   destruct Hinv.
-  * rewrite  inline_cwhile in Heval1.
-    rewrite inline_cwhile in Heval2.
-    destruct n.
-    apply ceval_inf_loop in Heval1.
-    contradiction Heval1.
-    destruct m.
-    apply ceval_inf_loop in Heval2.
-    contradiction Heval2.
-    rewrite inline_cif in Heval1.
-    rewrite inline_cif in Heval2.
-    remember (k_inliner (S n) (CSeq c1 (CWhile b1 c1 (fun _ : list sigma => True)))) as ident.
-    inversion Heval1;clear Heval1;subst.
- - remember (k_inliner (S m) (CSeq c2 (CWhile b2 c2 (fun _ : list sigma => True)))) as ident.
-    inversion Heval2;clear Heval2; subst.
-    + rewrite inline_cseq in H7.
-      rewrite inline_cseq in H9.
-      remember (k_inliner (S n) (CWhile b1 c1 (fun _ : list sigma => True))) as ident1.
-      remember (k_inliner (S n) c1) as ident2.
-      inversion H7;subst.
-      clear H7.
-      remember (k_inliner (S m) (CWhile b2 c2 (fun _ : list sigma => True))) as ident1.
-      remember (k_inliner (S m) c2) as ident2.
-      inversion H9;subst.
-      clear H9.
-      assert (H12: i = S n + S (S m)) by lia.
-      eapply IHi.
-      apply H12.
-      eapply Hinv1.
-      split. apply HP.
-      assumption.
-      apply inline_n_ceval in H2. apply H2.
-      apply inline_n_ceval in H3. apply H3.
-      assumption.
-      eapply inline_ceval_S.
-      apply H11.
-      lia.
-    + rewrite H6 in H.
-      rewrite H8 in H.
-      decompose [and] H.
-      discriminate H2.
-  - remember (k_inliner (S n) (CSeq c2 (CWhile b2 c2 (fun _ : list sigma => True)))) as ident.
-    inversion Heval2;clear Heval2; subst.
-    + rewrite H6 in H.
-      rewrite H8 in H.
-      decompose [and] H.
-      discriminate H0.
-    + inversion H7;subst.
-      inversion H9;subst.
-      split. apply HP.
-      split. assumption. assumption.
- * destruct H.
-  - rewrite  inline_cwhile in Heval1.
+  - rewrite inline_cwhile in Heval1.
     rewrite inline_cwhile in Heval2.
     destruct n.
     apply ceval_inf_loop in Heval1.
@@ -659,75 +609,125 @@ Proof.
     remember (k_inliner (S n) (CSeq c1 (CWhile b1 c1 (fun _ : list sigma => True)))) as ident.
     inversion Heval1;clear Heval1;subst.
     + remember (k_inliner (S m) (CSeq c2 (CWhile b2 c2 (fun _ : list sigma => True)))) as ident.
-    inversion Heval2;clear Heval2; subst.
-    ** rewrite H6 in H.
-      rewrite H8 in H.
-      decompose [and] H.
-      discriminate H0.
-    ** rewrite H6 in H.
-      rewrite H8 in H.
-      decompose [and] H.
-      discriminate H0.
-  + remember (k_inliner (S n) (CSeq c2 (CWhile b2 c2 (fun _ : list sigma => True)))) as ident.
-    inversion Heval2;clear Heval2; subst.
-    ** rewrite H6 in H.
-      rewrite H8 in H.
-      decompose [and] H.
-      discriminate H1.
-    ** inversion H7;subst.
-      inversion H9;subst.
-      split. apply HP.
-      split. assumption. assumption.
+      inversion Heval2;clear Heval2; subst.
+      * rewrite inline_cseq in H7.
+        rewrite inline_cseq in H9.
+        remember (k_inliner (S n) (CWhile b1 c1 (fun _ : list sigma => True))) as ident1.
+        remember (k_inliner (S n) c1) as ident2.
+        inversion H7;subst.
+        clear H7.
+        remember (k_inliner (S m) (CWhile b2 c2 (fun _ : list sigma => True))) as ident1.
+        remember (k_inliner (S m) c2) as ident2.
+        inversion H9;subst.
+        clear H9.
+        assert (H12: i = S n + S (S m)) by lia.
+        eapply IHi.
+        apply H12.
+        eapply Hinv1.
+        split. apply HP.
+        assumption.
+        apply inline_n_ceval in H2. apply H2.
+        apply inline_n_ceval in H3. apply H3.
+        assumption.
+        eapply inline_ceval_S.
+        apply H11.
+        lia.
+      * rewrite H6 in H.
+        rewrite H8 in H.
+        decompose [and] H.
+        discriminate H2.
+    + remember (k_inliner (S n) (CSeq c2 (CWhile b2 c2 (fun _ : list sigma => True)))) as ident.
+      inversion Heval2;clear Heval2; subst.
+      * rewrite H6 in H.
+        rewrite H8 in H.
+        decompose [and] H.
+        discriminate H0.
+      * inversion H7;subst.
+        inversion H9;subst.
+        split. apply HP.
+        split. assumption. assumption.
   - destruct H.
-    rewrite  inline_cwhile in Heval1.
-    destruct n.
-    apply ceval_inf_loop in Heval1.
-    contradiction Heval1.
-    rewrite inline_cif in Heval1.
-    remember (k_inliner (S n) (CSeq c1 (CWhile b1 c1 (fun _ : list sigma => True)))) as ident.
-    inversion Heval1;clear Heval1;subst.
-    + rewrite inline_cseq in H7.
-      remember (k_inliner (S n) (CWhile b1 c1 (fun _ : list sigma => True))) as ident1.
-      remember (k_inliner (S n) c1) as ident2.
-      inversion H7;subst.
-      clear H7.
-      assert (H12: i = S n + S m) by lia.
-      eapply IHi.
-      apply H12.
-      eapply Hinv2.
-      split. apply HP. assumption.
-      apply inline_n_ceval in H2. apply H2.
-      apply E_Skip.
-      assumption.
-      assumption.
+    + rewrite  inline_cwhile in Heval1.
+      rewrite inline_cwhile in Heval2.
+      destruct n.
+      apply ceval_inf_loop in Heval1.
+      contradiction Heval1.
+      destruct m.
+      apply ceval_inf_loop in Heval2.
+      contradiction Heval2.
+      rewrite inline_cif in Heval1.
+      rewrite inline_cif in Heval2.
+      remember (k_inliner (S n) (CSeq c1 (CWhile b1 c1 (fun _ : list sigma => True)))) as ident.
+      inversion Heval1;clear Heval1;subst.
+      * remember (k_inliner (S m) (CSeq c2 (CWhile b2 c2 (fun _ : list sigma => True)))) as ident.
+        inversion Heval2;clear Heval2; subst.
+        -- rewrite H6 in H.
+           rewrite H8 in H.
+           decompose [and] H.
+           discriminate H0.
+        -- rewrite H6 in H.
+           rewrite H8 in H.
+           decompose [and] H.
+           discriminate H0.
+      * remember (k_inliner (S n) (CSeq c2 (CWhile b2 c2 (fun _ : list sigma => True)))) as ident.
+        inversion Heval2;clear Heval2; subst.
+        -- rewrite H6 in H.
+           rewrite H8 in H.
+           decompose [and] H.
+           discriminate H1.
+        -- inversion H7;subst.
+           inversion H9;subst.
+           split. apply HP.
+           split. assumption. assumption.
     + destruct H.
-      rewrite H6 in H.
-      discriminate H.
-  + rewrite  inline_cwhile in Heval2.
-    destruct m.
-    apply ceval_inf_loop in Heval2.
-    contradiction Heval2.
-    rewrite inline_cif in Heval2.
-    remember (k_inliner (S m) (CSeq c2 (CWhile b2 c2 (fun _ : list sigma => True)))) as ident.
-    inversion Heval2;clear Heval2;subst.
-    ** rewrite inline_cseq in H7.
-      remember (k_inliner (S m) (CWhile b2 c2 (fun _ : list sigma => True))) as ident1.
-      remember (k_inliner (S m) c2) as ident2.
-      inversion H7;subst.
-      clear H7.
-      assert (H12: i = S n + S m) by lia.
-      eapply IHi.
-      apply H12.
-      eapply Hinv3.
-      split. apply HP. assumption.
-      apply E_Skip.
-      apply inline_n_ceval in H2. apply H2.
-      assumption.  assumption.
-    ** destruct H.
-      rewrite H6 in H.
-      discriminate H.
+      rewrite  inline_cwhile in Heval1.
+      destruct n.
+      apply ceval_inf_loop in Heval1.
+      contradiction Heval1.
+      rewrite inline_cif in Heval1.
+      remember (k_inliner (S n) (CSeq c1 (CWhile b1 c1 (fun _ : list sigma => True)))) as ident.
+      inversion Heval1;clear Heval1;subst.
+      * rewrite inline_cseq in H7.
+        remember (k_inliner (S n) (CWhile b1 c1 (fun _ : list sigma => True))) as ident1.
+        remember (k_inliner (S n) c1) as ident2.
+        inversion H7;subst.
+        clear H7.
+        assert (H12: i = S n + S m) by lia.
+        eapply IHi.
+        apply H12.
+        eapply Hinv2.
+        split. apply HP. assumption.
+        apply inline_n_ceval in H2. apply H2.
+        apply E_Skip.
+        assumption.
+        assumption.
+      * destruct H.
+        rewrite H6 in H.
+        discriminate H.
+      * rewrite  inline_cwhile in Heval2.
+        destruct m.
+        apply ceval_inf_loop in Heval2.
+        contradiction Heval2.
+        rewrite inline_cif in Heval2.
+        remember (k_inliner (S m) (CSeq c2 (CWhile b2 c2 (fun _ : list sigma => True)))) as ident.
+        inversion Heval2;clear Heval2;subst.
+        -- rewrite inline_cseq in H7.
+           remember (k_inliner (S m) (CWhile b2 c2 (fun _ : list sigma => True))) as ident1.
+           remember (k_inliner (S m) c2) as ident2.
+           inversion H7;subst.
+           clear H7.
+           assert (H12: i = S n + S m) by lia.
+           eapply IHi.
+           apply H12.
+           eapply Hinv3.
+           split. apply HP. assumption.
+           apply E_Skip.
+           apply inline_n_ceval in H2. apply H2.
+           assumption.  assumption.
+        -- destruct H.
+           rewrite H6 in H.
+           discriminate H.
 Qed.
-
 
 (** Definition of a relational contract **)
 
@@ -757,7 +757,6 @@ Definition get_R (an:r_clause) :=
   let (_,R) := an in
   R.
 
-
 (** Definition of relational contract environments :
     a map from two procedure name to relational clauses **)
 
@@ -769,66 +768,172 @@ Module R_Phi.
 
 End R_Phi.
 
+(**)
 
-Definition quadruple_prop_ctx (rcl:R_Phi.r_phi) (ps: Psi.psi)
+Definition bi_quadruple_fun_2 (i: nat) (P: r_precondition) (Q: r_postcondition)
+  (c1 c2 : com) (ps1 ps2 : Psi.psi) : Prop :=
+  forall s1 s2 s1' s2' n m, i = n + m -> P s1 s2 ->
+                       ceval c1 s1 (k_inliner_ps n ps1) s1' ->
+                       ceval c2 s2 (k_inliner_ps m ps2) s2' ->
+                       Q s1' s2'.
+
+Lemma qceval_n_b_inline_fun_2 p1 p2 s1 s2 ps1 ps2 s1' s2':
+  ceval p1 s1 ps1 s1' ->  ceval p2 s2 ps2 s2' ->
+  exists n m: nat, ceval p1 s1 (k_inliner_ps n ps1) s1' /\ ceval p2 s2 (k_inliner_ps m ps2) s2'.
+Proof.
+  intros Heval1  Heval2.
+  apply ceval_n_inline_ps in Heval1.
+  apply ceval_n_inline_ps in Heval2.
+  destruct Heval1. destruct Heval2.
+  exists x. exists x0.
+  split.
+  apply H.
+  apply H0.
+Qed.
+
+Definition quadruple_2 (P: r_precondition) (Q: r_postcondition)
+           (c1 c2: com) (ps1 ps2 : Psi.psi) : Prop :=
+  forall s1 s2 s1' s2', P s1 s2 -> ceval c1 s1 ps1 s1' -> ceval c2 s2 ps2 s2' -> Q s1' s2'.
+
+
+Lemma bi_quadruple_quadruple_fun P Q p1 p2 ps1 ps2:
+  quadruple_2 P Q p1 p2 ps1 ps2 <-> forall n, bi_quadruple_fun_2 n P Q p1 p2 ps1 ps2.
+Proof.
+  unfold quadruple_2, bi_quadruple_fun_2;split;intros H.
+  * intros i s1 s2 s1' s2' n m Hi Pre Heval1 Heval2.
+    eapply H.
+    apply Pre.
+    eapply (n_inline_ps_ceval _ _ _ _ _ Heval1).
+    eapply (n_inline_ps_ceval _ _ _ _ _ Heval2).
+  * intros s1 s2 s1' s2' Pre Heval1 Heval2.
+    specialize (qceval_n_b_inline_fun_2 _ _ _ _ _ _ _ _  Heval1 Heval2).
+    intros Heval. destruct Heval as [n Heval]. destruct Heval as [m Heval].
+    destruct Heval as (Hevaln & Hevalm).
+    specialize (H (n + m) s1 s2 s1' s2' n m).
+    apply H.
+    reflexivity.
+    assumption.
+    assumption.
+    assumption.
+Qed.
+
+Definition quadruple_ctx_2 (rcl:R_Phi.r_phi) (ps1 ps2: Psi.psi)
                             (P: r_precondition) (Q : r_postcondition) (c1 c2:  com) :=
-  (forall p1 p2, quadruple (get_r_pre (rcl p1 p2))
-                      (get_r_post (rcl p1 p2)) (CCall p1) (CCall p2) ps) ->
-      quadruple P Q c1 c2 ps.
+  (forall p1 p2, quadruple_2 (get_r_pre (rcl p1 p2))
+                      (get_r_post (rcl p1 p2)) (CCall p1) (CCall p2) ps1 ps2) ->
+      quadruple_2 P Q c1 c2 ps1 ps2.
 
-Definition quadruple_prop_proc_ctx (rcl : R_Phi.r_phi) (ps_init :Psi.psi):=
-  forall p1 p2 ps,
-    quadruple_prop_ctx rcl ps (fun s1 s2 => get_r_pre (rcl p1 p2) s1 s2 /\
-                                          get_L(rcl p1 p2) s1 s2 = false /\
-                                          get_R(rcl p1 p2) s1 s2 = false)
-      (get_r_post (rcl p1 p2)) (ps_init p1) (ps_init p2) /\
-    quadruple_prop_ctx rcl ps (fun s1 s2 => get_r_pre (rcl p1 p2) s1 s2 /\
-                                          get_L(rcl p1 p2) s1 s2 = true)
-      (get_r_post (rcl p1 p2)) (ps_init p1) (CCall p2) /\
-    quadruple_prop_ctx rcl ps (fun s1 s2 => get_r_pre (rcl p1 p2) s1 s2 /\
-                                          get_R(rcl p1 p2) s1 s2 = true)
-      (get_r_post (rcl p1 p2)) (CCall p1) (ps_init p2).
 
-Lemma test ps rcl:
-  quadruple_prop_proc_ctx rcl ps ->
-  (forall p1 p2, quadruple (get_r_pre (rcl p1 p2))
-              (get_r_post (rcl p1 p2)) (CCall p1) (CCall p2) ps).
+Definition quadruple_proc_ctx_2 (rcl : R_Phi.r_phi) (ps_init_1 ps_init_2 :Psi.psi):=
+  (forall p1 p2 ps1 ps2,
+      quadruple_ctx_2 rcl ps1 ps2 (fun s1 s2 => get_r_pre (rcl p1 p2) s1 s2 /\
+                                             get_L(rcl p1 p2) s1 s2 = false /\
+                                             get_R(rcl p1 p2) s1 s2 = false)
+        (get_r_post (rcl p1 p2)) (ps_init_1 p1) (ps_init_2 p2)) /\
+    ( forall p1 p2 ps1 ps2,
+        quadruple_ctx_2 rcl ps1 ps2 (fun s1 s2 => get_r_pre (rcl p1 p2) s1 s2 /\
+                                               get_L(rcl p1 p2) s1 s2 = true)
+          (get_r_post (rcl p1 p2)) (ps_init_1 p1) (CCall p2)) /\
+    (forall p1 p2 ps1 ps2,
+        quadruple_ctx_2 rcl ps1 ps2 (fun s1 s2 => get_r_pre (rcl p1 p2) s1 s2 /\
+                                               get_R(rcl p1 p2) s1 s2 = true)
+          (get_r_post (rcl p1 p2)) (CCall p1) (ps_init_2 p2)) /\
+    (forall p1 p2 s1 s2,  (get_L(rcl p1 p2) s1 s2 = false /\ get_R(rcl p1 p2) s1 s2 = false) \/
+                       get_L(rcl p1 p2) s1 s2 = true \/ get_R(rcl p1 p2) s1 s2 = true).
+
+Lemma test ps1 ps2 rcl:
+  quadruple_proc_ctx_2 rcl ps1 ps2 ->
+  (forall p1 p2, quadruple_2 (get_r_pre (rcl p1 p2))
+              (get_r_post (rcl p1 p2)) (CCall p1) (CCall p2) ps1 ps2).
 Proof.
   intros.
-apply i_relational_prop_relational_prop.
-intros n.
-generalize dependent p.
-induction n.
-* intros p Hp s s' H1 H2 HPre Heval.
-  destruct p.
-  + inversion Hp.
-  + apply rceval_inf_loop in Heval.
-    - contradiction Heval.
-    - rewrite H1.
-      rewrite fold_call_length.
-      reflexivity.
-    - rewrite H2.
-      rewrite fold_call_length.
-      reflexivity.
-    - assumption.
-* intros p Hp s s' H1 H2 HPre Heval.
-  apply r_n_inline_ps_inline in Heval.
-  eapply H.
-  + apply IHn.
-  + rewrite H1.
-    rewrite fold_call_length.
-    rewrite fold_proc_length.
-    reflexivity.
-  + rewrite H2.
-    rewrite fold_call_length.
-    rewrite fold_proc_length.
-    reflexivity.
-  + apply HPre.
-  + apply Heval.
-  + rewrite H1.
-    rewrite fold_call_length.
-    reflexivity.
-  + rewrite H2.
-    rewrite fold_call_length.
-    reflexivity.
+  apply bi_quadruple_quadruple_fun.
+  intros i.
+  generalize dependent p2.
+  generalize dependent p1.
+  induction i.
+  intros p1 p2 s1 s2 s1' s2' n m Hi HPre Heval1 Heval2.
+  symmetry in Hi.
+  apply plus_is_O in Hi.
+  destruct Hi.
+  subst.
+  inversion Heval1;subst.
+  apply ceval_inf_loop in H1.
+  contradiction H1.
+  intros p1 p2 s1 s2 s1' s2' n m Hi HPre Heval1 Heval2.
+  destruct n.
+  inversion Heval1;subst.
+  apply ceval_inf_loop in H1.
+  contradiction H1.
+  destruct m.
+  inversion Heval2;subst.
+  apply ceval_inf_loop in H1.
+  contradiction H1.
+  unfold quadruple_proc_ctx_2 in H.
+  decompose [and] H; clear H.
+  specialize (H4 p1 p2 s1 s2).
+  destruct H4.
+  - eapply H0.
+    + intros p0 p3 s0 s1'0 s2'0 s2'1 H5 H6 H7.
+      assert (H12: i = n + S m) by lia.
+      eapply IHi.
+      apply H12.
+      apply H5.
+      apply H6.
+      apply H7.
+    + split. apply HPre. apply H.
+    + apply n_inline_ps_inline in Heval1.
+      apply Heval1.
+    + apply ceval_n_inline_ps_S with (m:= S (S m)) in Heval2 ;[| lia].
+      apply n_inline_ps_inline in Heval2.
+      apply Heval2.
+  - destruct H.
+    + eapply H2.
+      * intros p0 p3 s0 s1'0 s2'0 s2'1 H5 H6 H7.
+        assert (H12: i = n + S m) by lia.
+        eapply IHi.
+        apply H12.
+        apply H5.
+        apply H6.
+        apply H7.
+      * split. apply HPre. apply H.
+      * apply n_inline_ps_inline in Heval1.
+        apply Heval1.
+      * apply Heval2.
+    + eapply H1.
+      * intros p0 p3 s0 s1'0 s2'0 s2'1 H5 H6 H7.
+        assert (H12: i = S n + m) by lia.
+        eapply IHi.
+        apply H12.
+        apply H5.
+        apply H6.
+        apply H7.
+      * split. apply HPre. apply H.
+      * apply Heval1.
+      * apply n_inline_ps_inline in Heval2.
+        apply Heval2.
+Qed.
+
+Definition bi_quadruple_fun (i: nat) (P: r_precondition) (Q: r_postcondition)
+  (c1 c2 : com) (ps : Psi.psi) : Prop :=
+  bi_quadruple_fun_2 i P Q c1 c2 ps ps.
+
+
+Definition quadruple_ctx (rcl:R_Phi.r_phi) (ps: Psi.psi)
+  (P: r_precondition) (Q : r_postcondition) (c1 c2:  com) :=
+  quadruple_ctx_2 rcl ps ps P Q c1 c2.
+
+Definition quadruple_proc_ctx (rcl : R_Phi.r_phi) (ps_init :Psi.psi):=
+  quadruple_proc_ctx_2 rcl ps_init ps_init.
+
+Theorem recursion_hoare_triple :
+  forall P Q p1 p2 ps cl,
+    quadruple_proc_ctx cl ps  ->
+    quadruple_ctx cl ps P Q p1 p2 ->
+    quadruple P Q p1 p2 ps.
+Proof.
+intros.
+apply H0.
+eapply test.
+apply H.
 Qed.

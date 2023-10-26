@@ -86,6 +86,36 @@ Proof.
     apply IHHeval2. reflexivity.
 Qed.
 
+Lemma ceval_det s ps c:
+  forall s1' s2', ceval c s ps s1' -> ceval c s ps s2' -> s1' = s2'.
+Proof.
+  intros.
+  generalize dependent s2'.
+  induction H; intros st2 E2; inversion E2; subst.
+  - reflexivity.
+  - reflexivity.
+  - reflexivity.
+  - reflexivity.
+  -  apply (IHceval _  H8).
+  - rewrite H in H7.
+    discriminate H7.
+  - rewrite H in H7.
+    discriminate H7.
+  - apply (IHceval _ H8).
+  - specialize (IHceval1 s'0 H3).
+    subst.
+    apply (IHceval2 _ H7).
+  - reflexivity.
+  - rewrite H in H3.
+    discriminate H3.
+  - rewrite H in H8.
+    discriminate H8.
+  - specialize (IHceval1 s'0 H9).
+    subst.
+    apply (IHceval2 _ H10).
+  - apply (IHceval _ H1).
+Qed.
+
 (** Evaluation function for command **)
 
 Fixpoint ceval_step (s : sigma) (c : com) (i : nat) (ps : Psi.psi)
