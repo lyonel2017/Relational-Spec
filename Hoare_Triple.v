@@ -62,15 +62,15 @@ Proof.
 Qed.
 
 Lemma while_triple :
-  forall (inv: assertion) b c ps l,
+  forall (inv: assertion) (var: variant) b c ps l,
     (forall s1 s2, inv (s1 :: l) /\ beval s1 b = true ->
                      ceval c s1 ps s2 -> inv (s2 :: l)) ->
     hoare_triple (fun s => inv (s :: l))
                 ( fun s' _ => inv (s' :: l) /\ beval s'  b = false )
-                (CWhile b c inv) ps.
+                (CWhile b c inv var) ps.
 Proof.
-  intros P b c ps l st Hhoare st' HP Heval.
-  remember (CWhile b c P) as original_command eqn:Horig.
+  intros P var b c ps l Hhoare st st' HP Heval.
+  remember (CWhile b c P var) as original_command eqn:Horig.
   induction Heval; inversion Horig.
   * inversion Horig;subst. eauto.
   * inversion Horig;subst.
@@ -91,8 +91,8 @@ Definition get_post (an:clause) :=
           let (pre,post) := an in
           post.
 
-(** Defintion of contract environments :
-    a map from procedure name to clauses **)
+(** Defintion of contract environments : *)
+(*     a map from procedure name to clauses **)
 
 Module Phi.
 
@@ -147,11 +147,11 @@ apply i_hoare_triple_hoare_triple.
 intros n.
 generalize dependent p.
 induction n.
-* intros p s s' HPre Heval.
+- intros p s s' HPre Heval.
   inversion Heval;subst.
   apply ceval_inf_loop in H1.
   contradiction H1.
-* intros p s s' HPre Heval.
+- intros p s s' HPre Heval.
   eapply H.
   + apply IHn.
   + apply HPre.
@@ -188,38 +188,150 @@ Qed.
 (** Definition of total correcness **)
 
 Definition total (P : precondition) (Q: postcondition) (c : com) (ps : Psi.psi) : Prop :=
-  forall s,  P s -> (exists s', ceval c s ps s' /\ Q s' s).
-
+  forall s ,  P s -> (exists s', ceval c s ps s' /\ Q s' s).
 
 (** Facts about Hoare Triples **)
 
-Lemma test (P : precondition) (Q: postcondition) (c : com) (ps : Psi.psi) :
+Lemma hoare_total (P : precondition) (Q: postcondition) (c : com) (ps : Psi.psi) :
   hoare_triple P Q c ps ->
- (forall s ,  P s -> (exists i, ceval_step s c i ps <> None)) ->
+ (forall s ,  P s -> (exists s', ceval c s ps s')) ->
  total P Q c ps.
 Proof.
   intros Hp Hf s HPre.
   specialize (Hf s HPre).
   destruct Hf.
-Admitted.
-(*   split. *)
-(*   * apply (Hf s s' HPre). *)
-(*   * apply (Hp s s' HPre). *)
-(*     apply ceval_and_ceval_step_coincide. *)
-(*     apply (Hf s s' HPre). *)
-(* Qed. *)
+  exists x. split. assumption.
+  apply (Hp _ _ HPre H).
+Qed.
 
-Definition variant : Type := sigma -> Type. (*we can use intger to simplify*)
+Lemma total_hoare (P : precondition) (Q: postcondition) (c : com) (ps : Psi.psi) :
+ total P Q c ps ->
+ hoare_triple P Q c ps.
+Proof.
+  intros Ht s s' HPre Heval.
+  specialize (Ht s HPre).
+  destruct Ht.
+  destruct H.
+  erewrite (ceval_det s _ _ s' x).
+  apply H0.
+  apply Heval.
+  apply H.
+Qed.
+
+(** Function for recursive loop unrolling **)
+
+Fixpoint unroll n b p :=
+  match n with
+  | 0 => CSkip
+  | S n => CSeq (unroll n b p) (CIf b p CSkip)
+  end.
+
+Lemma total_unroll_c (inv: assertion) (var: variant) b c ps l:
+    total (fun s1 => inv (s1 :: l) /\ beval s1 b = true)
+      (fun s2 s1 => inv (s2 :: l) /\ var s2 < var s1) c ps ->
+    forall n,
+    total (fun s1 => inv (s1 :: l) /\ beval s1 b = true)
+      (fun s2 s1 => inv (s2 :: l) /\ (beval s2 b = true -> var s2 <= var s1 - n))
+      (unroll n b c) ps.
+Proof.
+  intros.
+  induction n;intros s HPre.
+  - exists s. simpl.
+    split.
+    + apply E_Skip.
+    + auto. split. apply HPre. Lia.lia.
+  - specialize (IHn s HPre).
+    destruct IHn.
+    destruct (beval x b) eqn : Hbx.
+    + assert (HPrex: inv (x :: l) /\ beval x b = true).
+      { split;[ apply H0 | assumption ]. }
+      specialize (H x HPrex).
+      destruct H.
+      exists x0;simpl.
+      split.
+      * eapply E_Seq.
+        -- apply H0.
+        -- apply E_IfTrue;[assumption|apply H].
+      * split. apply H. Lia.lia.
+    + exists x;simpl.
+      split.
+      * eapply E_Seq.
+        -- apply H0.
+        -- apply E_IfFalse ;[assumption|apply E_Skip].
+      * split.
+        -- apply H0.
+        -- intros. rewrite H1 in Hbx. inversion Hbx.
+Qed.
+
+Lemma unroll_while_while n b c P v ps: forall s s',
+   ceval (CSeq (unroll n b c) (CWhile b c P v)) s ps s' ->
+   ceval (CWhile b c P v) s ps s'.
+Proof.
+  induction n;intros.
+  - simpl in H.
+    inversion H;subst.
+    inversion H2;subst.
+    assumption.
+  - apply IHn.
+    inversion H;subst.
+    inversion H2;subst.
+    eapply E_Seq.
+    apply H3.
+    inversion H8;subst.
+    + eapply E_WhileTrue.
+      apply H10.
+      apply H11.
+      apply H6.
+    + inversion H11;subst.
+      apply H6.
+Qed.
 
 Lemma while_total :
   forall (inv: assertion) (var: variant) b c ps l,
-    (forall s1 s2, inv (s1 :: l) /\ beval s1 b = true ->
-              ceval c s1 ps s2 -> inv (s2 :: l)) ->
-    (forall s1 s2 z, inv (s1 :: l) /\ beval s1 b = true /\ var (s1 :: l ) = z ->
-                ceval c s1 ps s2 -> var (s2 :: l) < z ) (*the variant is ordered by some < *) ->
-    (forall s1, inv (s1 :: l) -> var(s1 l) >= 0) (*the variant has a bottom*)->
+    total (fun s1 => inv (s1 :: l) /\ beval s1 b = true)
+          (fun s2 s1 => inv (s2 :: l) /\ var s2 < var s1) c ps ->
+    (forall s1, inv (s1 :: l) -> 1 <= var s1) ->
     total (fun s => inv (s :: l))
-                ( fun s' _ => inv (s' :: l) /\ beval s'  b = false )
-                (CWhile b c inv) ps.
+                (fun s' _ => inv (s' :: l) /\ beval s'  b = false)
+                (CWhile b c inv var) ps.
 Proof.
-Admitted.
+  intros P v b c ps l Hhoare Hvariant.
+  apply hoare_total.
+  - apply total_hoare in Hhoare.
+    apply while_triple.
+    apply Hhoare.
+  - intros st HPre.
+    destruct (beval st b) eqn: Hb;[ | exists st; apply E_WhileFalse; assumption].
+    assert (HPreb: P(st :: l) /\ beval st b = true). { split;repeat assumption. }
+    specialize (total_unroll_c _ _ _ _ _ _ Hhoare (v st) st HPreb).
+    intros.
+    destruct H.
+    exists x.
+    apply (unroll_while_while (v st)).
+    eapply E_Seq.
+    apply H.
+    destruct (beval x b) eqn: Hbx.
+    + destruct H.
+      destruct H0.
+      specialize (Hvariant x H0).
+      assert (H2: v x <= v st - v st).
+      { apply H1. reflexivity. }
+      replace (v st - v st) with 0 in H2.
+      Lia.lia.
+      Search( _ - _ = 0).
+      rewrite Proc.sub_diag.
+      reflexivity.
+    + apply E_WhileFalse.
+      assumption.
+Qed.
+
+
+(* Lemma func_total : *)
+(*   forall (inv: assertion) (var: variant) b c ps l, *)
+(*     total (fun s1 => inv (s1 :: l) /\ beval s1 b = true) *)
+(*           (fun s2 s1 => inv (s2 :: l) /\ var s2 < var s1) c ps -> *)
+(*     (forall s1, inv (s1 :: l) -> 1 <= var s1) -> *)
+(*     total (fun s => inv (s :: l)) *)
+(*                 (fun s' _ => inv (s' :: l) /\ beval s'  b = false) *)
+(*                 (CWhile b c inv var) ps. *)
+(* Proof. *)

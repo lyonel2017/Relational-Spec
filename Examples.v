@@ -1281,4 +1281,4 @@ Generalize the skeduling rule for loops to recursive procedure.
 
 (* Example relation_op_goal : relational_prop *)
 (*                   op_r_pre op_r_post [com1; com2] op_psi. *)
-Proof.
+(* Proof. *)

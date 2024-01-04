@@ -4,6 +4,7 @@ From Rela Require Import Aexp.
 From Rela Require Import Bexp.
 From Rela Require Import Proc.
 From Rela Require Import Sigma.
+
 Import Arith.
 
 (** Function for procedure inlining in Com **)
@@ -12,7 +13,7 @@ Fixpoint inliner c inline :=
   match c with
   | CSeq p1 p2 => CSeq (inliner p1 inline) (inliner p2 inline)
   | CIf b p1 p2 => CIf b (inliner p1 inline) (inliner p2 inline)
-  | CWhile b p inv => CWhile b (inliner p inline) inv
+  | CWhile b p inv var => CWhile b (inliner p inline) inv var
   | CCall f => inline f
   | _ => c
 end.
@@ -21,7 +22,7 @@ end.
 
 Fixpoint k_inliner n c (ps : Psi.psi) :=
   match n with
-  | 0 => CWhile BTrue CSkip (fun _ => True)
+  | 0 => CWhile BTrue CSkip (fun _ => True) (fun _ => 0)
   | S n' => inliner c (fun f => k_inliner n' (ps f) ps)
 end.
 
@@ -63,8 +64,8 @@ Proof.
  reflexivity.
 Qed.
 
-Lemma inline_cwhile n ps p b inv: k_inliner (S n) (CWhile b p inv) ps =
-                                  CWhile b (k_inliner (S n) p ps) inv.
+Lemma inline_cwhile n ps p b inv var: k_inliner (S n) (CWhile b p inv var) ps =
+                                  CWhile b (k_inliner (S n) p ps) inv var.
 Proof.
  reflexivity.
 Qed.
@@ -127,7 +128,7 @@ induction p;intros.
     * eapply E_IfFalse.
       assumption.
       apply IHp2. apply H7.
-   + remember (inliner (CWhile b p inv) ps) as original_command eqn:Horig.
+   + remember (inliner (CWhile b p inv var) ps) as original_command eqn:Horig.
      induction H; inversion Horig;subst.
      * eapply E_WhileFalse.
        assumption.
@@ -176,7 +177,7 @@ induction p ;intros.
     - assumption.
     - apply IHp2.
       apply H7.
-* remember (k_inliner (S n) (CWhile b p inv) ps_init) as original_command eqn:Horig.
+* remember (k_inliner (S n) (CWhile b p inv var) ps_init) as original_command eqn:Horig.
   induction H;rewrite inline_cwhile in Horig; inversion Horig.
   + inversion Horig;subst.
      eapply E_WhileFalse.
@@ -236,7 +237,7 @@ induction n.
       assumption.
       apply IHp2.
       apply H7.
-  + remember (k_inliner (S n) (CWhile b p inv) ps) as original_command eqn:Horig.
+  + remember (k_inliner (S n) (CWhile b p inv var) ps) as original_command eqn:Horig.
     induction H;rewrite inline_cwhile in Horig; inversion Horig.
     - inversion Horig;subst.
       eapply E_WhileFalse.
@@ -285,7 +286,7 @@ induction p;intros.
     - assumption.
     - apply IHp2.
       assumption.
-* remember (CWhile b p inv) as original_command eqn:Horig.
+* remember (CWhile b p inv var) as original_command eqn:Horig.
   induction H; try inversion Horig.
   + inversion Horig;subst.
      eapply E_WhileFalse.
@@ -338,7 +339,7 @@ induction n.
       ** assumption.
       ** apply IHp2.
          assumption.
-   + remember (k_inliner (S n) (CWhile b p inv) ps_init) as original_command eqn:Horig.
+   + remember (k_inliner (S n) (CWhile b p inv var) ps_init) as original_command eqn:Horig.
      induction H; try inversion Horig.
      - inversion Horig;subst.
        eapply E_WhileFalse.
@@ -396,7 +397,7 @@ induction n.
          ++ assumption.
          ++ apply IHp2.
             apply H8.
-     - remember (k_inliner (S n) (CWhile b p inv) ps_init) as original_command eqn:Horig.
+     - remember (k_inliner (S n) (CWhile b p inv var) ps_init) as original_command eqn:Horig.
      induction H; try inversion Horig.
       ** inversion Horig;subst.
          eapply E_WhileFalse.
@@ -500,7 +501,7 @@ induction 1;intros.
             apply inline_ceval_S with (S n2); [now auto | now apply PeanoNat.Nat.max_l_iff].
       ** rewrite e.
          rewrite inline_cwhile.
-         apply E_WhileTrue with s';[now auto | | ]. 
+         apply E_WhileTrue with s';[now auto | | ].
          ++ apply inline_ceval_S with (S n1) ; [now auto | now apply PeanoNat.Nat.max_r_iff].
          ++ rewrite <- inline_cwhile.
             apply inline_ceval_S with (S n2); [now auto | reflexivity].

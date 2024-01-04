@@ -7,6 +7,7 @@ Proc.v
 Com.v
 Inliner.v
 Hoare_Triple.v
+Quadruple.v
 Vcg.v
 Vcg_Opt.v
 Correct.v
