@@ -102,7 +102,7 @@ Fixpoint tc (c : com) (m : Sigma.sigma) (h : history)
     | CSeq p1 p2 => tc p1 m h cl (fun m' h => tc p2 m' h cl s)
     | CIf b p1 p2 => (bassn b m -> tc p1 m h cl (fun m' _ => s m' (m :: h))) /\
                      (~bassn b m  -> tc p2 m h cl (fun m' _ => s m' (m :: h)))
-    | CWhile b p inv => inv (m :: h) ->
+    | CWhile b p inv _ => inv (m :: h) ->
                         forall m', inv (m' :: h) -> beval m' b = false -> s m' (m :: h)
     | CCall f => (get_pre (cl f)) m ->
                   forall m',  (get_post (cl f)) m' m -> s m' (m :: h)
@@ -203,9 +203,9 @@ Fixpoint tc' (c : com) (m : Sigma.sigma) (h : history)
     | CIf b p1 p2 =>
                     (bassn b m -> tc' p1 m h cl) /\
                     (~bassn b m -> tc' p2 m h cl)
-    | CWhile b p inv => inv (m :: h) /\
+    | CWhile b p inv _ => inv (m :: h) /\
                      (forall m', bassn b m' -> inv (m' :: h)-> tc' p m' h cl) /\
-                     (forall m', bassn b m' -> inv (m' :: h) -> 
+                     (forall m', bassn b m' -> inv (m' :: h) ->
                                   tc p m' h cl (fun m'' _ => inv (m'' :: h)))
     | CCall f => (get_pre (cl f)) m
     end.
@@ -213,7 +213,7 @@ Fixpoint tc' (c : com) (m : Sigma.sigma) (h : history)
 (** Definition of a verification condition generator for procedures **)
 
 Definition tc_p (ps: Psi.psi) (cl : Phi.phi) : Prop :=
-    forall f m, (get_pre (cl f)) m -> 
+    forall f m, (get_pre (cl f)) m ->
     tc' (ps f) m empty_history cl /\
     tc (ps f) m empty_history cl (fun m' _ => get_post (cl f) m' m).
 

@@ -257,7 +257,7 @@ Ltac ltc6 phi ps hy hyh :=
 Ltac ltc3 phi ps hy hyh:=
     intro; intro; intros H1;
     tryif ltc6 phi ps hy hyh
-    then 
+    then
     eapply consequence_tc_suite;
     [ clear H1; ltc3 phi ps hy hyh
     | apply Vcg_Opt.tc_same; apply H1 ]

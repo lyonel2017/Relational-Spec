@@ -3,6 +3,7 @@ From Rela Require Import Inliner.
 From Rela Require Import Com.
 From Rela Require Import Sigma.
 From Rela Require Import Hoare_Triple.
+From Rela Require Import Quadruple.
 
 From Coq Require Import Program.
 From Coq Require Import Eqdep_dec.
@@ -123,13 +124,13 @@ End R_Phi.
 Definition i_relational_prop (n: nat) (P: r_precondition) (Q: r_postcondition)
                              (c : list com) (ps : Psi.psi) : Prop :=
   forall s s', length s = length c -> length s' = length c ->
-                P s -> rceval c s (k_inliner_ps n ps) s'  -> Q s' s.
+                P s -> rceval c s (Inline1.k_inliner_ps n ps) s'  -> Q s' s.
 
 Lemma n_inline_ps_rceval :
 forall (p : list com) (s : list Sigma.sigma) (ps : Proc.t -> com)
         (s' : list Sigma.sigma) (n : nat),
 length s = length p -> length s' = length p ->
-rceval p s (k_inliner_ps n ps) s' -> rceval p s ps s'.
+rceval p s (Inline1.k_inliner_ps n ps) s' -> rceval p s ps s'.
 Proof.
 induction p;intros.
 * inversion H.
@@ -144,7 +145,7 @@ induction p;intros.
    - discriminate H0.
    - inversion H1;subst.
      apply E_Seq.
-      ** eapply n_inline_ps_ceval.
+      ** eapply Inline1.n_inline_ps_ceval.
          apply H7.
      ** eapply IHp.
         ++ inversion H;reflexivity.
@@ -154,8 +155,8 @@ Qed.
 
 Lemma rceval_n_inline_ps_S n p s ps  s':
   length s = length p -> length s' = length p ->
-  rceval p s (k_inliner_ps n ps) s' ->
-  forall m, n <= m -> rceval p s (k_inliner_ps m ps) s'.
+  rceval p s (Inline1.k_inliner_ps n ps) s' ->
+  forall m, n <= m -> rceval p s (Inline1.k_inliner_ps m ps) s'.
 Proof.
 generalize dependent s.
 generalize dependent s'.
@@ -172,7 +173,7 @@ induction p;intros.
    - discriminate H0.
    - inversion H1;subst.
      apply E_Seq.
-     ** eapply ceval_n_inline_ps_S.
+     ** eapply Inline1.ceval_n_inline_ps_S.
         apply H8.
         apply H2.
      ** eapply IHp.
@@ -185,7 +186,7 @@ Qed.
 Lemma rceval_n_inline_ps :
 forall (p : list com) (s : list Sigma.sigma) (ps : Psi.psi) (s' : list Sigma.sigma),
 length s = length p -> length s' = length p ->
-rceval p s ps s' -> exists n : nat, rceval p s (k_inliner_ps n ps) s'.
+rceval p s ps s' -> exists n : nat, rceval p s (Inline1.k_inliner_ps n ps) s'.
 Proof.
 induction p;intros.
 * inversion H.
@@ -200,7 +201,7 @@ induction p;intros.
    + destruct s'.
    - discriminate H0.
    - inversion H1;subst.
-      generalize (ceval_n_inline_ps a s ps s1 H7).
+      generalize (Inline1.ceval_n_inline_ps a s ps s1 H7).
       intros.
       inversion H.
       inversion H0.
@@ -210,7 +211,7 @@ induction p;intros.
       destruct (Nat.max_dec x0 x).
       ** exists x0.
          apply E_Seq;[ | apply H3].
-         apply (ceval_n_inline_ps_S x).
+         apply (Inline1.ceval_n_inline_ps_S x).
          apply H2.
          apply PeanoNat.Nat.max_l_iff.
          apply e.
@@ -264,7 +265,7 @@ Definition relational_prop_proc_ctx (rcl : R_Phi.r_phi) (ps_init :Psi.psi):=
 
 Lemma rceval_inf_loop p s ps s':
 length s = length p -> length s' = length p -> 0 < length p ->
-rceval (fold_call p) s (k_inliner_ps 0 ps) s' -> False.
+rceval (fold_call p) s (Inline1.k_inliner_ps 0 ps) s' -> False.
 Proof.
 intros H1 H2 H Heval.
 destruct p.
@@ -289,8 +290,8 @@ Lemma r_n_inline_ps_inline:
   forall (n : nat) (f : list Proc.t) (s : list Sigma.sigma)
          (ps : Proc.t -> com) (s' : list Sigma.sigma),
   length s = length f -> length s' = length f ->
-  rceval (fold_call f) s (k_inliner_ps (S n) ps) s' ->
-  rceval (fold_proc ps f ) s (k_inliner_ps n ps) s'.
+  rceval (fold_call f) s (Inline1.k_inliner_ps (S n) ps) s' ->
+  rceval (fold_proc ps f ) s (Inline1.k_inliner_ps n ps) s'.
 Proof.
 induction f;intros.
 * inversion H.
@@ -305,7 +306,7 @@ induction f;intros.
    - discriminate H0.
    - inversion H1;subst.
      apply E_Seq.
-     ** apply n_inline_ps_inline in H7.
+     ** apply Inline1.n_inline_ps_inline in H7.
         apply H7.
      ** apply IHf.
         ++ inversion H;reflexivity.
@@ -361,6 +362,7 @@ Qed.
 
 Lemma recursion_relational :
   forall P Q p ps rcl,
+    recursion_quadruple ->
     relational_prop_proc_ctx rcl ps ->
     relational_prop_ctx rcl ps P Q p ->
     relational_prop P Q p ps.

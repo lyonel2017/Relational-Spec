@@ -209,7 +209,7 @@ Fixpoint tc (c: com) (m m': Sigma.sigma) (h: Vcg.history)
         tc p1 m m' h cl (fun p1 _ =>
         tc p2 m m' h cl (fun p2 _ =>
             fin (branch (simpl_bassn b m) p1 p2) (m :: h)))
-    | CWhile b p inv => fin (inv (m :: h) /\ inv (m' :: h) /\ ~(simpl_bassn b m')) (m :: h)
+    | CWhile b p inv _ => fin (inv (m :: h) /\ inv (m' :: h) /\ ~(simpl_bassn b m')) (m :: h)
     | CCall f => fin ((get_pre (cl f)) m /\ (get_post (cl f)) m' m) (m :: h)
     end.
 
@@ -481,7 +481,7 @@ induction p;simpl.
     apply bassn_not_simpl_bassn_not in H0.
     specialize (opt_1_false p1 p2 b m m' l cl (suite1 m' (m :: l)) H0 H).
     intros.
-    apply 
+    apply
       (simpl_tc p1 m m' l cl (tc p2 m m' l cl (fun p _ => p -> suite1 m' (m :: l)))).
     apply H1.
 * intros.
@@ -507,12 +507,12 @@ match c with
                  tc p1 m m'' h cl (fun f h => f -> tc' p2 m'' h cl)
  | CIf b p1 p2 =>
       (simpl_bassn b m -> tc' p1 m h cl) /\ (~simpl_bassn b m -> tc' p2 m h cl)
- | CWhile b p inv => inv (m :: h) /\
-                     (forall m', simpl_bassn b m' -> 
+ | CWhile b p inv _ => inv (m :: h) /\
+                     (forall m', simpl_bassn b m' ->
                                  inv (m' :: h) ->
                                  tc' p m' h cl) /\
-                     (forall m' m'', simpl_bassn b m' -> 
-                                     inv (m' :: h) -> 
+                     (forall m' m'', simpl_bassn b m' ->
+                                     inv (m' :: h) ->
                    tc p m' m'' h cl (fun f _ => f -> inv (m'' :: h)))
  | CCall f => (get_pre (cl f)) m
 end.
@@ -590,12 +590,12 @@ split;intros.
   apply H0.
 Qed.
 
-(** Definition of a verification condition generator for the auxiliary goals 
+(** Definition of a verification condition generator for the auxiliary goals
     returning a list of goals **)
 
 Module Tc'_list.
 
-Definition continuation (p1: com) (cl: Phi.phi) 
+Definition continuation (p1: com) (cl: Phi.phi)
                        (a : Vcg.suite) (m : sigma) (h: Vcg.history) :=
            forall m'' : sigma, tc p1 m m'' h cl (fun f h => f -> a m'' h).
 
@@ -612,13 +612,13 @@ match c with
                   ++
                   (map (fun a: Vcg.suite =>
                   fun m h => ~simpl_bassn b m -> a m h ) (tc'_list p2 cl))
-| CWhile b p i => [fun m h => i (m :: h)]
+| CWhile b p i _ => [fun m h => i (m :: h)]
                    ++
                    (map (fun a: Vcg.suite =>
                    fun _ h => forall m',
                    simpl_bassn b m' -> i (m' :: h) ->a m' h) (tc'_list p cl))
                    ++
-                   [fun _ h => forall m' m'',  
+                   [fun _ h => forall m' m'',
                    simpl_bassn b m' -> i (m' :: h) -> tc p m' m'' h cl (fun f _ => f -> i (m''::h))]
  | CCall f => [fun m _ => (get_pre (cl f)) m]
 end.

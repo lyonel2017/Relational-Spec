@@ -675,3 +675,69 @@ Module Inline2.
   Qed.
 
 End Inline2.
+
+(** Function for loop inlining in Com **)
+
+Fixpoint unroll n b p :=
+  match n with
+  | 0 => CWhile BTrue CSkip (fun _ => True) (fun _ => 0)
+  | S n => CIf b (CSeq p (unroll n b p)) CSkip
+  end.
+
+Lemma unroll_n_ceval n p b inv var s ps s':
+  ceval (unroll n b p) s ps s' -> ceval (CWhile b p inv var) s ps s'.
+Proof.
+  generalize dependent s.
+  generalize dependent s'.
+  induction n.
+  * intros.
+    apply ceval_inf_loop in H.
+    contradiction H.
+  * simpl. intros.
+    inversion H;subst.
+    + inversion H7;subst.
+      eapply E_WhileTrue ;[assumption | apply H2 | ].
+      apply IHn;assumption.
+    + inversion H7;subst.
+      apply E_WhileFalse.
+      assumption.
+Qed.
+
+Lemma unroll_ceval_S n p b s ps s':
+  ceval (unroll n b p) s ps s' ->
+  forall m, n <= m -> ceval (unroll m b p) s ps s'.
+Proof.
+  intros.
+  generalize dependent s.
+  generalize dependent s'.
+  generalize dependent m.
+  induction n.
+  - intros.
+    apply ceval_inf_loop in H.
+    contradiction H.
+  - destruct m as [| m].
+    + intros. inversion H0.
+    + simpl; intros.
+      inversion H;subst.
+      * inversion H8;subst.
+        apply E_IfTrue;[assumption|].
+        eapply E_Seq ;[apply H3|].
+        apply IHn.
+        Lia.lia.
+        assumption.
+      * apply E_IfFalse;assumption.
+Qed.
+
+Lemma ceval_unroll_n p s s' b inv var ps:
+  ceval (CWhile b p inv var) s ps s' -> exists n, ceval (unroll n b p) s ps s'.
+Proof.
+  intros.
+  remember (CWhile b p inv var) as original_command eqn:Horig.
+  induction H; inversion Horig; subst;simpl.
+  * exists 1.
+    apply E_IfFalse;[ apply H | apply E_Skip].
+  * specialize (IHceval2 Horig).
+    destruct IHceval2.
+    exists (S x).
+    apply E_IfTrue;[assumption| eapply E_Seq;eauto ].
+Qed.
