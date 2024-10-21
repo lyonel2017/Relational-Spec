@@ -624,9 +624,7 @@ ltc0 f2_r_phi [empty_history; empty_history] hyh.
          mem_s s X1 X1 (s X1 + 1).
          mem_s s0 X1 X1 (s0 X1 + 1).
          simpl in H.
-         apply plus_lt_compat_r.
-         unfold f2_r_phi in H.
-         simpl in H.
+         apply Nat.add_lt_mono_r.
          assumption.
     - destruct (list_beq Proc.t Proc.eqb f [f2]) eqn: E2.
        (* Verification of proof obligation for procedure f2*)
