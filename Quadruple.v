@@ -461,25 +461,22 @@ Proof.
   apply H.
 Qed.
 
-Module Test.
-  Definition f1 : Proc.t:= 1.
-  Definition f2 : Proc.t:= 2.
+Import AexpNotations.
+Import BexpNotations.
+Import ComNotations.
+From Rela Require Import Aexp.
+From Rela Require Import Bexp.
+
+Module While_Proc.
   Parameter c1 : com.
   Parameter c2 : com.
   Parameter b1: bexp.
   Parameter b2: bexp.
 
-  From Rela Require Import Aexp.
-  From Rela Require Import Bexp.
-
-  Import AexpNotations.
-  Import BexpNotations.
-  Import ComNotations.
-
   Definition w1: com :=
     <[ if {b1} then
          {c1};
-         call(f1)
+         call(1)
        else
          skip
        end ]>.
@@ -487,20 +484,22 @@ Module Test.
   Definition w2: com :=
     <[ if {b2} then
          {c2};
-         call(f2)
+         call(2)
        else
          skip
        end ]>.
 
   Definition ps (x': Proc.t) :=
-    if Proc.eqb x' f1 then  w1 else
-      if Proc.eqb x' f2 then  w2 else Psi.empty_psi x'.
+    if Proc.eqb x' 1 then  w1 else
+      if Proc.eqb x' 2 then  w2 else Psi.empty_psi x'.
 
   Parameter invar: r_assertion.
 
   Definition r_pre : r_precondition := invar.
 
-  Definition r_post : r_postcondition := fun m1 m2 _ _ => invar m1 m2.
+  Definition r_post : r_postcondition := fun m1 m2 _ _ => invar m1 m2 /\
+                                                         beval m1 b1 = false /\
+                                                         beval m2 b2 = false.
 
   Parameter L: r_cond.
   Parameter R : r_cond.
@@ -510,53 +509,194 @@ Module Test.
   Definition LR s1 s2 := negb (xorb (beval s1 b1) (beval s2 b2)).
 
   Definition rcl (f1' f2': Proc.t) : r_clause :=
-    if andb (Proc.eqb f1 f1') (Proc.eqb f2 f2')
+    if andb (Proc.eqb f1' 1) (Proc.eqb f2' 2)
     then (r_pre,r_post, Lc, Rc, LR)
     else R_Phi.empty_r_phi f1' f2'.
 
-  Lemma test :
-    (forall p1 p2, quadruple_2 (get_r_pre (rcl p1 p2))
-                (get_r_post (rcl p1 p2)) (CCall p1) (CCall p2) ps ps) ->
-    quadruple_proc_ctx rcl ps ->
-    quadruple invar
-      ( fun s1' s2' _ _ => invar s1' s2' /\ beval s1' b1 = false /\ beval s2' b2 = false )
-      (CWhile b1 c1 (fun _=> True) (fun _ => 0))
-      (CWhile b2 c2 (fun _ => True) (fun _ => 0)) ps.
+  Lemma ext_r_recursive_proc_1_2:
+  quadruple_proc_ctx_2 rcl ps ps ->
+  quadruple_2 (get_r_pre (rcl 1 2))
+              (get_r_post (rcl 1 2)) (CCall 1) (CCall 2) ps ps.
   Proof.
-    intros H0 H.
-    unfold rcl in H.
-    apply (while_skedule_quadruple _ L R).
-    - unfold quadruple_proc_ctx in H.
-      unfold quadruple_proc_ctx_2 in H.
-      destruct H.
-      clear H1.
-      specialize (H f1 f2 ps ps).
-      unfold quadruple_ctx_2 in H.
-      specialize (H H0).
-      simpl in H.
-      unfold r_pre, r_post, Lc, Rc, LR in H.
-      intros s1 s2 s1' s2' Hpre Heval1 Heval2.
-      specialize (H s1 s2).
-      apply H.
-      split;[apply Hpre|].
-      split.
-      apply Bool.orb_false_iff.
-      split;[apply Hpre|].
-      apply Bool.negb_false_iff.
-      apply Hpre.
-      apply Bool.orb_false_iff.
-      split;[apply Hpre|].
-      apply Bool.negb_false_iff.
-      apply Hpre.
-      unfold ps.
-      simpl.
-      fold ps.
-      unfold w1.
-      apply E_IfTrue.
-      apply Hpre.
-      Search (orb _ (negb _)).
-      (*Proof the extended rela rule that can use the rule above *)
+    intros.
+    specialize (ext_r_recursive_proc ps ps rcl H 1 2).
+    auto.
+  Qed.
 
-      (*Just use the normal termination for the transitivity application, for
+  Lemma inv_proc :
+    (forall ps1 ps2,
+        quadruple_2 (fun s1 s2 => invar s1 s2 /\ beval s1 b1 = true /\ beval s2 b2 = true /\
+                                 L s1 s2 = false /\ R s1 s2 = false)
+          (fun s1' s2' _ _ => invar s1' s2')
+          c1 c2 ps1 ps2) ->
+    (forall ps1 ps2,
+        quadruple_2 (fun s1 s2 => invar s1 s2 /\ beval s1 b1 = true  /\ L s1 s2 = true )
+          (fun s1' s2' _ _ => invar s1' s2' )
+          c1 CSkip ps1 ps2) ->
+    (forall ps1 ps2,
+        quadruple_2 (fun s1 s2 => invar s1 s2 /\ beval s2 b2 = true  /\ R s1 s2 = true)
+          (fun s1' s2' _ _ => invar s1' s2')
+          CSkip c2 ps1 ps2) ->
+    (forall s1 s2, invar s1 s2 ->
+              beval s1 b1 = beval s2 b2 \/
+                (beval s1 b1 = true /\ L s1 s2 = true ) \/
+                (beval s2 b2 = true /\ R s1 s2 = true)) ->
+    quadruple (get_r_pre (rcl 1 2))
+      (get_r_post (rcl 1 2)) (CCall 1) (CCall 2) ps.
+  Proof.
+    intros.
+    apply ext_r_recursive_proc_1_2.
+    unfold rcl, ps, r_pre, r_post.
+    unfold quadruple_proc_ctx_2.
+    split.
+    + unfold quadruple_ctx_2.
+      intros.
+      destruct (p1 =? 1) eqn: He1.
+      destruct (p2 =? 2) eqn: He2.
+      simpl.
+      intros s1 s2 s1' s2' HPre Heval1 Heval2.
+      unfold LR, Lc, Rc in HPre.
+      decompose [and] HPre;clear HPre.
+      rewrite Bool.negb_xorb in H6.
+      rewrite Bool.eqb_true_iff in H6.
+      unfold w1 in Heval1.
+      apply Loc.Loc.eqb_eq in He2;subst.
+      simpl in Heval2.
+      unfold w2 in Heval2.
+      inversion Heval1;subst;clear Heval1.
+      inversion H15;subst;clear H15.
+      inversion Heval2;subst;clear Heval2.
+      inversion H18;subst;clear H18.
+      specialize (H3 1 2).
+      simpl in H3.
+      eapply H3.
+      eapply H.
+      repeat split; eauto.
+      rewrite H14 in H5.
+      destruct (Bool.andb_false_elim _ _ H5) as [| H20];[auto|inversion H20].
+      rewrite H17 in H8.
+      destruct (Bool.andb_false_elim _ _ H8) as [| H21];[auto|inversion H21].
+      eauto. eauto. auto. auto.
+      rewrite H14, H17 in H6.
+      inversion H6.
+      inversion Heval2;subst;clear Heval2.
+      inversion H17;subst;clear H17.
+      rewrite H14, H16 in H6.
+      inversion H6.
+      inversion H15;subst.
+      inversion H17; subst.
+      repeat split;auto.
+      simpl.
+      intros s1 s2 s1' s2' HPre Heval1 Heval2.
+      unfold empty_r_postcondition; auto.
+      simpl.
+      intros s1 s2 s1' s2' HPre Heval1 Heval2.
+      unfold empty_r_postcondition; auto.
+    + split.
+      - unfold quadruple_ctx_2.
+        intros.
+        destruct (p1 =? 1) eqn: He1.
+        destruct (p2 =? 2) eqn: He2.
+        simpl.
+        intros s1 s2 s1' s2' HPre Heval1 Heval2.
+        unfold LR, Lc, Rc in HPre.
+        decompose [and] HPre;clear HPre.
+        unfold w1 in Heval1.
+        inversion Heval1;subst;clear Heval1.
+        inversion H13;subst;clear H13.
+        specialize (H3 1 2).
+        simpl in H3.
+        eapply H3.
+        eapply H0.
+        repeat split; eauto.
+        rewrite H12 in H5.
+        destruct (andb_prop _ _ H5) as [H15 _];auto.
+        eauto. apply (E_Skip s2 ps2). auto. auto.
+        apply Loc.Loc.eqb_eq in He2;subst.
+        auto.
+        destruct (andb_prop _ _ H5) as [_ H15].
+        rewrite H15 in H12.
+        inversion H12.
+        simpl.
+        intros s1 s2 s1' s2' HPre Heval1 Heval2.
+        unfold empty_r_postcondition; auto.
+        simpl.
+        intros s1 s2 s1' s2' HPre Heval1 Heval2.
+        unfold empty_r_postcondition; auto.
+      - split.
+        * unfold quadruple_ctx_2.
+          intros.
+          destruct (p1 =? 1) eqn: He1.
+          destruct (p2 =? 2) eqn: He2.
+          simpl.
+          intros s1 s2 s1' s2' HPre Heval1 Heval2.
+          unfold LR, Lc, Rc in HPre.
+          decompose [and] HPre;clear HPre.
+          apply Loc.Loc.eqb_eq in He2;subst.
+          simpl in Heval2.
+          unfold w2 in Heval2.
+          inversion Heval2;subst;clear Heval2.
+          inversion H13;subst;clear H13.
+          specialize (H3 1 2).
+          simpl in H3.
+          eapply H3.
+          eapply H1.
+          repeat split; eauto.
+          rewrite H12 in H5.
+          destruct (andb_prop _ _ H5) as [H15 _];auto.
+          apply (E_Skip s1 ps1). eauto.
+          apply Loc.Loc.eqb_eq in He1;subst.
+          auto.
+          auto.
+          destruct (andb_prop _ _ H5) as [_ H15].
+          rewrite H15 in H12.
+          inversion H12.
+          simpl.
+          intros s1 s2 s1' s2' HPre Heval1 Heval2.
+          unfold empty_r_postcondition; auto.
+          simpl.
+          intros s1 s2 s1' s2' HPre Heval1 Heval2.
+          unfold empty_r_postcondition; auto.
+        * intros.
+          destruct (p1 =? 1) eqn: He1.
+          destruct (p2 =? 2) eqn: He2.
+          --  simpl.
+              simpl in H3.
+              specialize (H2 _ _ H3).
+              unfold LR, Lc, Rc.
+              apply simpl_side_condition in H2.
+              destruct H2.
+              ++ left.
+                 decompose [and] H2;clear H2.
+                 rewrite H4, H6, H5, H8.
+                 auto.
+              ++ destruct H2.
+                 ** left.
+                    decompose [and] H2;clear H2.
+                    rewrite H4, H5.
+                    rewrite Bool.andb_false_r.
+                    rewrite Bool.andb_false_r.
+                    auto.
+                 ** destruct H2.
+                    decompose [and] H2;clear H2.
+                    right.
+                    left.
+                    rewrite H4, H5.
+                    auto.
+                    decompose [and] H2;clear H2.
+                    right.
+                    right.
+                    rewrite H4, H5.
+                    auto.
+          -- simpl. auto.
+          -- simpl. auto.
+  Qed.
+
+End While_Proc.
+
+
+(* Include the relational while rule system *)
+
+(* Just use the normal termination for the transitivity application, for
  partial correction use axiom forall f, s, exit s', call f s s'
- and proof the rule from the phd*)
+ and proof the rule from the phd *)

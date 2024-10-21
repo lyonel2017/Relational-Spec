@@ -79,7 +79,7 @@ Module SF.
 End SF.
 
 Definition bi_hoare (i: nat) (P: precondition) (Q: postcondition)
-           (c : com) (b: bexp) (ps : Psi.psi) : Prop :=
+  (c : com) (b: bexp) (ps : Psi.psi) : Prop :=
   forall s s', P s -> ceval (unroll i b c) s ps s' -> Q s' s.
 
 Lemma bi_uadruple_quadruple P Q p b inv var ps:
@@ -102,10 +102,10 @@ Qed.
 Lemma while_triple :
   forall (inv: assertion) (var: variant) b c ps l,
     hoare_triple (fun s => inv (s :: l) /\ beval s b = true)
-                 (fun s' _ => inv (s' :: l)) c ps ->
+      (fun s' _ => inv (s' :: l)) c ps ->
     hoare_triple (fun s => inv (s :: l))
-                ( fun s' _ => inv (s' :: l) /\ beval s'  b = false )
-                (CWhile b c inv var) ps.
+      ( fun s' _ => inv (s' :: l) /\ beval s'  b = false )
+      (CWhile b c inv var) ps.
 Proof.
   intros P var b c ps l Hhoare.
   apply bi_uadruple_quadruple.
@@ -126,12 +126,12 @@ Definition clause : Type := precondition * postcondition.
 Definition empty_clause : clause := (empty_precondition, empty_postcondition).
 
 Definition get_pre (an:clause) :=
-          let (pre,post) := an in
-          pre.
+  let (pre,post) := an in
+  pre.
 
 Definition get_post (an:clause) :=
-          let (pre,post) := an in
-          post.
+  let (pre,post) := an in
+  post.
 
 (** Defintion of contract environments : *)
 
@@ -152,17 +152,17 @@ Definition i_hoare_triple (n: nat)
 
 Lemma i_hoare_triple_hoare_triple :
   forall P Q p ps,
-  hoare_triple P Q (CCall p) ps <-> forall n, i_hoare_triple n P Q (CCall p) ps.
+    hoare_triple P Q (CCall p) ps <-> forall n, i_hoare_triple n P Q (CCall p) ps.
 Proof.
-unfold hoare_triple, i_hoare_triple;split;intros H.
-* intros n s s' Pre Heval.
-  eapply H.
-  apply Pre.
-  eapply (Inline1.n_inline_ps_ceval _ _ _ _ _ Heval).
-* intros s s' HPre Heval.
-  apply Inline1.ceval_n_inline_ps in Heval.
-  destruct Heval.
-  eapply H.
+  unfold hoare_triple, i_hoare_triple;split;intros H.
+  * intros n s s' Pre Heval.
+    eapply H.
+    apply Pre.
+    eapply (Inline1.n_inline_ps_ceval _ _ _ _ _ Heval).
+  * intros s s' HPre Heval.
+    apply Inline1.ceval_n_inline_ps in Heval.
+    destruct Heval.
+    eapply H.
   + apply HPre.
   + apply H0.
 Qed.
@@ -170,9 +170,9 @@ Qed.
 (** Hoare triple for a com with procedure context **)
 
 Definition hoare_triple_ctx (cl : Phi.phi) (ps: Psi.psi)
-      (P: precondition) (Q: postcondition)  (c: com) :=
-    (forall p, hoare_triple (get_pre (cl p)) (get_post (cl p)) (CCall p) ps) ->
-      hoare_triple P Q c ps.
+  (P: precondition) (Q: postcondition)  (c: com) :=
+  (forall p, hoare_triple (get_pre (cl p)) (get_post (cl p)) (CCall p) ps) ->
+  hoare_triple P Q c ps.
 
 (** Hoare triple for a procedure with procedure context **)
 
@@ -180,24 +180,24 @@ Definition hoare_triple_proc_ctx (cl : Phi.phi) (ps_init :Psi.psi):=
   forall p ps, hoare_triple_ctx cl ps (get_pre (cl p)) (get_post (cl p)) (ps_init p).
 
 Lemma recursive_proc ps cl:
-    hoare_triple_proc_ctx cl ps ->
-   (forall p, hoare_triple (get_pre (cl p)) (get_post (cl p)) (CCall p) ps).
+  hoare_triple_proc_ctx cl ps ->
+  (forall p, hoare_triple (get_pre (cl p)) (get_post (cl p)) (CCall p) ps).
 Proof.
-intros.
-apply i_hoare_triple_hoare_triple.
-intros n.
-generalize dependent p.
-induction n.
-- intros p s s' HPre Heval.
-  inversion Heval;subst.
-  apply ceval_inf_loop in H1.
-  contradiction H1.
-- intros p s s' HPre Heval.
-  eapply H.
-  + apply IHn.
-  + apply HPre.
-  + apply Inline1.n_inline_ps_inline in Heval.
-    apply Heval.
+  intros.
+  apply i_hoare_triple_hoare_triple.
+  intros n.
+  generalize dependent p.
+  induction n.
+  - intros p s s' HPre Heval.
+    inversion Heval;subst.
+    apply ceval_inf_loop in H1.
+    contradiction H1.
+  - intros p s s' HPre Heval.
+    eapply H.
+    + apply IHn.
+    + apply HPre.
+    + apply Inline1.n_inline_ps_inline in Heval.
+      apply Heval.
 Qed.
 
 (** Modular Hoare Triple Verification **)
@@ -208,9 +208,9 @@ Theorem recursion_hoare_triple :
     hoare_triple_ctx cl ps P Q p ->
     hoare_triple P Q p ps.
 Proof.
-intros.
-apply H0.
-eapply (recursive_proc _ _ H).
+  intros.
+  apply H0.
+  eapply (recursive_proc _ _ H).
 Qed.
 
 (** Corollaire from recursion_hoare_triple **)
@@ -220,10 +220,10 @@ Theorem procedure_hoare_triple :
     hoare_triple_proc_ctx cl ps  ->
     hoare_triple (get_pre (cl p)) (get_post (cl p)) (ps p) ps.
 Proof.
-intros.
-apply recursion_hoare_triple with cl.
-assumption.
-apply H.
+  intros.
+  apply recursion_hoare_triple with cl.
+  assumption.
+  apply H.
 Qed.
 
 Import AexpNotations.
@@ -256,42 +256,49 @@ Section Loop_Proc.
   Definition post : postcondition := fun s' _ => invar (s' :: l) /\ beval s'  b = false.
 
   Definition cl (f' : Proc.t) : clause :=
-    if (Proc.eqb 1 f')
+    if (Proc.eqb f' 1)
     then (pre,post)
     else Phi.empty_phi f'.
 
-    Lemma test1 :
-      hoare_triple (fun s => invar (s :: l) /\ beval s b = true)
-        (fun s' _ => invar (s' :: l)) c ps ->
-      hoare_triple (get_pre (cl 1)) (get_post (cl 1)) (CCall 1) ps ->
-      hoare_triple (get_pre (cl 1)) (get_post (cl 1)) (ps 1) ps.
-    Proof.
-      unfold cl;simpl.
-      unfold pre, post.
-      intros.
-      unfold ps;simpl.
-      unfold w.
+  Lemma recursive_proc_1:
+    hoare_triple_proc_ctx cl ps ->
+    hoare_triple (get_pre (cl 1)) (get_post (cl 1)) (CCall 1) ps.
+  Proof.
+    intros.
+    specialize (recursive_proc ps cl H 1).
+    auto.
+  Qed.
+
+  Lemma inv_proc :
+    (forall ps, hoare_triple (fun s => invar (s :: l) /\ beval s b = true)
+      (fun s' _ => invar (s' :: l)) c ps) ->
+    hoare_triple (get_pre (cl 1)) (get_post (cl 1)) (CCall 1) ps.
+  Proof.
+    intros.
+    apply recursive_proc_1.
+    unfold cl, ps, pre,post.
+    unfold hoare_triple_proc_ctx.
+    unfold hoare_triple_ctx.
+    intros.
+    destruct (Proc.eqb p 1) eqn: He.
+    - unfold w.
       intros s s' HPre Heval.
+      simpl.
       inversion Heval;subst.
-      inversion H8;subst.
-      eapply H0.
-      eapply H.
-      eauto.
-      eauto.
+      + inversion H8;subst.
+        specialize (H0 1).
+        simpl in H0.
+        eapply H0.
+        eapply H.
+        eauto.
+        eauto.
+        auto.
+      + inversion H8; subst.
+        auto.
+    - simpl.
+      unfold empty_postcondition.
+      intros s s' HPre Heval.
       auto.
-      inversion H8;subst.
-      auto.
-    Qed.
+  Qed.
 
 End Loop_Proc.
- (*    Lemma test2 : *)
- (*      hoare_triple_proc_ctx cl ps -> *)
- (*      hoare_triple (fun s => invar (s :: l)) *)
- (*        ( fun s' _ => invar (s' :: l) /\ beval s'  b = false ) *)
- (*        (CWhile b c invar var) ps. *)
- (* Proof. *)
- (*    intros. *)
- (*    assert(H1:  forall p, hoare_triple (get_pre (cl p)) (get_post (cl p)) (CCall p) ps). *)
- (*    apply recursive_proc;assumption. *)
- (*    specialize (H 1 ps H1). *)
- (*    intros s s' HPre Heval. *)

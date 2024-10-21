@@ -362,7 +362,6 @@ Qed.
 
 Lemma recursion_relational :
   forall P Q p ps rcl,
-    recursion_quadruple ->
     relational_prop_proc_ctx rcl ps ->
     relational_prop_ctx rcl ps P Q p ->
     relational_prop P Q p ps.
@@ -371,4 +370,83 @@ intros.
 apply H0.
 apply r_recursive_proc.
 assumption.
+Qed.
+
+(** Extended Modular Relational properties Verification **)
+
+Definition rela_pre qcl rcl (l : list Proc.t) : r_precondition :=
+  match l with
+  | [l1; l2] =>
+      (fun m =>
+        match m with
+        | [m1;m2] => (Quadruple.get_r_pre (qcl l1 l2)) m1 m2 /\
+                     (get_r_pre (rcl l)) m
+        | _ => False
+        end)
+  | _ => empty_r_precondition
+  end.
+
+Definition rela_post qcl rcl (l : list Proc.t) : r_postcondition :=
+  match l with
+  | [l1; l2] =>
+      (fun m m' =>
+        match m, m' with
+        | [m1;m2],[m3;m4] => (Quadruple.get_r_post (qcl l1 l2)) m1 m2 m3 m4 /\
+                              (get_r_post (rcl l)) m m'
+        | _ ,_ => False
+        end)
+  | _ => empty_r_postcondition
+  end.
+
+Definition rela_clause qcl rcl l: r_clause := (rela_pre qcl rcl l, rela_post qcl rcl l).
+
+Lemma ext_recursion_relational :
+  forall P Q p ps rcl qcl,
+    quadruple_proc_ctx qcl ps ->
+    relational_prop_proc_ctx rcl ps ->
+    relational_prop_ctx
+      (fun l => if List.length l =? 2 then rela_clause qcl rcl l else rcl l) ps P Q p ->
+    relational_prop P Q p ps.
+Proof.
+intros.
+apply H1.
+intros.
+destruct (length p0) eqn: Hp0.
+- inversion H2.
+- destruct n.
+  + apply r_recursive_proc.
+    assumption.
+    rewrite Hp0.
+    auto.
+  + destruct n.
+    * simpl.
+      destruct p0. inversion Hp0.
+      destruct p0. inversion Hp0.
+      destruct p0;[ | inversion Hp0].
+      intros s s' Hs Hs' HPre Heval.
+      destruct s. inversion Hs.
+      destruct s0. inversion Hs.
+      destruct s1;[| inversion Hs].
+      destruct s'. inversion Hs'.
+      destruct s'. inversion Hs'.
+      destruct s';[|inversion Hs'].
+      simpl. simpl in HPre.
+      split.
+      -- inversion Heval;subst.
+         inversion H11;subst.
+         eapply ext_r_recursive_proc.
+         apply H. apply HPre.
+         auto. auto.
+      -- eapply r_recursive_proc.
+         eauto.
+         rewrite Hp0.
+         assumption.
+         reflexivity.
+         reflexivity.
+         apply HPre.
+         assumption.
+    * apply r_recursive_proc.
+      assumption.
+      rewrite Hp0.
+      auto.
 Qed.
