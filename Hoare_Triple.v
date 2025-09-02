@@ -1,4 +1,5 @@
 From Rela Require Import Com.
+From Rela Require Import Sem.
 From Rela Require Import Inliner.
 From Rela Require Import Aexp.
 From Rela Require Import Bexp.
@@ -64,15 +65,15 @@ Qed.
 Module SF.
 
   Lemma while_triple :
-    forall (inv: assertion) (var: variant) b c ps l,
-      hoare_triple (fun s => inv (s :: l) /\ beval s b = true)
-        (fun s' _ => inv (s' :: l)) c ps ->
-      hoare_triple (fun s => inv (s :: l))
-        ( fun s' _ => inv (s' :: l) /\ beval s'  b = false )
-        (CWhile b c inv var) ps.
+    forall (inv: assertion) (var: variant) b c ps l id si,
+      hoare_triple (fun s => inv (s :: (si :: l)) /\ beval s b = true)
+        (fun s' _ => inv (s' :: (si :: l))) c ps ->
+      hoare_triple (fun s => inv (s :: (si :: l)))
+        ( fun s' _ => inv (s' :: (si :: l)) /\ beval s'  b = false )
+        (CWhile b c inv var id) ps.
   Proof.
-    intros P var b c ps l Hhoare st st' HP Heval.
-    remember (CWhile b c P var) as original_command eqn:Horig.
+    intros P var b c ps l id si Hhoare st st' HP Heval.
+    remember (CWhile b c P var id) as original_command eqn:Horig.
     induction Heval; inversion Horig;subst;eauto.
   Qed.
 
@@ -82,8 +83,8 @@ Definition bi_hoare (i: nat) (P: precondition) (Q: postcondition)
   (c : com) (b: bexp) (ps : Psi.psi) : Prop :=
   forall s s', P s -> ceval (unroll i b c) s ps s' -> Q s' s.
 
-Lemma bi_uadruple_quadruple P Q p b inv var ps:
-  hoare_triple P Q (CWhile b p inv var) ps <->
+Lemma bi_uadruple_quadruple P Q p b inv var id ps:
+  hoare_triple P Q (CWhile b p inv var id) ps <->
     forall n, bi_hoare n P Q p b ps.
 Proof.
   unfold hoare_triple, bi_hoare;split;intros H.
@@ -100,14 +101,14 @@ Proof.
 Qed.
 
 Lemma while_triple :
-  forall (inv: assertion) (var: variant) b c ps l,
-    hoare_triple (fun s => inv (s :: l) /\ beval s b = true)
-      (fun s' _ => inv (s' :: l)) c ps ->
-    hoare_triple (fun s => inv (s :: l))
-      ( fun s' _ => inv (s' :: l) /\ beval s'  b = false )
-      (CWhile b c inv var) ps.
+  forall (inv: assertion) (var: variant) b c ps l id si,
+    hoare_triple (fun s => inv (s :: (si :: l)) /\ beval s b = true)
+      (fun s' _ => inv (s' :: (si :: l))) c ps ->
+    hoare_triple (fun s => inv (s :: (si :: l)))
+      (fun s' _ => inv (s' :: (si :: l)) /\ beval s'  b = false)
+      (CWhile b c inv var id) ps.
 Proof.
-  intros P var b c ps l Hhoare.
+  intros P var b c ps l id si Hhoare.
   apply bi_uadruple_quadruple.
   intros n.
   induction n;intros st st' HPre Heval.

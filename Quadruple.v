@@ -2,6 +2,7 @@ From Rela Require Import Proc.
 From Rela Require Import Aexp.
 From Rela Require Import Bexp.
 From Rela Require Import Com.
+From Rela Require Import Sem.
 From Rela Require Import Sigma.
 From Rela Require Import Hoare_Triple.
 From Rela Require Import Inliner.
@@ -11,36 +12,38 @@ Import Arith.
 
 (** Defintion of quadruple assertion **)
 
-Definition r_assertion: Type := sigma ->sigma -> Prop.
+Definition q_assertion: Type := sigma ->sigma -> Prop.
+
+Definition empty_q_assertion : q_assertion := (fun _ _ => False).
 
 (** Definition of quadruple Precondition **)
 
-Definition r_precondition : Type := sigma -> sigma -> Prop.
+Definition q_precondition : Type := sigma -> sigma -> Prop.
 
-Definition empty_r_precondition : r_precondition := (fun _ _ => False).
+Definition empty_q_precondition : q_precondition := (fun _ _ => False).
 
 (** Defintion of quadruple Postcondition **)
 
-Definition r_postcondition : Type :=  sigma -> sigma -> sigma -> sigma -> Prop.
+Definition q_postcondition : Type :=  sigma -> sigma -> sigma -> sigma -> Prop.
 
-Definition empty_r_postcondition :  r_postcondition := (fun _ _ _ _ => True).
+Definition empty_q_postcondition :  q_postcondition := (fun _ _ _ _ => True).
 
 (** Definition of quadruple **)
 
-Definition quadruple (P: r_precondition) (Q: r_postcondition)
+Definition quadruple (P: q_precondition) (Q: q_postcondition)
   (c1 c2: com) (ps : Psi.psi) : Prop :=
   forall s1 s2 s1' s2', P s1 s2 -> ceval c1 s1 ps s1' -> ceval c2 s2 ps s2' -> Q s1' s2' s1 s2.
 
 (** Definition of a quadruple properties with inliner for loops **)
 
-Definition i_quadruple (n: nat) (P: r_precondition) (Q: r_postcondition)
+Definition i_quadruple (n: nat) (P: q_precondition) (Q: q_postcondition)
   (c1 c2 : com) (b1 b2: bexp) (ps : Psi.psi) : Prop :=
   forall s1 s2 s1' s2', P s1 s2 ->
                    ceval (unroll n b1 c1) s1 ps s1' -> ceval (unroll n b2 c2) s2 ps s2' ->
                    Q s1' s2' s1 s2.
 
-Lemma qceval_n_inline_loop b1 b2 p1 p2 s1 s2 inv1 inv2 var1 var2 ps s1' s2':
-  ceval (CWhile b1 p1 inv1 var1) s1 ps s1' ->  ceval (CWhile b2 p2 inv2 var2) s2 ps s2' ->
+Lemma qceval_n_inline_loop b1 b2 p1 p2 s1 s2 inv1 inv2 var1 var2 id1 id2 ps s1' s2':
+  ceval (CWhile b1 p1 inv1 var1 id1) s1 ps s1' ->  ceval (CWhile b2 p2 inv2 var2 id2) s2 ps s2' ->
   exists n : nat, ceval (unroll n b1 p1) s1 ps s1' /\ ceval (unroll n b2  p2) s2 ps s2' .
 Proof.
   intros Heval1  Heval2.
@@ -60,8 +63,8 @@ Proof.
     eapply unroll_ceval_S;[apply H0|assumption].
 Qed.
 
-Lemma i_quadruple_quadruple P Q p1 p2 b1 b2 inv1 inv2 var1 var2 ps:
-  quadruple P Q (CWhile b1 p1 inv1 var1) (CWhile b2 p2 inv2 var2) ps
+Lemma i_quadruple_quadruple P Q p1 p2 b1 b2 inv1 inv2 var1 var2 id1 id2 ps:
+  quadruple P Q (CWhile b1 p1 inv1 var1 id1) (CWhile b2 p2 inv2 var2 id2) ps
   <-> forall n, i_quadruple n P Q p1 p2 b1 b2 ps.
 Proof.
   unfold quadruple, i_quadruple;split;intros H.
@@ -78,13 +81,13 @@ Qed.
 
 (** Facts about quadruple Properties **)
 
-Lemma while_quadruple (inv: r_assertion) b1 b2 c1 c2 ps:
+Lemma while_quadruple (inv: q_assertion) b1 b2 c1 c2 id1 id2 ps:
   quadruple (fun s1 s2 => inv s1 s2 /\ beval s1 b1 = true /\ beval s2 b2 =  true)
     (fun s1' s2' _ _ => inv s1' s2' /\ beval s1' b1 = beval s2' b2 ) c1 c2 ps ->
   quadruple ( fun s1 s2 => inv s1 s2 /\ beval s1 b1 = beval s2 b2 )
     ( fun s1' s2' _ _ => inv s1' s2' /\ beval s1' b1 = false /\ beval s2' b2 = false )
-    (CWhile b1 c1 (fun _=> True) (fun _ => 0))
-    (CWhile b2 c2 (fun _ => True) (fun _ => 0)) ps.
+    (CWhile b1 c1 (fun _=> True) (fun _ => 0) id1)
+    (CWhile b2 c2 (fun _ => True) (fun _ => 0) id2) ps.
 Proof.
   intros Hinv.
   apply i_quadruple_quadruple.
@@ -114,15 +117,15 @@ Proof.
         auto.
 Qed.
 
-Definition bi_quadruple (i: nat) (P: r_precondition) (Q: r_postcondition)
+Definition bi_quadruple (i: nat) (P: q_precondition) (Q: q_postcondition)
   (c1 c2 : com) (b1 b2: bexp) (ps : Psi.psi) : Prop :=
   forall s1 s2 s1' s2' n m , i = n + m -> P s1 s2 ->
                         ceval (unroll n b1 c1) s1 ps s1' ->
                         ceval (unroll m b2 c2) s2 ps s2' ->
                         Q s1' s2' s1 s2.
 
-Lemma qceval_n_b_inline_loop p1 p2 b1 b2 inv1 inv2 var1 var2 s1 s2 ps  s1' s2':
-  ceval (CWhile b1 p1 inv1 var1) s1 ps s1' -> ceval (CWhile b2 p2 inv2 var2) s2 ps s2' ->
+Lemma qceval_n_b_inline_loop p1 p2 b1 b2 inv1 inv2 var1 var2 id1 id2 s1 s2 ps s1' s2':
+  ceval (CWhile b1 p1 inv1 var1 id1) s1 ps s1' -> ceval (CWhile b2 p2 inv2 var2 id2) s2 ps s2' ->
   exists n m: nat, ceval (unroll n b1 p1) s1 ps s1' /\ ceval (unroll m b2 p2) s2 ps s2' .
 Proof.
   intros Heval1  Heval2.
@@ -135,8 +138,8 @@ Proof.
   apply H0.
 Qed.
 
-Lemma bi_quadruple_quadruple P Q p1 p2 b1 b2 inv1 inv2 var1 var2 ps:
-  quadruple P Q (CWhile b1 p1 inv1 var1) (CWhile b2 p2 inv2 var2) ps <->
+Lemma bi_quadruple_quadruple P Q p1 p2 b1 b2 inv1 inv2 var1 var2 id1 id2 ps:
+  quadruple P Q (CWhile b1 p1 inv1 var1 id1) (CWhile b2 p2 inv2 var2 id2) ps <->
     forall n, bi_quadruple n P Q p1 p2 b1 b2 ps.
 Proof.
   unfold quadruple, bi_quadruple;split;intros H.
@@ -155,7 +158,44 @@ Proof.
     assumption.
 Qed.
 
-Definition r_cond: Type := sigma -> sigma -> bool.
+(** Definition of condition for selecting the one side rules **)
+
+Definition q_cond: Type := sigma -> sigma -> bool.
+
+Definition empty_q_cond : q_cond := (fun _ _ => false).
+
+(** Definition of while contract for quadruple **)
+
+Definition wq_clause : Type := q_cond * q_cond * q_assertion.
+
+Definition empty_wq_clause : wq_clause :=
+  (empty_q_cond, empty_q_cond,empty_q_assertion).
+
+Definition get_wq_inv (an: wq_clause) :=
+  let (_,inv) := an in
+  inv.
+
+Definition get_wq_L (an: wq_clause) :=
+  let (an, _) := an in
+  let (L, _) := an in
+  L.
+
+Definition get_wq_R (an: wq_clause) :=
+  let (an, _) := an in
+  let (_, R) := an in
+  R.
+
+(** Definition of relational invariant environments **)
+
+Module QW_Phi.
+
+  Definition phi : Type :=
+    com -> bexp -> nat -> com -> bexp -> nat -> wq_clause.
+
+  Definition empty_phi: phi :=
+    fun _ _ _ _ _ _=> empty_wq_clause.
+
+End QW_Phi.
 
 Lemma simpl_side_condition b1 b2 L R s1 s2 :
   (beval s1 b1 = beval s2 b2 \/ (beval s1 b1 = true /\ L s1 s2 = true ) \/
@@ -190,7 +230,8 @@ Qed.
 
  *)
 
-Lemma while_skedule_quadruple (inv : r_assertion) (L R : r_cond) b1 b2 c1 c2 ps:
+Lemma while_skedule_quadruple
+  (inv : q_assertion) (L R : q_cond) b1 b2 c1 c2 id1 id2 ps:
   quadruple (fun s1 s2 => inv s1 s2 /\ beval s1 b1 = true /\ beval s2 b2 = true /\
                          L s1 s2 = false /\ R s1 s2 = false)
     (fun s1' s2' _ _ => inv s1' s2')
@@ -207,8 +248,8 @@ Lemma while_skedule_quadruple (inv : r_assertion) (L R : r_cond) b1 b2 c1 c2 ps:
               (beval s2 b2 = true /\ R s1 s2 = true)) ->
   quadruple inv
     ( fun s1' s2' _ _ => inv s1' s2' /\ beval s1' b1 = false /\ beval s2' b2 = false )
-    (CWhile b1 c1 (fun _=> True) (fun _ => 0))
-    (CWhile b2 c2 (fun _ => True) (fun _ => 0)) ps.
+    (CWhile b1 c1 (fun _=> True) (fun _ => 0) id1)
+    (CWhile b2 c2 (fun _ => True) (fun _ => 0) id2) ps.
 Proof.
   intros Hinv1 Hinv2 Hinv3 Hinv.
   apply bi_quadruple_quadruple.
@@ -266,54 +307,54 @@ Qed.
 
 (** Definition of a quadruple contract **)
 
-Definition r_clause : Type := r_precondition * r_postcondition * r_cond * r_cond * r_cond.
+Definition q_clause : Type := q_precondition * q_postcondition * q_cond * q_cond * q_cond.
 
-Definition empty_clause : r_clause :=
-  (empty_r_precondition, empty_r_postcondition, fun _ _ => true, fun _ _ => true, fun _ _ => true).
+Definition empty_clause : q_clause :=
+  (empty_q_precondition, empty_q_postcondition, fun _ _ => true, fun _ _ => true, fun _ _ => true).
 
-Definition get_r_pre (an: r_clause) : r_precondition :=
+Definition get_q_pre (an: q_clause) : q_precondition :=
   let (an,_) := an in
   let (l,_) := an in
   let (l,_) := l in
   let (pre,_) := l in
   pre.
 
-Definition get_r_post (an:r_clause) : r_postcondition :=
+Definition get_q_post (an:q_clause) : q_postcondition :=
   let (an,_) := an in
   let (l,_) := an in
   let (l,_) := l in
   let (_,post) := l in
   post.
 
-Definition get_L (an:r_clause) : r_cond:=
+Definition get_L (an:q_clause) : q_cond:=
   let (an,_) := an in
   let (l,_) := an in
   let (_,L) := l in
   L.
 
-Definition get_R (an:r_clause) : r_cond :=
+Definition get_R (an:q_clause) : q_cond :=
   let (an,_) := an in
   let (_,R) := an in
   R.
 
-Definition get_LR (an: r_clause) : r_cond :=
+Definition get_LR (an: q_clause) : q_cond :=
   let (_,LR) := an in
   LR.
 
 (** Definition of quadruple contract environments :
     a map from two procedure name to quadruple clauses **)
 
-Module R_Phi.
+Module Q_Phi.
 
-  Definition r_phi : Type := Proc.t -> Proc.t -> r_clause.
+  Definition phi : Type := Proc.t -> Proc.t -> q_clause.
 
-  Definition empty_r_phi: r_phi := fun _ _ => empty_clause.
+  Definition empty_phi: phi := fun _ _ => empty_clause.
 
-End R_Phi.
+End Q_Phi.
 
 (** Defintion of quadruple with inliner **)
 
-Definition bi_quadruple_fun_2 (i: nat) (P: r_precondition) (Q: r_postcondition)
+Definition bi_quadruple_fun_2 (i: nat) (P: q_precondition) (Q: q_postcondition)
   (c1 c2 : com) (ps1 ps2 : Psi.psi) : Prop :=
   forall s1 s2 s1' s2' n m, i = n + m -> P s1 s2 ->
                        ceval c1 s1 (Inline1.k_inliner_ps n ps1) s1' ->
@@ -322,7 +363,8 @@ Definition bi_quadruple_fun_2 (i: nat) (P: r_precondition) (Q: r_postcondition)
 
 Lemma qceval_n_b_inline_fun_2 p1 p2 s1 s2 ps1 ps2 s1' s2':
   ceval p1 s1 ps1 s1' ->  ceval p2 s2 ps2 s2' ->
-  exists n m: nat, ceval p1 s1 (Inline1.k_inliner_ps n ps1) s1' /\ ceval p2 s2 (Inline1.k_inliner_ps m ps2) s2'.
+  exists n m: nat, ceval p1 s1 (Inline1.k_inliner_ps n ps1) s1' /\
+               ceval p2 s2 (Inline1.k_inliner_ps m ps2) s2'.
 Proof.
   intros Heval1  Heval2.
   apply Inline1.ceval_n_inline_ps in Heval1.
@@ -334,7 +376,7 @@ Proof.
   apply H0.
 Qed.
 
-Definition quadruple_2 (P: r_precondition) (Q: r_postcondition)
+Definition quadruple_2 (P: q_precondition) (Q: q_postcondition)
   (c1 c2: com) (ps1 ps2 : Psi.psi) : Prop :=
   forall s1 s2 s1' s2', P s1 s2 -> ceval c1 s1 ps1 s1' -> ceval c2 s2 ps2 s2' -> Q s1' s2' s1 s2.
 
@@ -359,36 +401,36 @@ Proof.
     assumption.
 Qed.
 
-Definition quadruple_ctx_2 (rcl:R_Phi.r_phi) (ps1 ps2: Psi.psi)
-  (P: r_precondition) (Q : r_postcondition) (c1 c2:  com) :=
-  (forall p1 p2, quadruple_2 (get_r_pre (rcl p1 p2))
-              (get_r_post (rcl p1 p2)) (CCall p1) (CCall p2) ps1 ps2) ->
+Definition quadruple_ctx_2 (rcl:Q_Phi.phi) (ps1 ps2: Psi.psi)
+  (P: q_precondition) (Q : q_postcondition) (c1 c2:  com) :=
+  (forall p1 p2, quadruple_2 (get_q_pre (rcl p1 p2))
+              (get_q_post (rcl p1 p2)) (CCall p1) (CCall p2) ps1 ps2) ->
   quadruple_2 P Q c1 c2 ps1 ps2.
 
 
-Definition quadruple_proc_ctx_2 (rcl : R_Phi.r_phi) (ps_init_1 ps_init_2 :Psi.psi):=
+Definition quadruple_proc_ctx_2 (rcl : Q_Phi.phi) (ps_init_1 ps_init_2 :Psi.psi):=
   (forall p1 p2 ps1 ps2,
-      quadruple_ctx_2 rcl ps1 ps2 (fun s1 s2 => get_r_pre (rcl p1 p2) s1 s2 /\
+       quadruple_ctx_2 rcl ps1 ps2 (fun s1 s2 => get_q_pre (rcl p1 p2) s1 s2 /\
                                                get_LR(rcl p1 p2) s1 s2 = true /\
                                                get_L(rcl p1 p2) s1 s2 = false /\
                                                get_R(rcl p1 p2) s1 s2 = false)
-        (get_r_post (rcl p1 p2)) (ps_init_1 p1) (ps_init_2 p2)) /\
+        (get_q_post (rcl p1 p2)) (ps_init_1 p1) (ps_init_2 p2)) /\
     (forall p1 p2 ps1 ps2,
-        quadruple_ctx_2 rcl ps1 ps2 (fun s1 s2 => get_r_pre (rcl p1 p2) s1 s2 /\
+        quadruple_ctx_2 rcl ps1 ps2 (fun s1 s2 => get_q_pre (rcl p1 p2) s1 s2 /\
                                                  get_L(rcl p1 p2) s1 s2 = true)
-          (get_r_post (rcl p1 p2)) (ps_init_1 p1) (CCall p2)) /\
+          (get_q_post (rcl p1 p2)) (ps_init_1 p1) (CCall p2)) /\
     (forall p1 p2 ps1 ps2,
-        quadruple_ctx_2 rcl ps1 ps2 (fun s1 s2 => get_r_pre (rcl p1 p2) s1 s2 /\
+        quadruple_ctx_2 rcl ps1 ps2 (fun s1 s2 => get_q_pre (rcl p1 p2) s1 s2 /\
                                                  get_R(rcl p1 p2) s1 s2 = true)
-          (get_r_post (rcl p1 p2)) (CCall p1) (ps_init_2 p2)) /\
-    (forall p1 p2 s1 s2,  get_r_pre (rcl p1 p2) s1 s2 ->
+          (get_q_post (rcl p1 p2)) (CCall p1) (ps_init_2 p2)) /\
+    (forall p1 p2 s1 s2,  get_q_pre (rcl p1 p2) s1 s2 ->
                      ((get_LR(rcl p1 p2) s1 s2 = true /\ get_L(rcl p1 p2) s1 s2 = false /\ get_R(rcl p1 p2) s1 s2 = false) \/
                        get_L(rcl p1 p2) s1 s2 = true \/ get_R(rcl p1 p2) s1 s2 = true)).
 
-Lemma ext_r_recursive_proc ps1 ps2 rcl:
+Lemma ext_q_recursive_proc ps1 ps2 rcl:
   quadruple_proc_ctx_2 rcl ps1 ps2 ->
-  (forall p1 p2, quadruple_2 (get_r_pre (rcl p1 p2))
-              (get_r_post (rcl p1 p2)) (CCall p1) (CCall p2) ps1 ps2).
+  (forall p1 p2, quadruple_2 (get_q_pre (rcl p1 p2))
+              (get_q_post (rcl p1 p2)) (CCall p1) (CCall p2) ps1 ps2).
 Proof.
   intros.
   apply bi_quadruple_quadruple_fun.
@@ -442,11 +484,11 @@ Proof.
         apply Heval2.
 Qed.
 
-Definition quadruple_ctx (rcl:R_Phi.r_phi) (ps: Psi.psi)
-  (P: r_precondition) (Q : r_postcondition) (c1 c2:  com) :=
+Definition quadruple_ctx (rcl:Q_Phi.phi) (ps: Psi.psi)
+  (P: q_precondition) (Q : q_postcondition) (c1 c2:  com) :=
   quadruple_ctx_2 rcl ps ps P Q c1 c2.
 
-Definition quadruple_proc_ctx (rcl : R_Phi.r_phi) (ps_init :Psi.psi):=
+Definition quadruple_proc_ctx (rcl : Q_Phi.phi) (ps_init :Psi.psi):=
   quadruple_proc_ctx_2 rcl ps_init ps_init.
 
 Theorem recursion_quadruple :
@@ -457,7 +499,7 @@ Theorem recursion_quadruple :
 Proof.
   intros.
   apply H0.
-  apply ext_r_recursive_proc.
+  apply ext_q_recursive_proc.
   apply H.
 Qed.
 
@@ -493,33 +535,33 @@ Module While_Proc.
     if Proc.eqb x' 1 then  w1 else
       if Proc.eqb x' 2 then  w2 else Psi.empty_psi x'.
 
-  Parameter invar: r_assertion.
+  Parameter invar: q_assertion.
 
-  Definition r_pre : r_precondition := invar.
+  Definition q_pre : q_precondition := invar.
 
-  Definition r_post : r_postcondition := fun m1 m2 _ _ => invar m1 m2 /\
+  Definition q_post : q_postcondition := fun m1 m2 _ _ => invar m1 m2 /\
                                                          beval m1 b1 = false /\
                                                          beval m2 b2 = false.
 
-  Parameter L: r_cond.
-  Parameter R : r_cond.
+  Parameter L: q_cond.
+  Parameter R : q_cond.
 
   Definition Lc s1 s2 := andb (L s1 s2) (beval s1 b1).
   Definition Rc s1 s2 := andb (R s1 s2) (beval s2 b2).
   Definition LR s1 s2 := negb (xorb (beval s1 b1) (beval s2 b2)).
 
-  Definition rcl (f1' f2': Proc.t) : r_clause :=
+  Definition rcl (f1' f2': Proc.t) : q_clause :=
     if andb (Proc.eqb f1' 1) (Proc.eqb f2' 2)
-    then (r_pre,r_post, Lc, Rc, LR)
-    else R_Phi.empty_r_phi f1' f2'.
+    then (q_pre,q_post, Lc, Rc, LR)
+    else Q_Phi.empty_phi f1' f2'.
 
-  Lemma ext_r_recursive_proc_1_2:
+  Lemma ext_q_recursive_proc_1_2:
   quadruple_proc_ctx_2 rcl ps ps ->
-  quadruple_2 (get_r_pre (rcl 1 2))
-              (get_r_post (rcl 1 2)) (CCall 1) (CCall 2) ps ps.
+  quadruple_2 (get_q_pre (rcl 1 2))
+              (get_q_post (rcl 1 2)) (CCall 1) (CCall 2) ps ps.
   Proof.
     intros.
-    specialize (ext_r_recursive_proc ps ps rcl H 1 2).
+    specialize (ext_q_recursive_proc ps ps rcl H 1 2).
     auto.
   Qed.
 
@@ -541,12 +583,12 @@ Module While_Proc.
               beval s1 b1 = beval s2 b2 \/
                 (beval s1 b1 = true /\ L s1 s2 = true ) \/
                 (beval s2 b2 = true /\ R s1 s2 = true)) ->
-    quadruple (get_r_pre (rcl 1 2))
-      (get_r_post (rcl 1 2)) (CCall 1) (CCall 2) ps.
+    quadruple (get_q_pre (rcl 1 2))
+      (get_q_post (rcl 1 2)) (CCall 1) (CCall 2) ps.
   Proof.
     intros.
-    apply ext_r_recursive_proc_1_2.
-    unfold rcl, ps, r_pre, r_post.
+    apply ext_q_recursive_proc_1_2.
+    unfold rcl, ps, q_pre, q_post.
     unfold quadruple_proc_ctx_2.
     split.
     + unfold quadruple_ctx_2.
@@ -588,10 +630,10 @@ Module While_Proc.
       repeat split;auto.
       simpl.
       intros s1 s2 s1' s2' HPre Heval1 Heval2.
-      unfold empty_r_postcondition; auto.
+      unfold empty_q_postcondition; auto.
       simpl.
       intros s1 s2 s1' s2' HPre Heval1 Heval2.
-      unfold empty_r_postcondition; auto.
+      unfold empty_q_postcondition; auto.
     + split.
       - unfold quadruple_ctx_2.
         intros.
@@ -619,10 +661,10 @@ Module While_Proc.
         inversion H12.
         simpl.
         intros s1 s2 s1' s2' HPre Heval1 Heval2.
-        unfold empty_r_postcondition; auto.
+        unfold empty_q_postcondition; auto.
         simpl.
         intros s1 s2 s1' s2' HPre Heval1 Heval2.
-        unfold empty_r_postcondition; auto.
+        unfold empty_q_postcondition; auto.
       - split.
         * unfold quadruple_ctx_2.
           intros.
@@ -653,10 +695,10 @@ Module While_Proc.
           inversion H12.
           simpl.
           intros s1 s2 s1' s2' HPre Heval1 Heval2.
-          unfold empty_r_postcondition; auto.
+          unfold empty_q_postcondition; auto.
           simpl.
           intros s1 s2 s1' s2' HPre Heval1 Heval2.
-          unfold empty_r_postcondition; auto.
+          unfold empty_q_postcondition; auto.
         * intros.
           destruct (p1 =? 1) eqn: He1.
           destruct (p2 =? 2) eqn: He2.
@@ -693,10 +735,3 @@ Module While_Proc.
   Qed.
 
 End While_Proc.
-
-
-(* Include the relational while rule system *)
-
-(* Just use the normal termination for the transitivity application, for
- partial correction use axiom forall f, s, exit s', call f s s'
- and proof the rule from the phd *)

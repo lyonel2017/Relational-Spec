@@ -96,14 +96,14 @@ Fixpoint tc (c : com) (m : Sigma.sigma) (h : history)
             (cl: Phi.phi) (s : suite) : Prop :=
     match c with
     | CSkip => forall m', m = m' -> s m' (m :: h)
-    | CAss x a => forall m', (m' = set m x (aeval m a)) -> s m' (m :: h)
+    | CAssi x a => forall m', (m' = set m x (aeval m a)) -> s m' (m :: h)
     | CAssr x a => forall m', (m' = set m (m x) (aeval m a)) -> s m' (m :: h)
     | CAssert b => forall m', b (m :: h) -> m = m' -> s m' (m :: h)
     | CSeq p1 p2 => tc p1 m h cl (fun m' h => tc p2 m' h cl s)
     | CIf b p1 p2 => (bassn b m -> tc p1 m h cl (fun m' _ => s m' (m :: h))) /\
                      (~bassn b m  -> tc p2 m h cl (fun m' _ => s m' (m :: h)))
-    | CWhile b p inv _ => inv (m :: h) ->
-                        forall m', inv (m' :: h) -> beval m' b = false -> s m' (m :: h)
+    | CWhile b p inv _ _ => inv (m :: (m :: h)) ->
+                        forall m', inv (m' :: (m :: h)) -> beval m' b = false -> s m' (m :: h)
     | CCall f => (get_pre (cl f)) m ->
                   forall m',  (get_post (cl f)) m' m -> s m' (m :: h)
     end.
@@ -195,7 +195,7 @@ Fixpoint tc' (c : com) (m : Sigma.sigma) (h : history)
             (cl: Phi.phi) : Prop :=
     match c with
     | CSkip => True
-    | CAss x a => True
+    | CAssi x a => True
     | CAssr x a => True
     | CAssert b => b (m :: h)
     | CSeq p1 p2 => tc' p1 m h cl /\
@@ -203,10 +203,10 @@ Fixpoint tc' (c : com) (m : Sigma.sigma) (h : history)
     | CIf b p1 p2 =>
                     (bassn b m -> tc' p1 m h cl) /\
                     (~bassn b m -> tc' p2 m h cl)
-    | CWhile b p inv _ => inv (m :: h) /\
-                     (forall m', bassn b m' -> inv (m' :: h)-> tc' p m' h cl) /\
-                     (forall m', bassn b m' -> inv (m' :: h) ->
-                                  tc p m' h cl (fun m'' _ => inv (m'' :: h)))
+    | CWhile b p inv _ _ => inv (m :: (m :: h)) /\
+                     (forall m', bassn b m' -> inv (m' :: (m :: h))-> tc' p m' h cl) /\
+                     (forall m', bassn b m' -> inv (m' :: (m :: h)) ->
+                                  tc p m' h cl (fun m'' _ => inv (m'' :: (m :: h))))
     | CCall f => (get_pre (cl f)) m
     end.
 
@@ -237,8 +237,8 @@ Definition f_psi (x': Proc.t) :=
         if Proc.eqb x' f then CSkip else Psi.empty_psi x'.
 
 Definition f_phi (x': Proc.t) :=
-        if Proc.eqb x' f then 
-        ((fun _ => True), (fun _ _ => True)) 
+        if Proc.eqb x' f then
+        ((fun _ => True), (fun _ _ => True))
         else Phi.empty_phi x'.
 
 Example tc_p_update : tc_p f_psi f_phi.

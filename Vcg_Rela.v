@@ -1,15 +1,15 @@
 From Rela Require Import Vcg.
 From Rela Require Import Com.
+From Rela Require Import Sem.
 From Rela Require Import Sigma.
 From Rela Require Import Hoare_Triple.
 From Rela Require Import Rela.
 
 From Coq Require Import Program.
-From Coq Require Import Eqdep_dec.
 From Coq Require Import Lists.List.
 Import ListNotations.
 
-(** Defintion of the verification condition generator for relational properties,
+(** Definition of the verification condition generator for relational properties,
     using the verification condition generator for Hoare Triples **)
 
 Definition r_suite : Type := list Sigma.sigma -> list history -> Prop.
@@ -359,7 +359,7 @@ Qed.
 
 (** Translation of a relational contract into Prop **)
 
-Definition tr (rcl:R_Phi.r_phi) ps :=
+Definition tr (rcl:R_Phi.phi) ps :=
    forall p s s' (hy1:length p = length s) (hy2:length p = length s'),
           0 < length p ->
           proc_to_pred p s s' ps hy1 hy2 ->
@@ -367,7 +367,7 @@ Definition tr (rcl:R_Phi.r_phi) ps :=
 
 (** Facts about tr **)
 
-Lemma tr_relational_prop (rcl:R_Phi.r_phi) (ps: Psi.psi):
+Lemma tr_relational_prop (rcl:R_Phi.phi) (ps: Psi.psi):
 (forall p, 0 < length p ->
      relational_prop (get_r_pre (rcl p)) (get_r_post (rcl p)) (fold_call p) ps)
           -> tr rcl ps.
@@ -444,7 +444,7 @@ Qed.
 
 (** Definition of a relational verification condition generator for procedures **)
 
-Definition rtc_p (ps: Psi.psi) (rcl : R_Phi.r_phi) : Prop :=
+Definition rtc_p (ps: Psi.psi) (rcl : R_Phi.phi) : Prop :=
     forall f m ps',
     let c := (map ps f) in
     let h := (map (fun _ => empty_history) f) in
@@ -484,18 +484,18 @@ Lemma simpl_rtc :
        rtc (map Psi.empty_psi (a :: f))
             (s :: m)
             (map (fun _ : Proc.Proc.t => empty_history) (a :: f))
-            (phi_call (extract R_Phi.empty_r_phi) ps)
+            (phi_call (extract R_Phi.empty_phi) ps)
             suite hy1 hy2 =
        rtc (CSkip :: map Psi.empty_psi f)
             (s :: m)
             (empty_history :: map (fun _ : Proc.Proc.t => empty_history) f)
-            (phi_call (extract R_Phi.empty_r_phi) ps)
+            (phi_call (extract R_Phi.empty_phi) ps)
             suite H1 H2.
 Proof.
   eexists. eexists. intros. program_simpl.
 Qed.
 
-Lemma rtc_p_empty_psi : rtc_p Psi.empty_psi R_Phi.empty_r_phi.
+Lemma rtc_p_empty_psi : rtc_p Psi.empty_psi R_Phi.empty_phi.
 Proof.
 unfold rtc_p.
 intros.
@@ -510,11 +510,11 @@ split.
     auto.
   + destruct m;[ discriminate hy1 | ].
     destruct (simpl_rtc' a f s m
-                         Psi.empty_psi ps' R_Phi.empty_r_phi hy1 hy2)
+                         Psi.empty_psi ps' R_Phi.empty_phi hy1 hy2)
        as (hyr1 & hyr2 & HYP).
     rewrite HYP.
     clear HYP.
-    destruct (mk_rtc'_def _ _ (phi_call (extract R_Phi.empty_r_phi) ps')
+    destruct (mk_rtc'_def _ _ (phi_call (extract R_Phi.empty_phi) ps')
                           _ _  _ _ hyr1 hyr2)
           as (hyr3 & hyr4 & HYP).
     rewrite HYP.
@@ -539,7 +539,7 @@ split.
     destruct (simpl_rtc a f s m ps' hy1 hy2) as (hyr1 & hyr2 & HYP).
     rewrite HYP.
     clear HYP.
-    destruct (mk_rtc_def _ _ (phi_call (extract R_Phi.empty_r_phi) ps')
+    destruct (mk_rtc_def _ _ (phi_call (extract R_Phi.empty_phi) ps')
                           _ _ _ _ hyr1 hyr2)
              as (hyr3 & hyr4 & HYP).
     rewrite HYP.

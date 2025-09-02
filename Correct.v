@@ -57,13 +57,15 @@ Proof.
         apply H2. apply bexp_eval_false. assumption.
       - assumption.
   * intros l P Q Htc' Htc.
-      specialize (IHp l (fun s => inv (s :: l) /\ beval s b = true) (fun s _ => inv (s :: l))).
-      intros Hproc s s' Pre Heval.
+    intros Hproc s s' Pre Heval.
+    specialize (IHp l
+                  (fun sc => inv (sc :: (s :: l)) /\ beval sc b = true)
+                  (fun sc _ => inv (sc :: (s :: l)))).
       specialize (Htc' s Pre).
       simpl in Htc'.
       destruct Htc'.
       specialize (Htc s Pre H).
-      assert (H1 : inv (s' :: l) /\ beval s' b = false -> Q s' s).
+      assert (H1 : inv (s' :: (s :: l)) /\ beval s' b = false -> Q s' s).
       { intros. apply Htc. apply H1. apply H1. }
       apply H1.
       generalize Heval.

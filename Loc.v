@@ -1,4 +1,4 @@
-From Coq Require Import Arith.
+From Stdlib Require Import Arith.
 
 (** Locations are natural numbers **)
 

@@ -3,6 +3,7 @@ From Rela Require Import Loc.
 From Rela Require Import Aexp.
 From Rela Require Import Bexp.
 From Rela Require Import Com.
+From Rela Require Import Sem.
 From Rela Require Import Vcg.
 From Rela Require Import Proc.
 From Rela Require Vcg_Opt.
@@ -54,7 +55,7 @@ forall (s : sigma),
 Proof.
 intros.
 unfold plus2.
-apply E_Ass. reflexivity.
+apply E_Assi. reflexivity.
 Qed.
 
 (** Some ltac to automatize the handling of memory states **)
@@ -331,7 +332,7 @@ Proof.
 assert (hyh :length [swap_1; swap_2] =
              length [empty_history; empty_history]).
 {  simpl. reflexivity. }
-ltc0 R_Phi.empty_r_phi [empty_history; empty_history] hyh.
+ltc0 R_Phi.empty_phi [empty_history; empty_history] hyh.
 (* Verification of proof obligation for procedure*)
 + apply rtc_p_empty_psi.
 (* Verification of auxilliary proof obligation *)
@@ -511,7 +512,7 @@ Proof.
 assert (hyh :length [comp; comp] =
              length [empty_history; empty_history]).
 {  simpl. reflexivity. }
-ltc0 R_Phi.empty_r_phi [empty_history; empty_history] hyh.
+ltc0 R_Phi.empty_phi [empty_history; empty_history] hyh.
 (* Verification of proof obligation for procedure*)
 + apply rtc_p_empty_psi.
 (* Verification of auxilliary proof obligation *)
@@ -593,7 +594,7 @@ Definition f2_r_phi (x': list Proc.t) :=
         else
             if (list_beq  Proc.t) Proc.eqb x' [f2]
             then (f2_pre,f2_post)
-            else R_Phi.empty_r_phi x'.
+            else R_Phi.empty_phi x'.
 
 (* We proof monotony of procedure f2 *)
 
@@ -743,7 +744,7 @@ Definition f3_r_phi (x': list Proc.t) :=
         else
             if (list_beq  Proc.t) Proc.eqb x' [f3]
             then (f3_pre,f3_post)
-            else R_Phi.empty_r_phi x'.
+            else R_Phi.empty_phi x'.
 
 (* We proof that summing all natural starting from 0 or 1 is equivalent *)
 
@@ -980,7 +981,7 @@ Definition f24_r_phi (x': list Proc.t) :=
             then (f2_pre,f2_post) else
                 if (list_beq  Proc.t) Proc.eqb x' [f4]
                 then (f4_pre,f4_post)
-                else R_Phi.empty_r_phi x'.
+                else R_Phi.empty_phi x'.
 
 (* We proof monotonie of procedure f2 in respect to f4 *)
 
@@ -1113,7 +1114,7 @@ Definition op_r_phi (x': list Proc.t) :=
         then (fun _ => True ,fun l l' => op_r_contract_det l l' /\ op_r_contract_comm l l')
         else if (list_beq  Proc.t) Proc.eqb x' [Proc.op]
             then (fun _ => True,op_post)
-            else R_Phi.empty_r_phi x'.
+            else R_Phi.empty_phi x'.
 
 (* We proof monotonie of procedure f2 in respect to f4 *)
 

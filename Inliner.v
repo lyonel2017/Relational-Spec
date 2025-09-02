@@ -1,9 +1,12 @@
 From Rela Require Import Com.
+From Rela Require Import Sem.
 From Rela Require Import Loc.
 From Rela Require Import Aexp.
 From Rela Require Import Bexp.
 From Rela Require Import Proc.
 From Rela Require Import Sigma.
+From Rela Require Import function_cpo.
+From Stdlib Require Import Lia.
 
 Import Arith.
 
@@ -13,7 +16,7 @@ Fixpoint inliner c inline :=
   match c with
   | CSeq p1 p2 => CSeq (inliner p1 inline) (inliner p2 inline)
   | CIf b p1 p2 => CIf b (inliner p1 inline) (inliner p2 inline)
-  | CWhile b p inv var => CWhile b (inliner p inline) inv var
+  | CWhile b p inv var id => CWhile b (inliner p inline) inv var id
   | CCall f => inline f
   | _ => c
   end.
@@ -24,13 +27,9 @@ Module Inline1.
 
   Fixpoint k_inliner n c (ps : Psi.psi) :=
     match n with
-    | 0 => CWhile BTrue CSkip (fun _ => True) (fun _ => 0)
+    | 0 => CWhile BTrue CSkip (fun _ => True) (fun _ => 0) 0
     | S n' => inliner c (fun f => k_inliner n' (ps f) ps)
     end.
-
-  (** Function for procedure inlining in Psi.psi **)
-
-  Definition k_inliner_ps n ps := fun p => k_inliner n (ps p) ps.
 
   (** Some fact about the inlining **)
 
@@ -39,7 +38,7 @@ Module Inline1.
     reflexivity.
   Qed.
 
-  Lemma inline_cass n ps x a1: k_inliner (S n) (CAss x a1) ps = (CAss x a1).
+  Lemma inline_cassi n ps x a1: k_inliner (S n) (CAssi x a1) ps = (CAssi x a1).
   Proof.
     reflexivity.
   Qed.
@@ -66,8 +65,8 @@ Module Inline1.
     reflexivity.
   Qed.
 
-  Lemma inline_cwhile n ps p b inv var: k_inliner (S n) (CWhile b p inv var) ps =
-                                          CWhile b (k_inliner (S n) p ps) inv var.
+  Lemma inline_cwhile n ps p b inv var id: k_inliner (S n) (CWhile b p inv var id) ps =
+                                          CWhile b (k_inliner (S n) p ps) inv var id.
   Proof.
     reflexivity.
   Qed.
@@ -86,7 +85,7 @@ Module Inline1.
     intros.
     induction H.
     + apply E_Skip.
-    + apply E_Ass.
+    + apply E_Assi.
       all: try now auto.
     + apply E_Assr.
       all: try now auto.
@@ -114,7 +113,7 @@ Module Inline1.
     + inversion H;subst.
       apply E_Skip.
     + inversion H;subst.
-      apply E_Ass. all: try now auto.
+      apply E_Assi. all: try now auto.
     + inversion H;subst.
       apply E_Assr. all: try now auto.
     + inversion H;subst.
@@ -130,7 +129,7 @@ Module Inline1.
       * eapply E_IfFalse.
         assumption.
         apply IHp2. apply H7.
-    + remember (inliner (CWhile b p inv var) ps) as original_command eqn:Horig.
+    + remember (inliner (CWhile b p inv var id) ps) as original_command eqn:Horig.
       induction H; inversion Horig;subst.
       * eapply E_WhileFalse.
         assumption.
@@ -142,6 +141,11 @@ Module Inline1.
     + apply E_Call.
       simpl in H. assumption.
   Qed.
+
+  (** Function for procedure inlining in Psi.psi **)
+
+  Definition k_inliner_ps n ps := fun p => k_inliner n (ps p) ps.
+
 
   (* Inlining on Com "n+1" times is equivalent to inline on Psi.psi "n" times *)
 
@@ -156,7 +160,7 @@ Module Inline1.
     induction p ;intros.
     * rewrite inline_cskip in H.
       apply H.
-    * rewrite inline_cass in H.
+    * rewrite inline_cassi in H.
       apply H.
     * rewrite inline_cassr in H.
       apply H.
@@ -179,7 +183,7 @@ Module Inline1.
     - assumption.
     - apply IHp2.
       apply H7.
-      * remember (k_inliner (S n) (CWhile b p inv var) ps_init) as original_command eqn:Horig.
+      * remember (k_inliner (S n) (CWhile b p inv var id) ps_init) as original_command eqn:Horig.
         induction H;rewrite inline_cwhile in Horig; inversion Horig.
       + inversion Horig;subst.
         eapply E_WhileFalse.
@@ -213,7 +217,7 @@ Module Inline1.
     + inversion H;subst.
       apply E_Skip.
     + inversion H;subst.
-      apply E_Ass.
+      apply E_Assi.
       all: try now auto.
     + inversion H;subst.
       apply E_Assr.
@@ -239,7 +243,7 @@ Module Inline1.
       assumption.
       apply IHp2.
       apply H7.
-      + remember (k_inliner (S n) (CWhile b p inv var) ps) as original_command eqn:Horig.
+      + remember (k_inliner (S n) (CWhile b p inv var id) ps) as original_command eqn:Horig.
         induction H;rewrite inline_cwhile in Horig; inversion Horig.
     - inversion Horig;subst.
       eapply E_WhileFalse.
@@ -288,7 +292,7 @@ Module Inline1.
     - assumption.
     - apply IHp2.
       assumption.
-      * remember (CWhile b p inv var) as original_command eqn:Horig.
+      * remember (CWhile b p inv var id) as original_command eqn:Horig.
         induction H; try inversion Horig.
       + inversion Horig;subst.
         eapply E_WhileFalse.
@@ -341,7 +345,7 @@ Module Inline1.
       ** assumption.
       ** apply IHp2.
          assumption.
-      + remember (k_inliner (S n) (CWhile b p inv var) ps_init) as original_command eqn:Horig.
+      + remember (k_inliner (S n) (CWhile b p inv var id) ps_init) as original_command eqn:Horig.
         induction H; try inversion Horig.
     - inversion Horig;subst.
       eapply E_WhileFalse.
@@ -399,7 +403,7 @@ Module Inline1.
       ++ assumption.
       ++ apply IHp2.
          apply H8.
-    - remember (k_inliner (S n) (CWhile b p inv var) ps_init) as original_command eqn:Horig.
+    - remember (k_inliner (S n) (CWhile b p inv var id) ps_init) as original_command eqn:Horig.
       induction H; try inversion Horig.
       ** inversion Horig;subst.
          eapply E_WhileFalse.
@@ -427,7 +431,7 @@ Module Inline1.
       apply E_Skip.
     * exists 1.
       intros.
-      apply E_Ass.
+      apply E_Assi.
       all: try now auto.
     * exists 1.
       intros.
@@ -473,12 +477,12 @@ Module Inline1.
     - destruct (Nat.max_dec (S n1) (S n2)).
       ** rewrite e.
          rewrite inline_cseq.
-         apply E_Seq with s'. 
+         apply E_Seq with s'.
       ++ apply inline_ceval_S with (S n1); [now auto | reflexivity].
       ++ apply inline_ceval_S with (S n2); [now auto | now apply PeanoNat.Nat.max_l_iff].
          ** rewrite e.
             rewrite inline_cseq.
-            apply E_Seq with s'. 
+            apply E_Seq with s'.
       ++ apply inline_ceval_S with (S n1); [now auto | now apply PeanoNat.Nat.max_r_iff].
       ++ apply inline_ceval_S with (S n2); [now auto | reflexivity].
       * exists 1. intros. rewrite inline_cwhile. apply E_WhileFalse; now auto.
@@ -582,7 +586,49 @@ Module Inline2.
     | S n' => inliner c (fun f => k_inliner n' (ps f) ps)
     end.
 
-  Definition k_inliner_ps n ps := fun p => k_inliner n (ps p) ps.
+  Lemma inline_cskip n ps : k_inliner n CSkip ps = CSkip.
+  Proof.
+    destruct n;reflexivity.
+  Qed.
+
+  Lemma inline_cassi n ps x a1: k_inliner n (CAssi x a1) ps = (CAssi x a1).
+  Proof.
+    destruct n;reflexivity.
+  Qed.
+
+  Lemma inline_cassr n ps x a1: k_inliner n (CAssr x a1) ps = (CAssr x a1).
+  Proof.
+    destruct n; reflexivity.
+  Qed.
+
+  Lemma inline_cassert n ps b: k_inliner n (CAssert b) ps = (CAssert b).
+  Proof.
+    destruct n; reflexivity.
+  Qed.
+
+  Lemma inline_cseq n ps p1 p2: k_inliner n (CSeq p1 p2) ps =
+                                  CSeq (k_inliner n p1 ps) (k_inliner n p2 ps).
+  Proof.
+    destruct n; reflexivity.
+  Qed.
+
+  Lemma inline_cif n ps b p1 p2: k_inliner n (CIf b p1 p2) ps =
+                                   CIf b (k_inliner n  p1 ps) (k_inliner n p2 ps).
+  Proof.
+    destruct n; reflexivity.
+  Qed.
+
+  Lemma inline_cwhile n ps p b inv var id: k_inliner n (CWhile b p inv var id) ps =
+                                             CWhile b (k_inliner n p ps) inv var id.
+  Proof.
+    destruct n; reflexivity.
+  Qed.
+
+  Lemma inline_ccall n f ps :
+    k_inliner (S n) (CCall f) ps = k_inliner n (ps f) ps.
+  Proof.
+    reflexivity.
+  Qed.
 
   Lemma n_inline_ceval_ceval n c s ps s' :
     ceval (k_inliner n c ps) s ps s' ->
@@ -604,7 +650,7 @@ Module Inline2.
       + inversion H; subst.
         * apply E_IfTrue; now auto.
         * apply E_IfFalse; now auto.
-      + remember (k_inliner (S n) (CWhile b c inv var) ps) as original_command eqn:Horig.
+      + remember (k_inliner (S n) (CWhile b c inv var id) ps) as original_command eqn:Horig.
         induction H; inversion Horig;subst.
         * apply E_WhileFalse; now auto.
         * eapply E_WhileTrue;[ auto | | ].
@@ -635,7 +681,7 @@ Module Inline2.
       + inversion H; subst.
         * apply E_IfTrue; now auto.
         * apply E_IfFalse; now auto.
-      + remember (CWhile b c inv var) as original_command eqn:Horig.
+      + remember (CWhile b c inv var id) as original_command eqn:Horig.
         induction H; inversion Horig;subst.
         * apply E_WhileFalse; now auto.
         * eapply E_WhileTrue;[ auto | | ].
@@ -647,6 +693,8 @@ Module Inline2.
         auto.
   Qed.
 
+  Definition k_inliner_ps n ps := fun p => k_inliner n (ps p) ps.
+
   Lemma n_inline_ps_ceval_ceval n c s ps s' :
     ceval c s (k_inliner_ps n ps) s' ->
     ceval c s ps s'.
@@ -655,7 +703,7 @@ Module Inline2.
     remember (k_inliner_ps n ps) as original_command eqn:Horig.
     induction H.
     + apply E_Skip.
-    + apply E_Ass. auto.
+    + apply E_Assi. auto.
     + apply E_Assr. auto.
     + apply E_Assert.
     + apply E_IfTrue; now auto.
@@ -674,18 +722,155 @@ Module Inline2.
       auto.
   Qed.
 
+  Definition e_denot : Proc.t * sigma -> option sigma := fun _ => None.
+
+  Lemma ds_iter_ds_k_inliner n: forall i l l' ps,
+      ds (iter Psi'.psi (F_phi.F_phi ps) n e_denot) i l = Some l' ->
+      ds (fun _ : Proc.t * sigma => None) (k_inliner n i ps) l = Some l'.
+  Proof.
+    induction n.
+    - intros. simpl.
+      simpl in H.
+      assumption.
+    - intros i.
+      induction i;simpl; intros l l' ps H.
+      1-4: assumption.
+      + revert H.
+        case_eq
+          (ds (F_phi.F_phi ps (iter Psi'.psi (F_phi.F_phi ps) n e_denot)) i1 l);
+          [| discriminate].
+        simpl; intros s Hs H.
+        simpl in IHi1, IHi2.
+        rewrite (IHi1 _ _ _ Hs).
+        simpl.
+        rewrite (IHi2 _ _ _ H).
+        reflexivity.
+      + revert H.
+        case (beval l b).
+        * intros H.
+          apply IHi1 in H.
+          assumption.
+        * intros H.
+          apply IHi2 in H.
+          assumption.
+      + simpl in IHi.
+        apply W_phi.phi_terminates_n in H.
+        destruct H as [m Hm].
+        revert Hm; revert l; revert l'.
+        induction m.
+        * discriminate.
+        * simpl. intros l' l.
+          rewrite <- W_phi.fix_phi.
+          unfold W_phi.F_phi at 1 3.
+          case (beval l b);[simpl| auto].
+          case_eq
+            (ds (F_phi.F_phi ps (iter Psi'.psi (F_phi.F_phi ps) n e_denot)) i l);
+            [|discriminate].
+          simpl; intros s H Hm.
+          rewrite (IHi _ _ _ H).
+          apply IHm.
+          assumption.
+      + apply IHn.
+        unfold F_phi.F_phi in H at 1.
+        simpl in H.
+        assumption.
+  Qed.
+
+  Definition false_ps := (fun _ : Proc.t => CWhile BTrue CSkip
+                          (fun _ : list sigma => True)
+                          (fun _ : sigma => 0) 0) .
+
+  Lemma ds_none_ceval_none n i ps : forall l l',
+      ds e_denot (k_inliner n i ps) l = Some l' ->
+      ceval (k_inliner n i ps) l false_ps l'.
+  Proof.
+    remember (k_inliner n i ps) as inline eqn: H.
+    clear H n ps.
+    induction inline;simpl;intros.
+    - inversion H. apply E_Skip.
+    - inversion H. now apply E_Assi.
+    - inversion H. now apply E_Assr.
+    - inversion H. apply E_Assert.
+    - revert H.
+      case_eq (ds e_denot inline1 l);[simpl|discriminate].
+      intros s H1 H2.
+      apply IHinline1 in H1.
+      apply IHinline2 in H2.
+      apply E_Seq with (s':=s);assumption.
+    - revert H.
+      case_eq (beval l b);intros Hb H.
+      + apply IHinline1 in H.
+        apply E_IfTrue;assumption.
+      + apply IHinline2 in H.
+        apply E_IfFalse;assumption.
+    - apply W_phi.phi_terminates_n in H as [n Hn].
+      revert Hn; revert l; revert l'.
+      induction n;intros l' l.
+      + discriminate.
+      + simpl.
+        unfold W_phi.F_phi at 1.
+        case_eq (beval l b);simpl;intros Hb.
+        * case_eq (ds e_denot inline l);[simpl |discriminate].
+          intros s Hn Hi.
+          apply E_WhileTrue with (s':=s);[assumption | now apply IHinline| now apply IHn ].
+        * intros H.
+          inversion H;subst.
+          now apply E_WhileFalse.
+    - discriminate.
+  Qed.
+
+  Lemma ceval_inline2_inline1 n: forall i l l' ps,
+      ceval (k_inliner n i ps) l false_ps l' ->
+      forall ps0 : Psi.psi, ceval (Inline1.k_inliner (S n) i ps) l ps0 l'.
+  Proof.
+    induction n.
+    - intros. simpl in H.
+      apply Inline1.n_ps_inline_n_inline.
+      apply H.
+    - pose (ps1:= (fun _ : Proc.t => CWhile BTrue CSkip
+                                     (fun _ : list sigma => True)
+                                     (fun _ : sigma => 0) 0)
+            ).
+       induction i;intros *.
+       + rewrite inline_cskip;intros ??.
+         now apply Inline1.inline_p_ps with ps1.
+       + rewrite inline_cassi;intros ??.
+         now apply Inline1.inline_p_ps with ps1.
+       + rewrite inline_cassr;intros ??.
+         now apply Inline1.inline_p_ps with ps1.
+       + rewrite inline_cassert;intros ??.
+         now apply Inline1.inline_p_ps with ps1.
+       + rewrite inline_cseq;intros H ? ;simpl.
+         inversion H;subst.
+         apply E_Seq with s'.
+         * now apply IHi1.
+         * now apply IHi2.
+       + rewrite inline_cif;intros H ?;simpl.
+         inversion H;subst.
+         * apply E_IfTrue;[assumption| now apply IHi1].
+         * apply E_IfFalse;[assumption| now apply IHi2].
+       + rewrite inline_cwhile;intros H ?;simpl.
+         remember (CWhile b _ _ _ id) as original_command eqn:Horig.
+         induction H;inversion Horig;subst.
+         * now apply E_WhileFalse.
+         * apply E_WhileTrue with s';[assumption| now  apply IHi| now apply IHceval2].
+       + simpl.
+         intros H.
+         now apply IHn.
+  Qed.
+
 End Inline2.
 
 (** Function for loop inlining in Com **)
 
 Fixpoint unroll n b p :=
   match n with
-  | 0 => CWhile BTrue CSkip (fun _ => True) (fun _ => 0)
+  | 0 => CWhile BTrue CSkip (fun _ => True) (fun _ => 0) 0
   | S n => CIf b (CSeq p (unroll n b p)) CSkip
   end.
 
-Lemma unroll_n_ceval n p b inv var s ps s':
-  ceval (unroll n b p) s ps s' -> ceval (CWhile b p inv var) s ps s'.
+Lemma unroll_n_ceval n p b inv var id s ps s':
+  ceval (unroll n b p) s ps s' -> ceval (CWhile b p inv var id) s ps s'.
 Proof.
   generalize dependent s.
   generalize dependent s'.
@@ -723,16 +908,16 @@ Proof.
         apply E_IfTrue;[assumption|].
         eapply E_Seq ;[apply H3|].
         apply IHn.
-        Lia.lia.
+        lia.
         assumption.
       * apply E_IfFalse;assumption.
 Qed.
 
-Lemma ceval_unroll_n p s s' b inv var ps:
-  ceval (CWhile b p inv var) s ps s' -> exists n, ceval (unroll n b p) s ps s'.
+Lemma ceval_unroll_n p s s' b inv var id ps:
+  ceval (CWhile b p inv var id) s ps s' -> exists n, ceval (unroll n b p) s ps s'.
 Proof.
   intros.
-  remember (CWhile b p inv var) as original_command eqn:Horig.
+  remember (CWhile b p inv var id) as original_command eqn:Horig.
   induction H; inversion Horig; subst;simpl.
   * exists 1.
     apply E_IfFalse;[ apply H | apply E_Skip].

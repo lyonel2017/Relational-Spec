@@ -1,4 +1,5 @@
 From Rela Require Import Com.
+From Rela Require Import Sem.
 From Rela Require Import Inliner.
 From Rela Require Import Aexp.
 From Rela Require Import Bexp.
@@ -88,9 +89,9 @@ Proof.
         -- intros. rewrite H1 in Hbx. inversion Hbx.
 Qed.
 
-Lemma unroll_while_while n b c P v ps: forall s s',
-   ceval (CSeq (unroll n b c) (CWhile b c P v)) s ps s' ->
-   ceval (CWhile b c P v) s ps s'.
+Lemma unroll_while_while n b c P v id ps: forall s s',
+   ceval (CSeq (unroll n b c) (CWhile b c P v id)) s ps s' ->
+   ceval (CWhile b c P v id) s ps s'.
 Proof.
   induction n;intros.
   - simpl in H.
@@ -112,15 +113,15 @@ Proof.
 Qed.
 
 Lemma while_total :
-  forall (inv: assertion) (var: variant) b c ps l,
-    total (fun s1 => inv (s1 :: l) /\ beval s1 b = true)
-          (fun s2 s1 => inv (s2 :: l) /\ var s2 < var s1) c ps ->
-    (forall s1, inv (s1 :: l) -> 0 <= var s1) ->
-    total (fun s => inv (s :: l))
-                (fun s' _ => inv (s' :: l) /\ beval s'  b = false)
-                (CWhile b c inv var) ps.
+  forall (inv: assertion) (var: variant) b c id ps l si,
+    total (fun s1 => inv (s1 :: (si :: l)) /\ beval s1 b = true)
+          (fun s2 s1 => inv (s2 :: (si :: l)) /\ var s2 < var s1) c ps ->
+    (forall s1, inv (s1 :: (si :: l)) -> 0 <= var s1) ->
+    total (fun s => inv (s :: (si :: l)))
+                (fun s' _ => inv (s' :: (si :: l)) /\ beval s'  b = false)
+                (CWhile b c inv var id) ps.
 Proof.
-  intros P v b c ps l Hhoare Hvariant.
+  intros P v b c id ps l si Hhoare Hvariant.
   apply hoare_total.
   - apply total_hoare in Hhoare.
     apply while_triple.
@@ -128,7 +129,7 @@ Proof.
     apply (Hhoare s s' HPre Heval).
   - intros st HPre.
     destruct (beval st b) eqn: Hb;[ | exists st; apply E_WhileFalse; assumption].
-    assert (HPreb: P(st :: l) /\ beval st b = true). { split;repeat assumption. }
+    assert (HPreb: P(st :: (si :: l)) /\ beval st b = true). { split;repeat assumption. }
     specialize (total_unroll_c _ _ _ _ _ _ Hhoare (v st) st HPreb).
     intros.
     destruct H.
@@ -143,7 +144,7 @@ Proof.
       assert (H2: v x <= v st - v st).
       { apply H1. reflexivity. }
       replace (v st - v st) with 0 in H2;[| rewrite Proc.sub_diag;auto].
-      assert (HPrex: P(x :: l) /\ beval x b = true). { split;repeat assumption. }
+      assert (HPrex: P(x :: (si :: l)) /\ beval x b = true). { split;repeat assumption. }
       specialize (Hhoare x HPrex).
       destruct Hhoare.
       Lia.lia.
@@ -161,7 +162,7 @@ Definition total_ctx (cl : Phi.phi) (ps: Psi.psi)
 
 Definition total_proc_ctx (var: variant) (cl : Phi.phi) (ps_init :Psi.psi) :=
   forall v p ps,
-    (forall p, total (fun s => get_pre (cl p) s /\ var s + 1 = v)
+    (forall p, total (fun s => get_pre (cl p) s /\ var s < v)
             (get_post (cl p))
           (CCall p) ps) ->
     total (fun s => get_pre (cl p) s /\ var s = v) (get_post (cl p))
@@ -176,7 +177,7 @@ Definition i_total (n: nat)
 
 Definition total_proc_ctx_n (n : nat) (var: variant) (cl : Phi.phi) (ps :Psi.psi) :=
   forall v p,
-    (forall p, total (fun s => get_pre (cl p) s /\ var s + 1 = v - n )
+    (forall p, total (fun s => get_pre (cl p) s /\ var s < v - n )
             (get_post (cl p))
           (CCall p) ps) ->
     i_total n (fun s => get_pre (cl p) s /\ var s = v) (get_post (cl p))
@@ -188,33 +189,26 @@ Proof.
   intros H.
   induction n;intros v p H0 s HPre.
   - rewrite Proc.sub_0_r in H0.
-    specialize (H v p ps H0 s HPre).
-    destruct H.
-    destruct H.
+    specialize (H v p ps H0 s HPre) as [x (He & HP)].
     exists x.
-    split;[|auto].
-    apply E_Call.
-    apply H.
-  -
-    assert (Hi: forall p,
-               total (fun s : sigma => get_pre (cl p) s /\ var s + 1 = v )
+    split;[ apply E_Call; exact He | exact HP].
+  - assert (Hi: forall p,
+               total (fun s : sigma => get_pre (cl p) s /\ var s < v )
                  (get_post (cl p)) (CCall p) ps).
-    { intros p0 s0 HP.
-      specialize (IHn (v - 1) p0).
-      replace (v - 1 - n ) with (v - S n ) in IHn by Lia.lia.
-      destruct HP.
-      apply Proc.add_sub_eq_r in H2.
-      symmetry in H2.
-      assert (HP : get_pre (cl p0) s0 /\ var s0 = v - 1) by auto.
-      specialize (IHn H0 s0 HP).
-      destruct IHn.
+    { intros p0 s0 [HP1 HP2].
+      assert (HP0 : get_pre (cl p0) s0 /\ var s0 = var s0) by auto.
+      destruct HPre as [HPre ?].
+      subst.
+      assert (Hint: forall p,
+                 total (fun s : sigma => get_pre (cl p) s /\ var s < var s0 - n)
+                   (get_post (cl p)) (CCall p) ps).
+      { intros pa sa Ha. apply H0. split;[ apply Ha |Lia.lia]. }
+      specialize (IHn (var s0) p0 Hint s0 HP0) as [x [He HPost]].
       exists x.
-      destruct H3.
-      apply Inline2.n_inline_ceval_ceval in H3.
-      split; [apply H3 |  apply H4] .
+      apply Inline2.n_inline_ceval_ceval in He.
+      split; [exact He | exact HPost] .
     }
-    specialize (H v p ps Hi s HPre).
-    destruct H.
+    specialize (H v p ps Hi s HPre) as [x H].
     exists x.
     split;[|apply H].
     apply Inline2.ceval_n_inline_ceval.
@@ -229,19 +223,17 @@ Proof.
   intros.
   intros s Hpre.
   assert (H1:  (forall p : Proc.t,
-                   total (fun s0 : sigma => get_pre (cl p) s0 /\ var s0 + 1 = var s - var s)
+                   total (fun s0 : sigma => get_pre (cl p) s0 /\ var s0 < var s - var s)
                      (get_post (cl p)) (CCall p) ps)).
   { intros.
     intros s' HP.
     Lia.lia. }
   assert (HP:  get_pre (cl p) s /\ var s = var s);auto.
-  specialize (H (var s) (var s) p H1 s HP).
-  destruct H.
+  specialize (H (var s) (var s) p H1 s HP) as [x [He HPost]].
   exists x.
-  destruct H.
-  split;[|auto].
-  apply Inline2.n_inline_ceval_ceval in H.
-  eauto.
+  split;[|exact HPost].
+  apply Inline2.n_inline_ceval_ceval in He.
+  exact He.
 Qed.
 
 (** Modular Verification of Total correcness **)

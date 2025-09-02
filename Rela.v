@@ -1,12 +1,12 @@
 From Rela Require Import Proc.
 From Rela Require Import Inliner.
 From Rela Require Import Com.
+From Rela Require Import Sem.
 From Rela Require Import Sigma.
 From Rela Require Import Hoare_Triple.
 From Rela Require Import Quadruple.
 
 From Coq Require Import Program.
-From Coq Require Import Eqdep_dec.
 From Coq Require Import Lists.List.
 Import ListNotations.
 From Coq Require Import Lia.
@@ -98,7 +98,7 @@ End Single_Rela_Prop.
 
 Definition r_clause : Type := r_precondition * r_postcondition.
 
-Definition empty_clause : r_clause := (empty_r_precondition, empty_r_postcondition).
+Definition empty_r_clause : r_clause := (empty_r_precondition, empty_r_postcondition).
 
 Definition get_r_pre (an:r_clause) :=
           let (pre,post) := an in
@@ -113,9 +113,9 @@ Definition get_r_post (an:r_clause) :=
 
 Module R_Phi.
 
-  Definition r_phi : Type := list Proc.t -> r_clause.
+  Definition phi : Type := list Proc.t -> r_clause.
 
-  Definition empty_r_phi: r_phi := fun _ => empty_clause.
+  Definition empty_phi: phi := fun _ => empty_r_clause.
 
 End R_Phi.
 
@@ -249,7 +249,7 @@ Qed.
 
 Definition fold_call := List.map (fun p => CCall p).
 
-Definition relational_prop_ctx (rcl:R_Phi.r_phi) (ps: Psi.psi)
+Definition relational_prop_ctx (rcl:R_Phi.phi) (ps: Psi.psi)
                             (P: r_precondition) (Q : r_postcondition) (c: list com) :=
     (forall p, 0 < length p ->
             relational_prop (get_r_pre (rcl p)) (get_r_post (rcl p)) (fold_call p) ps) ->
@@ -259,7 +259,7 @@ Definition relational_prop_ctx (rcl:R_Phi.r_phi) (ps: Psi.psi)
 
 Definition fold_proc (ps: Psi.psi) := List.map (fun p => ps p).
 
-Definition relational_prop_proc_ctx (rcl : R_Phi.r_phi) (ps_init :Psi.psi):=
+Definition relational_prop_proc_ctx (rcl : R_Phi.phi) (ps_init :Psi.psi):=
   forall p ps,
     relational_prop_ctx rcl ps (get_r_pre (rcl p)) (get_r_post (rcl p)) (fold_proc ps_init p).
 
@@ -379,7 +379,7 @@ Definition rela_pre qcl rcl (l : list Proc.t) : r_precondition :=
   | [l1; l2] =>
       (fun m =>
         match m with
-        | [m1;m2] => (Quadruple.get_r_pre (qcl l1 l2)) m1 m2 /\
+        | [m1;m2] => (get_q_pre (qcl l1 l2)) m1 m2 /\
                      (get_r_pre (rcl l)) m
         | _ => False
         end)
@@ -391,21 +391,25 @@ Definition rela_post qcl rcl (l : list Proc.t) : r_postcondition :=
   | [l1; l2] =>
       (fun m m' =>
         match m, m' with
-        | [m1;m2],[m3;m4] => (Quadruple.get_r_post (qcl l1 l2)) m1 m2 m3 m4 /\
-                              (get_r_post (rcl l)) m m'
+        | [m1;m2],[m3;m4] => (get_q_post (qcl l1 l2)) m1 m2 m3 m4 /\
+                             (get_r_post (rcl l)) m m'
         | _ ,_ => False
         end)
   | _ => empty_r_postcondition
   end.
 
-Definition rela_clause qcl rcl l: r_clause := (rela_pre qcl rcl l, rela_post qcl rcl l).
+Definition rela_clause qcl rcl l: r_clause :=
+  (rela_pre qcl rcl l, rela_post qcl rcl l).
 
 Lemma ext_recursion_relational :
   forall P Q p ps rcl qcl,
     quadruple_proc_ctx qcl ps ->
     relational_prop_proc_ctx rcl ps ->
     relational_prop_ctx
-      (fun l => if List.length l =? 2 then rela_clause qcl rcl l else rcl l) ps P Q p ->
+      (fun l => if List.length l =? 2 then
+               rela_clause qcl rcl l
+             else rcl l)
+      ps P Q p ->
     relational_prop P Q p ps.
 Proof.
 intros.
@@ -422,11 +426,11 @@ destruct (length p0) eqn: Hp0.
     * simpl.
       destruct p0. inversion Hp0.
       destruct p0. inversion Hp0.
-      destruct p0;[ | inversion Hp0].
+      destruct p0;[|inversion Hp0].
       intros s s' Hs Hs' HPre Heval.
       destruct s. inversion Hs.
       destruct s0. inversion Hs.
-      destruct s1;[| inversion Hs].
+      destruct s1;[|inversion Hs].
       destruct s'. inversion Hs'.
       destruct s'. inversion Hs'.
       destruct s';[|inversion Hs'].
@@ -434,7 +438,7 @@ destruct (length p0) eqn: Hp0.
       split.
       -- inversion Heval;subst.
          inversion H11;subst.
-         eapply ext_r_recursive_proc.
+         eapply ext_q_recursive_proc.
          apply H. apply HPre.
          auto. auto.
       -- eapply r_recursive_proc.

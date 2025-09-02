@@ -5,6 +5,8 @@ From Rela Require Import Correct.
 From Rela Require Import Rela.
 From Rela Require Import Vcg.
 From Rela Require Import Vcg_Rela.
+From Rela Require Import Quadruple.
+From Rela Require Import Vcg_Quadruple.
 
 From Coq Require Import Program.
 From Coq Require Import Eqdep_dec.
@@ -20,7 +22,9 @@ forall rcl ps p h (hyh :length p = length h),
 forall (P: r_precondition) (Q: r_postcondition),
 (forall ps,
   (forall ml (hy:length p = length ml),
-     P ml -> tr rcl ps -> rtc' p ml h (phi_call (extract rcl) ps) hy hyh) /\
+      P ml -> tr rcl ps ->
+      rtc' p ml h (phi_call (extract rcl) ps) hy hyh)
+  /\
   (forall ml (hy:length p = length ml),
      P ml -> tr rcl ps ->
      rtc p ml h (phi_call (extract rcl) ps ) (fun ml' _ => Q ml' ml) hy hyh)) ->
@@ -159,3 +163,63 @@ apply recursion_relational with rcl.
 * apply rcorrect_proc. assumption.
 * apply rcorrect_c with (h:=h) (hyh:=hyh). all: try assumption.
 Qed.
+
+(** Extention: We add quadruple with speciale rules **)
+
+(** Proof that one can use a verification condition
+    generator to proof Quadruple on procedure **)
+
+Lemma qcorrect_proc :
+  forall qcl cl ps,
+    qtc_p ps cl qcl ->
+    quadruple_proc_ctx qcl ps.
+Proof.
+Admitted.
+
+(** Proof that one can use a verification condition
+    generator for modular Relatioanl Properties verification
+    (with handler of Quadruples)
+ **)
+
+(* Add to the one sided rule a termination requireement to get RHL
+
+WE WANT RHL
+
+ *)
+
+
+(*
+
+- We need to define how to verifiy quadruples using verification
+  condition generation using proof on calls and loops.
+- We need to define how proof relational properties using
+  relational properties on calls, quadruples on calls and
+  quadruple on whiles
+
+ *)
+
+(* Include the relational while rule system *)
+
+(* Just use the normal termination for the transitivity application, for
+ partial correction use axiom forall f, s, exit s', call f s s'
+ and proof the rule from the phd *)
+
+Theorem qrcorrect :
+  forall rcl (qcl: Quadruple.Q_Phi.phi) ps p h (hyh :length p = length h),
+  forall (P: r_precondition) (Q: r_postcondition),
+  rtc_p ps rcl ->
+  qtc_p ps (extract rcl) qcl ->
+  (forall ps,
+    (forall ml (hy:length p = length ml),
+       P ml -> tr rcl ps -> rtc' p ml h (phi_call (extract rcl) ps) hy hyh) /\
+    (forall ml (hy:length p = length ml),
+       P ml -> tr rcl ps ->
+       rtc p ml h (phi_call (extract rcl) ps ) (fun ml' _ => Q ml' ml) hy hyh)) ->
+    relational_prop P Q p ps.
+Proof.
+intros.
+apply ext_recursion_relational with rcl qcl.
+* eapply qcorrect_proc. apply H0.
+* apply rcorrect_proc. assumption.
+* apply rcorrect_c with (h:=h) (hyh:=hyh). all: try assumption.
+  Admitted.

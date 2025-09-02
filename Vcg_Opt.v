@@ -199,7 +199,7 @@ Fixpoint tc (c: com) (m m': Sigma.sigma) (h: Vcg.history)
             (cl: Phi.phi) (fin: suite): Prop :=
     match c with
     | CSkip => fin (m' = m) (m :: h)
-    | CAss x a => fin (m' = set m x (aeval m a)) (m :: h)
+    | CAssi x a => fin (m' = set m x (aeval m a)) (m :: h)
     | CAssr x a => fin (m' = set m (m x) (aeval m a)) (m :: h)
     | CAssert b =>  fin (b (m :: h) /\ m = m') (m :: h)
     | CSeq p1 p2 => forall m'',
@@ -209,7 +209,9 @@ Fixpoint tc (c: com) (m m': Sigma.sigma) (h: Vcg.history)
         tc p1 m m' h cl (fun p1 _ =>
         tc p2 m m' h cl (fun p2 _ =>
             fin (branch (simpl_bassn b m) p1 p2) (m :: h)))
-    | CWhile b p inv _ => fin (inv (m :: h) /\ inv (m' :: h) /\ ~(simpl_bassn b m')) (m :: h)
+    | CWhile b p inv _ _ => fin (inv (m :: (m :: h)) /\
+                                  inv (m' :: (m :: h)) /\
+                                  ~(simpl_bassn b m')) (m :: h)
     | CCall f => fin ((get_pre (cl f)) m /\ (get_post (cl f)) m' m) (m :: h)
     end.
 
@@ -499,7 +501,7 @@ Qed.
 Fixpoint tc' (c : com) (m: Sigma.sigma) (h: Vcg.history) (cl: Phi.phi) : Prop :=
 match c with
  | CSkip => True
- | CAss x a => True
+ | CAssi x a => True
  | CAssr x a => True
  | CAssert b => b (m :: h)
  | CSeq p1 p2 => tc' p1 m h cl /\
@@ -507,13 +509,13 @@ match c with
                  tc p1 m m'' h cl (fun f h => f -> tc' p2 m'' h cl)
  | CIf b p1 p2 =>
       (simpl_bassn b m -> tc' p1 m h cl) /\ (~simpl_bassn b m -> tc' p2 m h cl)
- | CWhile b p inv _ => inv (m :: h) /\
+ | CWhile b p inv _ _ => inv (m :: (m :: h)) /\
                      (forall m', simpl_bassn b m' ->
-                                 inv (m' :: h) ->
+                                 inv (m' :: (m :: h)) ->
                                  tc' p m' h cl) /\
                      (forall m' m'', simpl_bassn b m' ->
-                                     inv (m' :: h) ->
-                   tc p m' m'' h cl (fun f _ => f -> inv (m'' :: h)))
+                                     inv (m' :: (m :: h)) ->
+                   tc p m' m'' h cl (fun f _ => f -> inv (m'' :: (m ::  h))))
  | CCall f => (get_pre (cl f)) m
 end.
 
@@ -602,7 +604,7 @@ Definition continuation (p1: com) (cl: Phi.phi)
 Fixpoint tc'_list (c : com) (cl: Phi.phi) : list Vcg.suite :=
 match c with
  | CSkip => []
- | CAss x a => []
+ | CAssi x a => []
  | CAssr x a => []
  | CAssert b => [fun m h => b (m :: h)]
  | CSeq p1 p2 => tc'_list p1 cl ++
@@ -612,14 +614,15 @@ match c with
                   ++
                   (map (fun a: Vcg.suite =>
                   fun m h => ~simpl_bassn b m -> a m h ) (tc'_list p2 cl))
-| CWhile b p i _ => [fun m h => i (m :: h)]
+| CWhile b p i _ _ => [fun m h => i (m :: (m :: h))]
                    ++
                    (map (fun a: Vcg.suite =>
-                   fun _ h => forall m',
-                   simpl_bassn b m' -> i (m' :: h) ->a m' h) (tc'_list p cl))
+                   fun m h => forall m',
+                   simpl_bassn b m' -> i (m' :: (m :: h)) -> a m' h) (tc'_list p cl))
                    ++
-                   [fun _ h => forall m' m'',
-                   simpl_bassn b m' -> i (m' :: h) -> tc p m' m'' h cl (fun f _ => f -> i (m''::h))]
+                   [fun m h => forall m' m'',
+                        simpl_bassn b m' -> i (m' :: (m :: h)) ->
+                        tc p m' m'' h cl (fun f _ => f -> i (m'' :: (m :: h)))]
  | CCall f => [fun m _ => (get_pre (cl f)) m]
 end.
 
@@ -706,8 +709,8 @@ induction p;intros.
     - rewrite app_nth1 in H ;[ | rewrite map_length;assumption].
       erewrite nth_indep in H;[ | rewrite map_length;assumption].
       rewrite
-      (map_nth (fun (a : Vcg.suite) _ h =>
-                forall m', simpl_bassn b m' -> inv (m' :: h)-> a m' h)) in H.
+      (map_nth (fun (a : Vcg.suite) m h =>
+                forall m', simpl_bassn b m' -> inv (m' :: (m :: h))-> a m' h)) in H.
       apply H.
       assumption.
       assumption.
