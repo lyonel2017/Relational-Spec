@@ -1,3 +1,8 @@
+(*
+This file is copy of https://github.com/rocq-community/semantics/blob/master/constructs.v
+Currently opam package coq-semantics is not working
+ *)
+
 From Stdlib Require Export Relations Classical ClassicalEpsilon Zwf.
 Require Export function_cpo.
 

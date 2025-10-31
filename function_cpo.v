@@ -1,3 +1,8 @@
+(*
+This file is copy of https://github.com/rocq-community/semantics/blob/master/function_cpo.v.
+Currently opam package coq-semantics is not working
+ *)
+
 From Stdlib Require Export Relations Classical ClassicalEpsilon Zwf.
 From Stdlib Require Export Compare_dec.
 From Stdlib Require Export List ZArith.
@@ -63,13 +68,6 @@ Definition continuous (f:A -> B) :=
   forall (c: nat -> A),  chain R c ->
     forall (l:A), lub R l c ->
     lub R' (f l) (fun n => f (c n)).
-
-(* Definition continous (f: A -> B) : *)
-(*   forall (c: nat -> A), *)
-(*     chain R c -> *)
-(*     forall (l:A), lub R l c -> *)
-(*              forall (l': B), lub R' l' (fun n => f (c n)) -> *)
-(*                         f l = l'. *)
 
 Lemma continuous_imp_monotonic :
   forall f, reflexive R -> continuous f -> monotonic f.
