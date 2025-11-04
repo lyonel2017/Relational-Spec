@@ -98,7 +98,7 @@ Definition bind (A B:Type)(v:option A)(f:A->option B) : option B :=
 
 Arguments bind : default implicits.
 
-(*This proof can more modular, the sale for W_phi_continuous *)
+(*This proof can be more modular, the samee for W_phi_continuous *)
 
 Lemma bind_continuous :
   forall (A B:Type) F G,

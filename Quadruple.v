@@ -6,6 +6,8 @@ From Rela Require Import Sem.
 From Rela Require Import Sigma.
 From Rela Require Import Hoare_Triple.
 From Rela Require Import Inliner.
+From Rela Require Import Total.
+From Rela Require Import Sem_Prop.
 
 From Coq Require Import Lia.
 Import Arith.
@@ -32,7 +34,57 @@ Definition empty_q_postcondition :  q_postcondition := (fun _ _ _ _ => True).
 
 Definition quadruple (P: q_precondition) (Q: q_postcondition)
   (c1 c2: com) (ps : Psi.psi) : Prop :=
-  forall s1 s2 s1' s2', P s1 s2 -> ceval c1 s1 ps s1' -> ceval c2 s2 ps s2' -> Q s1' s2' s1 s2.
+  forall s1 s2 s1' s2',
+    P s1 s2 -> ceval c1 s1 ps s1' ->
+    ceval c2 s2 ps s2' -> Q s1' s2' s1 s2.
+
+(** Definition of classical quadruple **)
+
+Section Classical.
+
+  Section relation.
+    Context {A : Type}.
+    Context (R: A -> A -> A -> A -> Prop).
+
+    Inductive relation : A -> A -> option A -> option A -> Prop :=
+      relation_bot : forall x1 x2:A, relation x1 x2 None None
+    | relation_r :
+      forall x1 x2 x3 x4: A, R x3 x4 x1 x2 -> relation x1 x2 (Some x3) (Some x4).
+  End relation.
+
+  Definition classical_quadruple (P: q_precondition) (Q: q_postcondition)
+    (c1 c2: com) (ps : Psi.psi) : Prop :=
+    forall s1 s2, P s1 s2 -> relation Q s1 s2 (denot c1 s1 ps) (denot c2 s2 ps).
+
+  Lemma to_classical (P: q_precondition) (Q: q_postcondition)
+    (c1 c2: com) (ps : Psi.psi) :
+    ((forall s2,total (fun s1 => P s1 s2) (fun _ _ => True) c1 ps) /\
+       (forall s1,total (fun s2 => P s1 s2) (fun _ _ => True) c2 ps) /\
+       quadruple P Q c1 c2 ps) ->
+    classical_quadruple P Q c1 c2 ps.
+  Proof.
+    intros [Ht1 [Ht2 H]] s1 s2 HP.
+    specialize (Ht1 s2 s1 HP) as [n1 [H1 _]].
+    specialize (Ht2 s1 s2 HP) as [n2 [H2 _]].
+    rewrite (sn_ds _ _ _ _  H1).
+    rewrite (sn_ds _ _ _ _  H2).
+    apply relation_r.
+    apply H;assumption.
+  Qed.
+
+  Lemma from_classical (P: q_precondition) (Q: q_postcondition)
+    (c1 c2: com) (ps : Psi.psi) :
+    classical_quadruple P Q c1 c2 ps ->
+    quadruple P Q c1 c2 ps.
+  Proof.
+    intros H s1 s2 s1' s2' HP H1 H2.
+    specialize (H s1 s2 HP).
+    rewrite (sn_ds _ _ _ _  H1) in H.
+    rewrite (sn_ds _ _ _ _  H2) in H.
+    now inversion H;subst.
+  Qed.
+
+End Classical.
 
 (** Definition of a quadruple properties with inliner for loops **)
 
