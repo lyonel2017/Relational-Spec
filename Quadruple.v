@@ -6,7 +6,7 @@ From Rela Require Import Sem.
 From Rela Require Import Sigma.
 From Rela Require Import Hoare_Triple.
 From Rela Require Import Inliner.
-From Rela Require Import Total.
+From Rela Require Total.
 From Rela Require Import Sem_Prop.
 
 From Coq Require Import Lia.
@@ -30,14 +30,6 @@ Definition q_postcondition : Type :=  sigma -> sigma -> sigma -> sigma -> Prop.
 
 Definition empty_q_postcondition :  q_postcondition := (fun _ _ _ _ => True).
 
-(** Definition of quadruple **)
-
-Definition quadruple (P: q_precondition) (Q: q_postcondition)
-  (c1 c2: com) (ps : Psi.psi) : Prop :=
-  forall s1 s2 s1' s2',
-    P s1 s2 -> ceval c1 s1 ps s1' ->
-    ceval c2 s2 ps s2' -> Q s1' s2' s1 s2.
-
 (** Definition of classical quadruple **)
 
 Section Classical.
@@ -56,10 +48,22 @@ Section Classical.
     (c1 c2: com) (ps : Psi.psi) : Prop :=
     forall s1 s2, P s1 s2 -> relation Q s1 s2 (denot c1 s1 ps) (denot c2 s2 ps).
 
+End Classical.
+
+(** Definition of quadruple **)
+
+Section Quadruple.
+
+  Definition quadruple (P: q_precondition) (Q: q_postcondition)
+    (c1 c2: com) (ps : Psi.psi) : Prop :=
+    forall s1 s2 s1' s2',
+      P s1 s2 -> ceval c1 s1 ps s1' ->
+      ceval c2 s2 ps s2' -> Q s1' s2' s1 s2.
+
   Lemma to_classical (P: q_precondition) (Q: q_postcondition)
     (c1 c2: com) (ps : Psi.psi) :
-    ((forall s2,total (fun s1 => P s1 s2) (fun _ _ => True) c1 ps) /\
-       (forall s1,total (fun s2 => P s1 s2) (fun _ _ => True) c2 ps) /\
+    ((forall s2,Total.total (fun s1 => P s1 s2) (fun _ _ => True) c1 ps) /\
+       (forall s1,Total.total (fun s2 => P s1 s2) (fun _ _ => True) c2 ps) /\
        quadruple P Q c1 c2 ps) ->
     classical_quadruple P Q c1 c2 ps.
   Proof.
@@ -84,7 +88,76 @@ Section Classical.
     now inversion H;subst.
   Qed.
 
-End Classical.
+End Quadruple.
+
+(** Definition of coterminating quadruple **)
+
+Section Co_quadruple.
+
+  Definition co_termination (P: q_precondition) (c1 c2: com)
+    (ps : Psi.psi) : Prop :=
+    forall s1 s2, P s1 s2 ->
+              ((exists s', ceval c1 s1 ps s') <-> (exists s', ceval c2 s2 ps s')).
+
+  Definition co_quadruple (P: q_precondition) (Q: q_postcondition)
+    (c1 c2: com) (ps : Psi.psi) : Prop :=
+    co_termination P c1 c2 ps /\ quadruple P Q c1 c2 ps.
+
+  Lemma co_to_classical (P: q_precondition) (Q: q_postcondition)
+    (c1 c2: com) (ps : Psi.psi) :
+    co_quadruple P Q c1 c2 ps ->
+    classical_quadruple P Q c1 c2 ps.
+  Proof.
+    intros H s1 s2 HP.
+    destruct H as [Hco Hq].
+    specialize (Hco s1 s2 HP).
+    destruct Hco as [Hco1 Hco2].
+    case_eq (denot c1 s1 ps).
+    - intros s' HE1.
+      specialize (ds_sn _ _ _ _ HE1) as Ht1.
+      assert (Ht1e: (exists s' : sigma, ceval c1 s1 ps s')) by eauto.
+      specialize (Hco1 Ht1e) as [s'' Ht2].
+      rewrite (sn_ds _ _ _ _ Ht2).
+      apply relation_r.
+      now apply Hq.
+    - intros HE1.
+      case_eq (denot c2 s2 ps).
+      + intros s' HE2.
+        specialize (ds_sn _ _ _ _ HE2) as Ht2.
+        assert (Ht2e: (exists s' : sigma, ceval c2 s2 ps s')) by eauto.
+        specialize (Hco2 Ht2e) as [? Ht1].
+        rewrite (sn_ds _ _ _ _ Ht1) in HE1.
+        discriminate HE1.
+      + intros ?.
+        apply relation_bot.
+  Qed.
+
+  Lemma co_from_classical (P: q_precondition) (Q: q_postcondition)
+    (c1 c2: com) (ps : Psi.psi) :
+    classical_quadruple P Q c1 c2 ps ->
+    co_quadruple P Q c1 c2 ps.
+  Proof.
+    intros Hr.
+    split.
+    - intros s1 s2 HP.
+      specialize (Hr s1 s2 HP).
+      split.
+      + intros [s1' HE1].
+        rewrite (sn_ds _ _ _ _ HE1) in Hr.
+        inversion Hr.
+        symmetry in H2.
+        specialize (ds_sn _ _ _ _ H2) as Ht2.
+        eauto.
+      + intros [s2' HE2].
+        rewrite (sn_ds _ _ _ _ HE2) in Hr.
+        inversion Hr.
+        symmetry in H.
+        specialize (ds_sn _ _ _ _ H) as Ht1.
+        eauto.
+    - now apply from_classical.
+  Qed.
+
+End Co_quadruple.
 
 (** Definition of a quadruple properties with inliner for loops **)
 
@@ -106,7 +179,7 @@ Proof.
   * exists x0.
     apply PeanoNat.Nat.max_l_iff in e.
     split.
-    eapply unroll_ceval_S;[apply H|assumption].
+    eapply unroll_ceval_S ;[apply H|assumption].
     apply H0.
   * exists x.
     apply PeanoNat.Nat.max_r_iff in e.
@@ -178,7 +251,7 @@ Definition bi_quadruple (i: nat) (P: q_precondition) (Q: q_postcondition)
 
 Lemma qceval_n_b_inline_loop p1 p2 b1 b2 inv1 inv2 var1 var2 id1 id2 s1 s2 ps s1' s2':
   ceval (CWhile b1 p1 inv1 var1 id1) s1 ps s1' -> ceval (CWhile b2 p2 inv2 var2 id2) s2 ps s2' ->
-  exists n m: nat, ceval (unroll n b1 p1) s1 ps s1' /\ ceval (unroll m b2 p2) s2 ps s2' .
+  exists n m: nat, ceval (Inliner.unroll n b1 p1) s1 ps s1' /\ ceval (Inliner.unroll m b2 p2) s2 ps s2' .
 Proof.
   intros Heval1  Heval2.
   apply ceval_unroll_n in Heval1.
