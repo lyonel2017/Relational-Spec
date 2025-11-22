@@ -18,5 +18,7 @@ Correct.v
 Quadruple.v
 Rela.v
 Vcg_Rela.v
+Vcg_Quadruple.v
+Correct_Quadruple.v
 Correct_Rela.v
 Examples.v

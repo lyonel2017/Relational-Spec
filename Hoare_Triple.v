@@ -144,6 +144,15 @@ Module Phi.
 
 End Phi.
 
+Lemma empty_hoare p c ps:
+  hoare_triple (get_pre (Phi.empty_phi p))
+    (get_post (Phi.empty_phi p)) c ps.
+Proof.
+  intros s s' HPre He.
+  simpl.
+  unfold empty_postcondition;auto.
+Qed.
+
 (** Defintion of a Hoare Triple with inliner **)
 
 Definition i_hoare_triple (n: nat)

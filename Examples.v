@@ -16,7 +16,6 @@ Import Vcg.Why3_Set.
 Import Vcg.Assn_b.
 From Coq Require Import Lists.List.
 Import ListNotations.
-From Coq Require Import Program.
 From Coq Require Import Eqdep_dec.
 From Coq Require Import Lia.
 Require Import Arith.
@@ -228,65 +227,39 @@ Qed.
 (** Some ltac to automatize the extraction of proof obligation from
     the list construct in relational property verification **)
 
-Ltac ltc2 phi ps hy hyh:=
-        destruct (mk_rtc'_def _ _ (phi_call (extract phi) ps) _ _ _ _ hy hyh)
-           as (hyr1  & hyr2 & HYP);
-        rewrite HYP;
-        clear HYP hy hyh;
-        rename hyr1 into hy;
-        rename hyr2 into hyh.
+Ltac ltc7 :=
+  split; [ apply Vcg_Opt.tc'_same
+         | first [ltc7| simpl;auto] ].
 
-Ltac ltc7 phi ps hy hyh H:=
-  ltc2 phi ps hy hyh;
-  split; [ clear hy hyh; simpl H; apply Vcg_Opt.tc'_same
-         | first [ltc7 phi ps hy hyh H | simpl;auto] ].
-
-Ltac ltc1 phi ps hy hyh ml H :=
+Ltac ltc1 ml HPre :=
          destruct ml;
-         [ first [ discriminate hy | first [ltc7 phi ps hy hyh H | simpl;auto] ]
-         | first [ discriminate hy | ltc1 phi ps hy hyh ml H ]
+         [ first [ simpl in HPre; contradiction HPre | first [ltc7 | simpl;auto]]
+         | first [ simpl in HPre; contradiction HPre | ltc1 ml HPre ]
          ].
 
-Ltac ltc6 phi ps hy hyh :=
-       destruct (mk_rtc_def _ _ (phi_call (extract phi) ps) _ _ _ _ hy hyh)
-           as (hyr1 & hyr2 & HYP);
-       rewrite HYP;
-       clear HYP hy hyh;
-       rename hyr1 into hy;
-       rename hyr2 into hyh.
+Ltac ltc5 :=
+   apply Vcg_Opt.tc_same;
+   cbv delta [ Vcg_Opt.tc] iota beta match;
+   intros; first [ ltc5 | simpl;auto ].
 
-Ltac ltc3 phi ps hy hyh:=
-    intro; intro; intros H1;
-    tryif ltc6 phi ps hy hyh
-    then
-    eapply consequence_tc_suite;
-    [ clear H1; ltc3 phi ps hy hyh
-    | apply Vcg_Opt.tc_same; apply H1 ]
-    else simpl; apply H1.
-
-Ltac ltc5 phi ps hy hyh :=
-    ltc6 phi ps hy hyh;
-    eapply consequence_tc_suite;
-    [ ltc3 phi ps hy hyh
-    | apply Vcg_Opt.tc_same].
-
-Ltac ltc4 ml hy hyh phi ps :=
+Ltac ltc4 ml HPre :=
          destruct ml;
-         [ first [ discriminate hy | first [ltc5 phi ps hy hyh | simpl; auto] ]
-         | first [ discriminate hy | ltc4 ml hy hyh phi ps ]
+         [ first [ simpl in HPre; contradiction HPre |
+                   first [ltc5| simpl; auto] ]
+         | first [ simpl in HPre; contradiction HPre| ltc4 ml HPre ]
          ].
 
-Ltac ltc0 phi l hyh := apply rcorrect
-                with (rcl:=phi) (h:=l) (hyh:=hyh);
+Ltac ltc0 phi l := apply rcorrect
+                with (rcl:=phi) (h:=l);
                  [
                  | intros ps;
                    split;
-                   [ intros ml hy H Hr;
-                     ltc1 phi ps hy hyh ml H
-                   | intros ml hy H Hr;
-                     ltc4 ml hy hyh phi ps;
-                     clear hy hyh;
-                     simpl in H
+                   [ intros ml HPre Hr;
+                     ltc1 ml HPre
+                   | intros ml HPre Hr;
+                       ltc4 ml HPre(* ; *)
+                     (* clear hy hyh; *)
+                     (* simpl in H *)
                    ]
                 ].
 
@@ -329,151 +302,152 @@ Example relation_swap : relational_prop
                             rela_pre rela_post
                             [swap_1; swap_2] Psi.empty_psi.
 Proof.
-assert (hyh :length [swap_1; swap_2] =
-             length [empty_history; empty_history]).
-{  simpl. reflexivity. }
-ltc0 R_Phi.empty_phi [empty_history; empty_history] hyh.
+  unfold swap_1.
+  unfold swap_2.
+ltc0 R_Phi.empty_phi [empty_history; empty_history].
 (* Verification of proof obligation for procedure*)
-+ apply rtc_p_empty_psi.
++ unfold rtc_p.
+  apply rtc_p_empty_psi.
 (* Verification of auxilliary proof obligation *)
 + simpl. auto.
 + simpl. auto.
 (* Main proof obligation *)
-+ simpl.
-  intros.
++ simpl in H.
+  simpl in H0.
+  simpl in HPre.
   unfold X1, X2, X3 in *.
   decompose [and] H;clear H.
   decompose [and] H0;clear H0.
-  decompose [and] H1;clear H1.
+  decompose [and] HPre;clear HPre.
   split.
   * (*<1>*)
-    rewrite H12.
+    rewrite H4.
     mem_d_in m''0 (m''0 2) 1 (m''0 3).
     mem_d_in m''0 (m''0 2) (m''0 1) (m''0 3).
-    rewrite H11.
+    rewrite H3.
     mem_d_in m'' (m'' 1) 1 (m'' (m'' 2)).
     mem_s m'' (m'' 1) (m'' 1) (m'' (m'' 2)).
-    rewrite H.
+    rewrite H1.
     mem_d s 3 2 (s (s 1)).
     mem_d s 3 (s 2) (s (s 1)).
     (*<2>*)
-    rewrite H14.
+    rewrite H6.
     mem_d_in m''2 (m''2 1) 1 (m''2 (m''2 1) - m''2 (m''2 2)).
     mem_s m''2 (m''2 1) (m''2 1) (m''2 (m''2 1) - m''2 (m''2 2)).
-    rewrite H13.
+    rewrite H5.
     mem_d_in m''1 (m''1 2) 2 (m''1 (m''1 1) - m''1 (m''1 2)).
     mem_d_in m''1 (m''1 2) 1 (m''1 (m''1 1) - m''1 (m''1 2)).
     mem_s m''1 (m''1 2) (m''1 2) (m''1 (m''1 1) - m''1 (m''1 2)).
     mem_d_in m''1 (m''1 2) (m''1 1) (m''1 (m''1 1) - m''1 (m''1 2)).
-    rewrite H0.
+    rewrite H.
     mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
     mem_d s0 (s0 1) (s0 2) (s0 (s0 1) + s0 (s0 2)).
     mem_d s0 (s0 1) 1 (s0 (s0 1) + s0 (s0 2)).
     mem_s s0 (s0 1) (s0 1) (s0 (s0 1) + s0 (s0 2)).
     - lia.
     (* all the little things *)
-    - rewrite H0.
+    - rewrite H.
       mem_d s0 (s0 1) 1 (s0 (s0 1) + s0 (s0 2)).
-      mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
-      lia.
-    - rewrite H0.
-      mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
-      lia.
-    - rewrite H0.
-      mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
-      lia.
-    - rewrite H13.
-      mem_d_in m''1 (m''1 2) 1 (m''1 (m''1 1) - m''1 (m''1 2)).
-      rewrite H0.
-      mem_d s0 (s0 1) 1 (s0 (s0 1) + s0 (s0 2)).
-      lia.
-      rewrite H0.
       mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
       lia.
     - rewrite H.
+      mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
+      lia.
+    - rewrite H.
+      mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
+      lia.
+    - rewrite H5.
+      mem_d_in m''1 (m''1 2) 1 (m''1 (m''1 1) - m''1 (m''1 2)).
+      rewrite H.
+      mem_d s0 (s0 1) 1 (s0 (s0 1) + s0 (s0 2)).
+      lia.
+      rewrite H.
+      mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
+      lia.
+    - rewrite H1.
       mem_d s 3 1 (s (s 1)).
       lia.
-    - rewrite H11.
+    - rewrite H3.
       mem_d_in m'' (m'' 1) 1 (m'' (m'' 2)).
       mem_d_in m'' (m'' 1) 2 (m'' (m'' 2)).
-      rewrite H.
+      rewrite H1.
       mem_d s 3 1 (s (s 1)).
       mem_d s 3 2 (s (s 1)).
       lia.
-      rewrite H.
+      rewrite H1.
       mem_d s 3 1 (s (s 1)).
       lia.
-      rewrite H.
+      rewrite H1.
       mem_d s 3 1 (s (s 1)).
       lia.
-    - rewrite H11.
+    - rewrite H3.
       mem_d_in m'' (m'' 1) 2 (m'' (m'' 2)).
-      rewrite H.
+      rewrite H1.
       mem_d s 3 2 (s (s 1)).
       lia.
-      rewrite H.
+      rewrite H1.
       mem_d s 3 1 (s (s 1)).
       lia.
  * (*<1>*)
-    rewrite H12.
+    rewrite H4.
     mem_d_in m''0 (m''0 2) 2 (m''0 3).
     mem_s m''0 (m''0 2) (m''0 2) (m''0 3).
-    rewrite H11.
+    rewrite H3.
     mem_d_in m'' (m'' 1) 3 (m'' (m'' 2)).
-    rewrite H.
+    rewrite H1.
     mem_s s 3 3 (s (s 1)).
     (*<2>*)
-    rewrite H14.
+    rewrite H6.
     mem_d_in m''2 (m''2 1) 2 (m''2 (m''2 1) - m''2 (m''2 2)).
     mem_d_in m''2 (m''2 1) (m''2 2) (m''2 (m''2 1) - m''2 (m''2 2)).
-    rewrite H13.
+    rewrite H5.
     mem_d_in m''1 (m''1 2) 2 (m''1 (m''1 1) - m''1 (m''1 2)).
     mem_s m''1 (m''1 2) (m''1 2)  (m''1 (m''1 1) - m''1 (m''1 2)).
-    rewrite H0.
+    rewrite H.
     mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
     mem_d s0 (s0 1) (s0 2) (s0 (s0 1) + s0 (s0 2)).
     mem_d s0 (s0 1) 1 (s0 (s0 1) + s0 (s0 2)).
     mem_s s0 (s0 1) (s0 1) (s0 (s0 1) + s0 (s0 2)).
     - lia.
       (* all the little things*)
-    - rewrite H0.
+    - rewrite H.
       mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
       lia.
-    - rewrite H13.
+    - rewrite H5.
       mem_d_in m''1 (m''1 2) 1 (m''1 (m''1 1) - m''1 (m''1 2)).
       mem_d_in m''1 (m''1 2) 2 (m''1 (m''1 1) - m''1 (m''1 2)).
-      rewrite H0.
+      rewrite H.
       mem_d s0 (s0 1) 1 (s0 (s0 1) + s0 (s0 2)).
       mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
       lia.
-      rewrite H0.
+      rewrite H.
       mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
       lia.
-      rewrite H0.
+      rewrite H.
       mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
       lia.
-    - rewrite H13.
+    - rewrite H5.
       mem_d_in m''1 (m''1 2) 1 (m''1 (m''1 1) - m''1 (m''1 2)).
-      rewrite H0.
+      rewrite H.
       mem_d s0 (s0 1) 1 (s0 (s0 1) + s0 (s0 2)).
       lia.
-      rewrite H0.
+      rewrite H.
       mem_d s0 (s0 1) 2 (s0 (s0 1) + s0 (s0 2)).
       lia.
-    - rewrite H.
+    - rewrite H1.
       mem_d s 3 1 (s (s 1)).
       lia.
-    - rewrite H11.
+    - rewrite H3.
       mem_d_in m'' (m'' 1) 2 (m'' (m'' 2)).
-      rewrite H.
+      rewrite H1.
       mem_d s 3 2 (s (s 1)).
       lia.
-      rewrite H.
+      rewrite H1.
       mem_d s 3 1 (s (s 1)).
       lia.
 Qed.
 
-(** Example 2: Compare **)
+  (** Example 2: Compare **)
 
 (* Defintion of a comparator procedure *)
 
@@ -509,35 +483,36 @@ Example relation_comp : relational_prop
                             rela_pre_comp rela_post_comp
                             [comp; comp] Psi.empty_psi.
 Proof.
-assert (hyh :length [comp; comp] =
-             length [empty_history; empty_history]).
-{  simpl. reflexivity. }
-ltc0 R_Phi.empty_phi [empty_history; empty_history] hyh.
+  unfold comp.
+  ltc0 R_Phi.empty_phi [empty_history; empty_history].
 (* Verification of proof obligation for procedure*)
 + apply rtc_p_empty_psi.
 (* Verification of auxilliary proof obligation *)
 + simpl. auto.
 + simpl. auto.
 (* Main proof obligation *)
-+ simpl.
-  intros.
-  destruct H0.
-  -- destruct H1.
++ unfold X1, X2 in *.
+  simpl in H.
+  simpl in H0.
+  simpl in HPre.
+  unfold X1, X2 in *.
+  destruct H.
+  -- destruct H0.
      ** subst. lia.
-     ** destruct H3.
+     ** destruct H2.
         +++ subst.
             mem_s s ret ret 0.
             mem_s s0 ret ret 2.
             reflexivity.
         +++ subst. lia.
   -- destruct H1.
-     ** destruct H2.
+     ** destruct H0.
         +++ subst.
             mem_s s ret ret 2.
             mem_s s0 ret ret 0.
             reflexivity.
         +++ subst. lia.
-     ** destruct H2.
+     ** destruct H0.
         +++ subst. lia.
         +++ destruct H3.
            *** subst. lia.
@@ -603,10 +578,7 @@ Example relation_mono : relational_prop
                   [<[ call(f2);call(f2) ]>;
                    <[ call(f2);call(f2) ]> ] f2_psi.
 Proof.
-assert (hyh :length [<[ call(f2);call(f2) ]>; <[ call(f2);call(f2) ]>] =
-             length [empty_history; empty_history]).
-{  simpl. reflexivity. }
-ltc0 f2_r_phi [empty_history; empty_history] hyh.
+  ltc0 f2_r_phi [empty_history; empty_history].
 (* Verification of proof obligation for procedure *)
 + unfold rtc_p.
   intros.
@@ -614,9 +586,9 @@ ltc0 f2_r_phi [empty_history; empty_history] hyh.
    (* Proof oblication for relational property {f2_r_pre} f2 ~ f2 {f2_r_post} *)
     - apply internal_list_dec_bl in E1 ;[ | apply Proc.eqb_eq ].
       subst.
-      destruct m;[ discriminate hy1 | ].
-      destruct m;[ discriminate hy1 | ].
-      destruct m;[ | discriminate hy1 ].
+      destruct m ;[ contradiction H | ].
+      destruct m ; [ contradiction H| ].
+      destruct m;[ | contradiction H ].
       split.
        (* Verification of auxilliary proof obligation *)
        * simpl.  auto.
@@ -631,20 +603,19 @@ ltc0 f2_r_phi [empty_history; empty_history] hyh.
        (* Verification of proof obligation for procedure f2*)
         * apply internal_list_dec_bl in E2 ;[ | apply Proc.eqb_eq ].
           subst.
-          destruct m;[ discriminate hy1 | ].
-          destruct m;[ | discriminate hy1 ].
+          destruct m ;[ contradiction H | ].
+          destruct m ; [ |contradiction H ].
           split.
           (* Verification of auxilliary proof obligation *)
           ** simpl. auto.
           (* Main proof obligation *)
           ** simpl. auto.
-         (* Nothing to do for other procedure *)
+        (* Nothing to do for other procedure *)
          * unfold f2_r_phi in H.
            rewrite E1 in H.
            rewrite E2 in H.
-           simpl in H.
-           unfold empty_r_precondition in H.
-           contradiction.
+           apply get_r_pre_emphi_false in H.
+           contradiction H.
 (* Proof obligation for relational property
       {f2_r_pre} <[ call(f2);call(f2) ]> ~ <[ call(f2);call(f2) ]> {f2_r_post}
 *)
@@ -652,7 +623,7 @@ ltc0 f2_r_phi [empty_history; empty_history] hyh.
 + simpl. auto.
 + simpl. auto.
 (* Main proof obligation *)
-+ simpl. intros.
++ simpl in HPre.
   specialize (Hr [f2; f2]).
   generalize (Hr [s; s0 ] [m''; m''0]).
   intros H2.
@@ -661,13 +632,13 @@ ltc0 f2_r_phi [empty_history; empty_history] hyh.
   simpl in H2.
   apply Hr.
   all: try lia.
+  split. apply H.
   split. apply H0.
-  split. apply H1.
   auto.
   apply H2.
   all: try lia.
+  split. apply H.
   split. apply H0.
-  split. apply H1.
   auto.
  Qed.
 
@@ -753,11 +724,7 @@ Example relation_sum : relational_prop
                   [<[ X1:= 1; X3 := 0; call(f3) ]>;
                    <[ X1:= 0; X3 := 0; call(f3) ]> ] f3_psi.
 Proof.
-assert (hyh :length  [<[ X1:= 1; X3 := 0; call(f3) ]>;
-                      <[ X1:= 0; X3 := 0; call(f3) ]> ] =
-             length [empty_history; empty_history]).
-{  simpl. reflexivity. }
-ltc0 f3_r_phi [empty_history; empty_history] hyh.
+  ltc0 f3_r_phi [empty_history; empty_history].
 (* Verification of proof obligation for procedure *)
 + unfold rtc_p.
   intros.
@@ -765,9 +732,9 @@ ltc0 f3_r_phi [empty_history; empty_history] hyh.
    (* Proof oblication for relational property {f2_r_pre} f2 ~ f2 {f2_r_post} *)
     - apply internal_list_dec_bl in E1 ;[ | apply Proc.eqb_eq ].
       subst.
-      destruct m;[ discriminate hy1 | ].
-      destruct m;[ discriminate hy1 | ].
-      destruct m;[ | discriminate hy1 ].
+      destruct m;[ contradiction H | ].
+      destruct m;[ contradiction H | ].
+      destruct m;[ |  contradiction H ].
       split.
        (* Verification of auxilliary proof obligation *)
        * split.
@@ -785,9 +752,11 @@ ltc0 f3_r_phi [empty_history; empty_history] hyh.
                simpl. auto.
             ** destruct n; [simpl;auto | simpl;auto].
        (* Main proof obligation *)
-       * ltc5 f3_r_phi ps' hy1 hy2.
-         simpl.
-         intros.
+       * cbv delta [ fold_proc map f3_psi f3 Nat.eqb f3_body] iota beta match.
+         ltc5.
+         simpl in H.
+         simpl in H1.
+         simpl in H2.
          destruct H2.
          ++ destruct H1.
           ** specialize (H0 [f3; f3] [m''0;m''2] [m'; m'0]).
@@ -841,8 +810,8 @@ ltc0 f3_r_phi [empty_history; empty_history] hyh.
        (* Verification of proof obligation for procedure f3*)
         * apply internal_list_dec_bl in E2 ;[ | apply Proc.eqb_eq ].
           subst.
-          destruct m;[ discriminate hy1 | ].
-          destruct m;[ | discriminate hy1 ].
+          destruct m;[ contradiction H | ].
+          destruct m;[ | contradiction H ].
           split.
           (* Verification of auxilliary proof obligation *)
           ** split.
@@ -854,20 +823,20 @@ ltc0 f3_r_phi [empty_history; empty_history] hyh.
                 -- destruct n; [simpl;auto | simpl;auto].
              ++ simpl. auto.
           (* Main proof obligation *)
-          ** ltc5 f3_r_phi ps' hy1 hy2.
-             simpl.
-             intros.
+          ** cbv delta [ fold_proc map f3_psi f3 Nat.eqb f3_body] iota beta match.
+             ltc5.
+             simpl in H.
+             simpl in H1.
              destruct H1.
              ++ lia.
-             ++ rewrite H3.
+             ++ rewrite H2.
                 reflexivity.
     (* Nothing to do for other procedure *)
      * unfold f3_r_phi in H.
        rewrite E1 in H.
        rewrite E2 in H.
-       simpl in H.
-       unfold empty_r_precondition in H.
-       contradiction.
+       apply get_r_pre_emphi_false in H.
+       contradiction H.
 (* Proof obligation for main relational property *)
 (* Verification of auxilliary proof obligation *)
 + apply Vcg_Opt.Tc'_list.tc'_list_same.
@@ -882,51 +851,52 @@ ltc0 f3_r_phi [empty_history; empty_history] hyh.
      simpl. auto.
   ++ destruct n; [simpl; auto | simpl; auto].
 (* Main proof obligation *)
-+ simpl.
-  intros.
++ simpl in HPre.
+  simpl in H.
+  simpl in H0.
   decompose [and] H0;clear H0.
-  decompose [and] H1;clear H1.
+  decompose [and] H;clear H.
   destruct (s X2) eqn:Horig.
-  * rewrite <- H9.
-    rewrite <- H5.
-    rewrite H4.
+  * rewrite <- H8.
+    rewrite <- H4.
+    rewrite H7.
     mem_s m'' X3 X3 0.
-    rewrite H8.
+    rewrite H3.
     mem_s m''1 X3 X3 0.
     reflexivity.
-    - rewrite H4.
-      mem_d m'' X3 X1 0.
-      mem_d m'' X3 X2 0.
-      rewrite H2.
-      mem_s s X1 X1 1.
-      mem_d s X1 X2 1.
-      lia.
-    - rewrite H8.
+    - rewrite H3.
       mem_d m''1 X3 X1 0.
       mem_d m''1 X3 X2 0.
-      rewrite H0.
+      rewrite H1.
       mem_s s0 X1 X1 0.
       mem_d s0 X1 X2 0.
+      lia.
+    - rewrite H7.
+      mem_d m'' X3 X1 0.
+      mem_d m'' X3 X2 0.
+      rewrite H0.
+      mem_s s X1 X1 1.
+      mem_d s X1 X2 1.
       lia.
  * specialize (Hr [f3; f3] [m''0; m''2] [m'; m'0]).
     simpl in Hr.
     apply Hr.
     all: try lia.
-    split. apply H7.
-    split. apply H11.
+    split. apply H10.
+    split. apply H6.
     auto.
-    rewrite H8.
+    rewrite H3.
     mem_d m''1 X3 X1 0.
     mem_d m''1 X3 X2 0.
     mem_s m''1 X3 X3 0.
-    rewrite H0.
+    rewrite H1.
     mem_s s0 X1 X1 0.
     mem_d s0 X1 X2 0.
-    rewrite H4.
+    rewrite H7.
     mem_d m'' X3 X1 0.
     mem_d m'' X3 X2 0.
     mem_s m'' X3 X3 0.
-    rewrite H2.
+    rewrite H0.
     mem_s s X1 X1 1.
     mem_d s X1 X2 1.
     lia.
@@ -990,10 +960,7 @@ Example relation_mono_diff : relational_prop
                   [<[ call(f2)]>;
                    <[ call(f4)]> ] f24_psi.
 Proof.
-assert (hyh :length [<[ call(f2) ]>; <[ call(f4) ]>] =
-             length [empty_history; empty_history]).
-{  simpl. reflexivity. }
-ltc0 f24_r_phi [empty_history; empty_history] hyh.
+ltc0 f24_r_phi [empty_history; empty_history].
 (* Verification of proof obligation for procedure *)
 + unfold rtc_p.
   intros.
@@ -1001,9 +968,9 @@ ltc0 f24_r_phi [empty_history; empty_history] hyh.
    (* Proof oblication for relational property {f2_r_pre} f2 ~ f4 {f2_r_post} *)
     - apply internal_list_dec_bl in E1 ;[ | apply Proc.eqb_eq ].
       subst.
-      destruct m;[ discriminate hy1 | ].
-      destruct m;[ discriminate hy1 | ].
-      destruct m;[ | discriminate hy1 ].
+      destruct m;[ contradiction H| ].
+      destruct m;[ contradict H | ].
+      destruct m;[ | contradict H ].
       split.
        (* Verification of auxilliary proof obligation *)
        * simpl. auto.
@@ -1018,8 +985,8 @@ ltc0 f24_r_phi [empty_history; empty_history] hyh.
        (* Verification of proof obligation for procedure f2*)
         * apply internal_list_dec_bl in E2 ;[ | apply Proc.eqb_eq ].
           subst.
-          destruct m;[ discriminate hy1 | ].
-          destruct m;[ | discriminate hy1 ].
+          destruct m;[ contradict H | ].
+          destruct m;[ | contradict H ].
           split.
           (* Verification of auxilliary proof obligation *)
           ** simpl. auto.
@@ -1029,8 +996,8 @@ ltc0 f24_r_phi [empty_history; empty_history] hyh.
        (* Verification of proof obligation for procedure f2*)
           ++ apply internal_list_dec_bl in E3 ;[ | apply Proc.eqb_eq ].
              subst.
-             destruct m;[ discriminate hy1 | ].
-             destruct m;[ | discriminate hy1 ].
+             destruct m;[ contradict H | ].
+             destruct m;[ | contradict H ].
              split.
              (* Verification of auxilliary proof obligation *)
              *** simpl. auto.
@@ -1041,9 +1008,8 @@ ltc0 f24_r_phi [empty_history; empty_history] hyh.
               rewrite E1 in H.
               rewrite E2 in H.
               rewrite E3 in H.
-              simpl in H.
-              unfold empty_r_precondition in H.
-              contradiction.
+              apply get_r_pre_emphi_false in H.
+              contradiction H.
 (* Proof obligation for relational property
       {f24_r_pre} <[ call(f2) ]> ~ <[ call(f4) ]> {f24_r_post}
 *)
@@ -1051,14 +1017,14 @@ ltc0 f24_r_phi [empty_history; empty_history] hyh.
 + simpl. auto.
 + simpl. auto.
 (* Main proof obligation *)
-+ simpl.
++ simpl in HPre.
   intros.
   specialize (Hr [f2; f4] [s; s0 ] [m'; m'0]).
   simpl in Hr.
   apply Hr.
   all: try lia.
+  split. apply H.
   split. apply H0.
-  split. apply H1.
   auto.
  Qed.
 
@@ -1121,100 +1087,99 @@ Definition op_r_phi (x': list Proc.t) :=
 Example relation_op_goal : relational_prop
                   op_r_pre op_r_post [com1; com2] op_psi.
 Proof.
-assert (hyh :length [com1; com2] =
-             length [empty_history; empty_history]).
-{  simpl. reflexivity. }
-ltc0 op_r_phi [empty_history; empty_history] hyh.
+  unfold com1, com2.
+ltc0 op_r_phi [empty_history; empty_history].
 (* Verification of proof obligation for procedure *)
 + admit.
 + admit.
 + admit.
 (* Main proof obligation *)
-+ simpl.
-  intros.
++ simpl in HPre.
+  simpl in H.
+  simpl in H0.
   decompose [and] H0;clear H0.
-  decompose [and] H1;clear H1.
-  clear H5 H12 H20 H29 H37.
-  assert(H44: 2 = 2) by lia.
-  assert(H45: 0 < 2) by lia.
-  assert(H46: proc_call Proc.op m''3 m' ps /\ proc_call Proc.op m''13 m'0 ps /\ True).
-  { split. assumption. split. assumption. auto. }
-  generalize (Hr [Proc.op; Proc.op] [m''3; m''13] [m'; m'0] H44 H44 H45 H46 I); simpl; intro.
-  destruct H1.
-  apply H1.
-  clear H1 H5 H46.
-  rewrite H6.
-  mem_s m''2 r r (m''2 ret).
-  mem_d m''2 r l (m''2 ret).
-  rewrite H10.
-  mem_s m''1 l l (m''1 ret).
-  mem_d m''1 l ret (m''1 ret).
-  rewrite H36.
-  mem_d m''12 r l (m''12 y).
-  mem_s m''12 r r (m''12 y).
-  rewrite H30.
-  mem_s m''11 l l (m''11 x).
-  mem_d m''11 l y (m''11 x).
-  rewrite H34.
-  mem_d m''10 y x (m''10 ret).
-  mem_s m''10 y y (m''10 ret).
-  split.
-  * rewrite H31.
-    rewrite H27.
-    mem_d m''8 r x (m''8 a).
-    rewrite H21.
-    mem_d m''7 l x (m''7 b).
-    rewrite H25.
-    mem_s m''6 x x (m''6 ret).
-    assert(H46: proc_call Proc.op m''0 m''1 ps /\ proc_call Proc.op m''5 m''6 ps /\ True).
-    { split. assumption. split. assumption. auto. }
-    generalize (Hr [Proc.op; Proc.op] [m''0; m''5] [m''1; m''6] H44 H44 H45 H46 I); simpl; intro.
-    destruct H1.
-    apply H1.
-    clear H1 H5 H46.
-    rewrite H4.
-    mem_d m'' r l (m'' b).
-    mem_s m'' r r (m'' b).
-    rewrite H2.
-    mem_s s l l (s a).
-    mem_d s l b (s a).
-    rewrite H19.
-    mem_d m''4 r l (m''4 b).
-    mem_s m''4 r r (m''4 b).
-    rewrite H0.
-    mem_s s0 l l (s0 a).
-    mem_d s0 l b (s0 a).
-    assumption.
-  * assert(H46: proc_call Proc.op m''0 m''1 ps /\ proc_call Proc.op m''9 m''10 ps /\ True).
-    { split. assumption. split. assumption. auto. }
-    generalize (Hr [Proc.op; Proc.op] [m''0; m''9] [m''1; m''10] H44 H44 H45 H46 I); simpl; intro.
-    destruct H1.
-    apply H5.
-    clear H1 H5 H46.
-    rewrite H4.
-    mem_d m'' r l (m'' b).
-    mem_s m'' r r (m'' b).
-    rewrite H2.
-    mem_s s l l (s a).
-    mem_d s l b (s a).
-    rewrite H27.
-    mem_d m''8 r l (m''8 a).
-    mem_s m''8 r r (m''8 a).
-    rewrite H21.
-    mem_s m''7 l l (m''7 b).
-    mem_d m''7 l a (m''7 b).
-    rewrite H25.
-    mem_d m''6 x b (m''6 ret).
-    mem_d m''6 x a (m''6 ret).
-    rewrite H26.
-    rewrite H24.
-    rewrite H19.
-    mem_d m''4 r a (m''4 b).
-    mem_d m''4 r b (m''4 b).
-    rewrite H0.
-    mem_d s0 l a (s0 a).
-    mem_d s0 l b (s0 a).
-    assumption.
+  decompose [and] H;clear H.
+  (* clear H5 H12 H20 H29 H37. *)
+  (* assert(H44: 2 = 2) by lia. *)
+  (* assert(H45: 0 < 2) by lia. *)
+  (* assert(H46: proc_call Proc.op m''3 m' ps /\ proc_call Proc.op m''13 m'0 ps /\ True). *)
+  (* { split. assumption. split. assumption. auto. } *)
+  (* generalize (Hr [Proc.op; Proc.op] [m''3; m''13] [m'; m'0] H44 H44 H45 H46 I); simpl; intro. *)
+  (* destruct H1. *)
+  (* apply H1. *)
+  (* clear H1 H5 H46. *)
+  (* rewrite H6. *)
+  (* mem_s m''2 r r (m''2 ret). *)
+  (* mem_d m''2 r l (m''2 ret). *)
+  (* rewrite H10. *)
+  (* mem_s m''1 l l (m''1 ret). *)
+  (* mem_d m''1 l ret (m''1 ret). *)
+  (* rewrite H36. *)
+  (* mem_d m''12 r l (m''12 y). *)
+  (* mem_s m''12 r r (m''12 y). *)
+  (* rewrite H30. *)
+  (* mem_s m''11 l l (m''11 x). *)
+  (* mem_d m''11 l y (m''11 x). *)
+  (* rewrite H34. *)
+  (* mem_d m''10 y x (m''10 ret). *)
+  (* mem_s m''10 y y (m''10 ret). *)
+  (* split. *)
+  (* * rewrite H31. *)
+  (*   rewrite H27. *)
+  (*   mem_d m''8 r x (m''8 a). *)
+  (*   rewrite H21. *)
+  (*   mem_d m''7 l x (m''7 b). *)
+  (*   rewrite H25. *)
+  (*   mem_s m''6 x x (m''6 ret). *)
+  (*   assert(H46: proc_call Proc.op m''0 m''1 ps /\ proc_call Proc.op m''5 m''6 ps /\ True). *)
+  (*   { split. assumption. split. assumption. auto. } *)
+  (*   generalize (Hr [Proc.op; Proc.op] [m''0; m''5] [m''1; m''6] H44 H44 H45 H46 I); simpl; intro. *)
+  (*   destruct H1. *)
+  (*   apply H1. *)
+  (*   clear H1 H5 H46. *)
+  (*   rewrite H4. *)
+  (*   mem_d m'' r l (m'' b). *)
+  (*   mem_s m'' r r (m'' b). *)
+  (*   rewrite H2. *)
+  (*   mem_s s l l (s a). *)
+  (*   mem_d s l b (s a). *)
+  (*   rewrite H19. *)
+  (*   mem_d m''4 r l (m''4 b). *)
+  (*   mem_s m''4 r r (m''4 b). *)
+  (*   rewrite H0. *)
+  (*   mem_s s0 l l (s0 a). *)
+  (*   mem_d s0 l b (s0 a). *)
+  (*   assumption. *)
+  (* * assert(H46: proc_call Proc.op m''0 m''1 ps /\ proc_call Proc.op m''9 m''10 ps /\ True). *)
+  (*   { split. assumption. split. assumption. auto. } *)
+  (*   generalize (Hr [Proc.op; Proc.op] [m''0; m''9] [m''1; m''10] H44 H44 H45 H46 I); simpl; intro. *)
+  (*   destruct H1. *)
+  (*   apply H5. *)
+  (*   clear H1 H5 H46. *)
+  (*   rewrite H4. *)
+  (*   mem_d m'' r l (m'' b). *)
+  (*   mem_s m'' r r (m'' b). *)
+  (*   rewrite H2. *)
+  (*   mem_s s l l (s a). *)
+  (*   mem_d s l b (s a). *)
+  (*   rewrite H27. *)
+  (*   mem_d m''8 r l (m''8 a). *)
+  (*   mem_s m''8 r r (m''8 a). *)
+  (*   rewrite H21. *)
+  (*   mem_s m''7 l l (m''7 b). *)
+  (*   mem_d m''7 l a (m''7 b). *)
+  (*   rewrite H25. *)
+  (*   mem_d m''6 x b (m''6 ret). *)
+  (*   mem_d m''6 x a (m''6 ret). *)
+  (*   rewrite H26. *)
+  (*   rewrite H24. *)
+  (*   rewrite H19. *)
+  (*   mem_d m''4 r a (m''4 b). *)
+  (*   mem_d m''4 r b (m''4 b). *)
+  (*   rewrite H0. *)
+  (*   mem_d s0 l a (s0 a). *)
+  (*   mem_d s0 l b (s0 a). *)
+  (*   assumption. *)
 Admitted.
 
 

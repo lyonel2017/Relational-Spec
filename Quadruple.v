@@ -45,8 +45,8 @@ Section Classical.
   End relation.
 
   Definition classical_quadruple (P: q_precondition) (Q: q_postcondition)
-    (c1 c2: com) (ps : Psi.psi) : Prop :=
-    forall s1 s2, P s1 s2 -> relation Q s1 s2 (denot c1 s1 ps) (denot c2 s2 ps).
+    (c1 c2: com) (ps1 ps2 : Psi.psi) : Prop :=
+    forall s1 s2, P s1 s2 -> relation Q s1 s2 (denot c1 s1 ps1) (denot c2 s2 ps2).
 
 End Classical.
 
@@ -55,17 +55,19 @@ End Classical.
 Section Quadruple.
 
   Definition quadruple (P: q_precondition) (Q: q_postcondition)
-    (c1 c2: com) (ps : Psi.psi) : Prop :=
+    (c1 c2: com) (ps1 ps2 : Psi.psi) : Prop :=
     forall s1 s2 s1' s2',
-      P s1 s2 -> ceval c1 s1 ps s1' ->
-      ceval c2 s2 ps s2' -> Q s1' s2' s1 s2.
+      P s1 s2 ->
+      ceval c1 s1 ps1 s1' ->
+      ceval c2 s2 ps2 s2' ->
+      Q s1' s2' s1 s2.
 
   Lemma to_classical (P: q_precondition) (Q: q_postcondition)
-    (c1 c2: com) (ps : Psi.psi) :
-    ((forall s2,Total.total (fun s1 => P s1 s2) (fun _ _ => True) c1 ps) /\
-       (forall s1,Total.total (fun s2 => P s1 s2) (fun _ _ => True) c2 ps) /\
-       quadruple P Q c1 c2 ps) ->
-    classical_quadruple P Q c1 c2 ps.
+    (c1 c2: com) (ps1 ps2 : Psi.psi) :
+    ((forall s2,Total.total (fun s1 => P s1 s2) (fun _ _ => True) c1 ps1) /\
+       (forall s1,Total.total (fun s2 => P s1 s2) (fun _ _ => True) c2 ps2) /\
+       quadruple P Q c1 c2 ps1 ps2) ->
+    classical_quadruple P Q c1 c2 ps1 ps2.
   Proof.
     intros [Ht1 [Ht2 H]] s1 s2 HP.
     specialize (Ht1 s2 s1 HP) as [n1 [H1 _]].
@@ -77,9 +79,9 @@ Section Quadruple.
   Qed.
 
   Lemma from_classical (P: q_precondition) (Q: q_postcondition)
-    (c1 c2: com) (ps : Psi.psi) :
-    classical_quadruple P Q c1 c2 ps ->
-    quadruple P Q c1 c2 ps.
+    (c1 c2: com) (ps1 ps2 : Psi.psi) :
+    classical_quadruple P Q c1 c2 ps1 ps2 ->
+    quadruple P Q c1 c2 ps1 ps2.
   Proof.
     intros H s1 s2 s1' s2' HP H1 H2.
     specialize (H s1 s2 HP).
@@ -95,36 +97,36 @@ End Quadruple.
 Section Co_quadruple.
 
   Definition co_termination (P: q_precondition) (c1 c2: com)
-    (ps : Psi.psi) : Prop :=
+    (ps1 ps2 : Psi.psi) : Prop :=
     forall s1 s2, P s1 s2 ->
-              ((exists s', ceval c1 s1 ps s') <-> (exists s', ceval c2 s2 ps s')).
+              ((exists s', ceval c1 s1 ps1 s') <-> (exists s', ceval c2 s2 ps2 s')).
 
   Definition co_quadruple (P: q_precondition) (Q: q_postcondition)
-    (c1 c2: com) (ps : Psi.psi) : Prop :=
-    co_termination P c1 c2 ps /\ quadruple P Q c1 c2 ps.
+    (c1 c2: com) (ps1 ps2 : Psi.psi) : Prop :=
+    co_termination P c1 c2 ps1 ps2 /\ quadruple P Q c1 c2 ps1 ps2.
 
   Lemma co_to_classical (P: q_precondition) (Q: q_postcondition)
-    (c1 c2: com) (ps : Psi.psi) :
-    co_quadruple P Q c1 c2 ps ->
-    classical_quadruple P Q c1 c2 ps.
+    (c1 c2: com) (ps1 ps2 : Psi.psi) :
+    co_quadruple P Q c1 c2 ps1 ps2 ->
+    classical_quadruple P Q c1 c2 ps1 ps2.
   Proof.
     intros H s1 s2 HP.
     destruct H as [Hco Hq].
     specialize (Hco s1 s2 HP).
     destruct Hco as [Hco1 Hco2].
-    case_eq (denot c1 s1 ps).
+    case_eq (denot c1 s1 ps1).
     - intros s' HE1.
       specialize (ds_sn _ _ _ _ HE1) as Ht1.
-      assert (Ht1e: (exists s' : sigma, ceval c1 s1 ps s')) by eauto.
+      assert (Ht1e: (exists s' : sigma, ceval c1 s1 ps1 s')) by eauto.
       specialize (Hco1 Ht1e) as [s'' Ht2].
       rewrite (sn_ds _ _ _ _ Ht2).
       apply relation_r.
       now apply Hq.
     - intros HE1.
-      case_eq (denot c2 s2 ps).
+      case_eq (denot c2 s2 ps2).
       + intros s' HE2.
         specialize (ds_sn _ _ _ _ HE2) as Ht2.
-        assert (Ht2e: (exists s' : sigma, ceval c2 s2 ps s')) by eauto.
+        assert (Ht2e: (exists s' : sigma, ceval c2 s2 ps2 s')) by eauto.
         specialize (Hco2 Ht2e) as [? Ht1].
         rewrite (sn_ds _ _ _ _ Ht1) in HE1.
         discriminate HE1.
@@ -133,9 +135,9 @@ Section Co_quadruple.
   Qed.
 
   Lemma co_from_classical (P: q_precondition) (Q: q_postcondition)
-    (c1 c2: com) (ps : Psi.psi) :
-    classical_quadruple P Q c1 c2 ps ->
-    co_quadruple P Q c1 c2 ps.
+    (c1 c2: com) (ps1 ps2 : Psi.psi) :
+    classical_quadruple P Q c1 c2 ps1 ps2 ->
+    co_quadruple P Q c1 c2 ps1 ps2.
   Proof.
     intros Hr.
     split.
@@ -162,14 +164,19 @@ End Co_quadruple.
 (** Definition of a quadruple properties with inliner for loops **)
 
 Definition i_quadruple (n: nat) (P: q_precondition) (Q: q_postcondition)
-  (c1 c2 : com) (b1 b2: bexp) (ps : Psi.psi) : Prop :=
-  forall s1 s2 s1' s2', P s1 s2 ->
-                   ceval (unroll n b1 c1) s1 ps s1' -> ceval (unroll n b2 c2) s2 ps s2' ->
-                   Q s1' s2' s1 s2.
+  (c1 c2 : com) (b1 b2: bexp) (ps1 ps2 : Psi.psi) : Prop :=
+  forall s1 s2 s1' s2',
+    P s1 s2 ->
+    ceval (unroll n b1 c1) s1 ps1 s1' ->
+    ceval (unroll n b2 c2) s2 ps2 s2' ->
+    Q s1' s2' s1 s2.
 
-Lemma qceval_n_inline_loop b1 b2 p1 p2 s1 s2 inv1 inv2 var1 var2 id1 id2 ps s1' s2':
-  ceval (CWhile b1 p1 inv1 var1 id1) s1 ps s1' ->  ceval (CWhile b2 p2 inv2 var2 id2) s2 ps s2' ->
-  exists n : nat, ceval (unroll n b1 p1) s1 ps s1' /\ ceval (unroll n b2  p2) s2 ps s2' .
+Lemma qceval_n_inline_loop
+  b1 b2 p1 p2 s1 s2 inv1 inv2 var1 var2 id1 id2 ps1 ps2 s1' s2':
+  ceval (CWhile b1 p1 inv1 var1 id1) s1 ps1 s1' ->
+  ceval (CWhile b2 p2 inv2 var2 id2) s2 ps2 s2' ->
+  exists n : nat,
+    ceval (unroll n b1 p1) s1 ps1 s1' /\ ceval (unroll n b2  p2) s2 ps2 s2' .
 Proof.
   intros Heval1  Heval2.
   apply ceval_unroll_n in Heval1.
@@ -188,9 +195,9 @@ Proof.
     eapply unroll_ceval_S;[apply H0|assumption].
 Qed.
 
-Lemma i_quadruple_quadruple P Q p1 p2 b1 b2 inv1 inv2 var1 var2 id1 id2 ps:
-  quadruple P Q (CWhile b1 p1 inv1 var1 id1) (CWhile b2 p2 inv2 var2 id2) ps
-  <-> forall n, i_quadruple n P Q p1 p2 b1 b2 ps.
+Lemma i_quadruple_quadruple P Q p1 p2 b1 b2 inv1 inv2 var1 var2 id1 id2 ps1 ps2:
+  quadruple P Q (CWhile b1 p1 inv1 var1 id1) (CWhile b2 p2 inv2 var2 id2) ps1 ps2
+  <-> forall n, i_quadruple n P Q p1 p2 b1 b2 ps1 ps2.
 Proof.
   unfold quadruple, i_quadruple;split;intros H.
   - intros n s1 s2 s1' s2' Pre Heval1 Heval2.
@@ -206,13 +213,13 @@ Qed.
 
 (** Facts about quadruple Properties **)
 
-Lemma while_quadruple (inv: q_assertion) b1 b2 c1 c2 id1 id2 ps:
+Lemma while_quadruple (inv: q_assertion) b1 b2 c1 c2 id1 id2 ps1 ps2:
   quadruple (fun s1 s2 => inv s1 s2 /\ beval s1 b1 = true /\ beval s2 b2 =  true)
-    (fun s1' s2' _ _ => inv s1' s2' /\ beval s1' b1 = beval s2' b2 ) c1 c2 ps ->
+    (fun s1' s2' _ _ => inv s1' s2' /\ beval s1' b1 = beval s2' b2 ) c1 c2 ps1 ps2 ->
   quadruple ( fun s1 s2 => inv s1 s2 /\ beval s1 b1 = beval s2 b2 )
     ( fun s1' s2' _ _ => inv s1' s2' /\ beval s1' b1 = false /\ beval s2' b2 = false )
     (CWhile b1 c1 (fun _=> True) (fun _ => 0) id1)
-    (CWhile b2 c2 (fun _ => True) (fun _ => 0) id2) ps.
+    (CWhile b2 c2 (fun _ => True) (fun _ => 0) id2) ps1 ps2.
 Proof.
   intros Hinv.
   apply i_quadruple_quadruple.
@@ -242,16 +249,22 @@ Proof.
         auto.
 Qed.
 
-Definition bi_quadruple (i: nat) (P: q_precondition) (Q: q_postcondition)
-  (c1 c2 : com) (b1 b2: bexp) (ps : Psi.psi) : Prop :=
-  forall s1 s2 s1' s2' n m , i = n + m -> P s1 s2 ->
-                        ceval (unroll n b1 c1) s1 ps s1' ->
-                        ceval (unroll m b2 c2) s2 ps s2' ->
-                        Q s1' s2' s1 s2.
+Definition bi_quadruple
+  (i: nat) (P: q_precondition) (Q: q_postcondition)
+  (c1 c2 : com) (b1 b2: bexp) (ps1 ps2 : Psi.psi) : Prop :=
+  forall s1 s2 s1' s2' n m ,
+    i = n + m -> P s1 s2 ->
+    ceval (unroll n b1 c1) s1 ps1 s1' ->
+    ceval (unroll m b2 c2) s2 ps2 s2' ->
+    Q s1' s2' s1 s2.
 
-Lemma qceval_n_b_inline_loop p1 p2 b1 b2 inv1 inv2 var1 var2 id1 id2 s1 s2 ps s1' s2':
-  ceval (CWhile b1 p1 inv1 var1 id1) s1 ps s1' -> ceval (CWhile b2 p2 inv2 var2 id2) s2 ps s2' ->
-  exists n m: nat, ceval (Inliner.unroll n b1 p1) s1 ps s1' /\ ceval (Inliner.unroll m b2 p2) s2 ps s2' .
+Lemma qceval_n_b_inline_loop
+  p1 p2 b1 b2 inv1 inv2 var1 var2 id1 id2 s1 s2 ps1 ps2 s1' s2':
+  ceval (CWhile b1 p1 inv1 var1 id1) s1 ps1 s1' ->
+  ceval (CWhile b2 p2 inv2 var2 id2) s2 ps2 s2' ->
+  exists n m: nat,
+    ceval (unroll n b1 p1) s1 ps1 s1' /\
+      ceval (unroll m b2 p2) s2 ps2 s2' .
 Proof.
   intros Heval1  Heval2.
   apply ceval_unroll_n in Heval1.
@@ -263,9 +276,13 @@ Proof.
   apply H0.
 Qed.
 
-Lemma bi_quadruple_quadruple P Q p1 p2 b1 b2 inv1 inv2 var1 var2 id1 id2 ps:
-  quadruple P Q (CWhile b1 p1 inv1 var1 id1) (CWhile b2 p2 inv2 var2 id2) ps <->
-    forall n, bi_quadruple n P Q p1 p2 b1 b2 ps.
+Lemma bi_quadruple_quadruple
+  P Q p1 p2 b1 b2 inv1 inv2 var1 var2 id1 id2 ps1 ps2:
+  quadruple P Q
+    (CWhile b1 p1 inv1 var1 id1)
+    (CWhile b2 p2 inv2 var2 id2) ps1 ps2
+  <->
+    forall n, bi_quadruple n P Q p1 p2 b1 b2 ps1 ps2.
 Proof.
   unfold quadruple, bi_quadruple;split;intros H.
   * intros i s1 s2 s1' s2' n m Hi Pre Heval1 Heval2.
@@ -356,17 +373,17 @@ Qed.
  *)
 
 Lemma while_skedule_quadruple
-  (inv : q_assertion) (L R : q_cond) b1 b2 c1 c2 id1 id2 ps:
+  (inv : q_assertion) (L R : q_cond) b1 b2 c1 c2 id1 id2 ps1 ps2:
   quadruple (fun s1 s2 => inv s1 s2 /\ beval s1 b1 = true /\ beval s2 b2 = true /\
                          L s1 s2 = false /\ R s1 s2 = false)
     (fun s1' s2' _ _ => inv s1' s2')
-    c1 c2 ps ->
+    c1 c2 ps1 ps2 ->
   quadruple (fun s1 s2 => inv s1 s2 /\ beval s1 b1 = true  /\ L s1 s2 = true )
     (fun s1' s2' _ _ => inv s1' s2' )
-    c1 CSkip ps ->
+    c1 CSkip ps1 ps2 ->
   quadruple (fun s1 s2 => inv s1 s2 /\ beval s2 b2 = true  /\ R s1 s2 = true)
     (fun s1' s2' _ _ => inv s1' s2')
-    CSkip c2 ps ->
+    CSkip c2 ps1 ps2 ->
   (forall s1 s2, inv s1 s2 ->
             beval s1 b1 = beval s2 b2 \/
               (beval s1 b1 = true /\ L s1 s2 = true ) \/
@@ -374,7 +391,7 @@ Lemma while_skedule_quadruple
   quadruple inv
     ( fun s1' s2' _ _ => inv s1' s2' /\ beval s1' b1 = false /\ beval s2' b2 = false )
     (CWhile b1 c1 (fun _=> True) (fun _ => 0) id1)
-    (CWhile b2 c2 (fun _ => True) (fun _ => 0) id2) ps.
+    (CWhile b2 c2 (fun _ => True) (fun _ => 0) id2) ps1 ps2.
 Proof.
   intros Hinv1 Hinv2 Hinv3 Hinv.
   apply bi_quadruple_quadruple.
@@ -479,7 +496,7 @@ End Q_Phi.
 
 (** Defintion of quadruple with inliner **)
 
-Definition bi_quadruple_fun_2 (i: nat) (P: q_precondition) (Q: q_postcondition)
+Definition bi_quadruple_fun (i: nat) (P: q_precondition) (Q: q_postcondition)
   (c1 c2 : com) (ps1 ps2 : Psi.psi) : Prop :=
   forall s1 s2 s1' s2' n m, i = n + m -> P s1 s2 ->
                        ceval c1 s1 (Inline1.k_inliner_ps n ps1) s1' ->
@@ -501,14 +518,10 @@ Proof.
   apply H0.
 Qed.
 
-Definition quadruple_2 (P: q_precondition) (Q: q_postcondition)
-  (c1 c2: com) (ps1 ps2 : Psi.psi) : Prop :=
-  forall s1 s2 s1' s2', P s1 s2 -> ceval c1 s1 ps1 s1' -> ceval c2 s2 ps2 s2' -> Q s1' s2' s1 s2.
-
 Lemma bi_quadruple_quadruple_fun P Q p1 p2 ps1 ps2:
-  quadruple_2 P Q p1 p2 ps1 ps2 <-> forall n, bi_quadruple_fun_2 n P Q p1 p2 ps1 ps2.
+  quadruple P Q p1 p2 ps1 ps2 <-> forall n, bi_quadruple_fun n P Q p1 p2 ps1 ps2.
 Proof.
-  unfold quadruple_2, bi_quadruple_fun_2;split;intros H.
+  unfold quadruple, bi_quadruple_fun;split;intros H.
   * intros i s1 s2 s1' s2' n m Hi Pre Heval1 Heval2.
     eapply H.
     apply Pre.
@@ -526,26 +539,25 @@ Proof.
     assumption.
 Qed.
 
-Definition quadruple_ctx_2 (rcl:Q_Phi.phi) (ps1 ps2: Psi.psi)
+Definition quadruple_ctx (rcl:Q_Phi.phi) (ps1 ps2: Psi.psi)
   (P: q_precondition) (Q : q_postcondition) (c1 c2:  com) :=
-  (forall p1 p2, quadruple_2 (get_q_pre (rcl p1 p2))
+  (forall p1 p2, quadruple (get_q_pre (rcl p1 p2))
               (get_q_post (rcl p1 p2)) (CCall p1) (CCall p2) ps1 ps2) ->
-  quadruple_2 P Q c1 c2 ps1 ps2.
+  quadruple P Q c1 c2 ps1 ps2.
 
-
-Definition quadruple_proc_ctx_2 (rcl : Q_Phi.phi) (ps_init_1 ps_init_2 :Psi.psi):=
+Definition quadruple_proc_ctx (rcl : Q_Phi.phi) (ps_init_1 ps_init_2 :Psi.psi):=
   (forall p1 p2 ps1 ps2,
-       quadruple_ctx_2 rcl ps1 ps2 (fun s1 s2 => get_q_pre (rcl p1 p2) s1 s2 /\
+       quadruple_ctx rcl ps1 ps2 (fun s1 s2 => get_q_pre (rcl p1 p2) s1 s2 /\
                                                get_LR(rcl p1 p2) s1 s2 = true /\
                                                get_L(rcl p1 p2) s1 s2 = false /\
                                                get_R(rcl p1 p2) s1 s2 = false)
         (get_q_post (rcl p1 p2)) (ps_init_1 p1) (ps_init_2 p2)) /\
     (forall p1 p2 ps1 ps2,
-        quadruple_ctx_2 rcl ps1 ps2 (fun s1 s2 => get_q_pre (rcl p1 p2) s1 s2 /\
+        quadruple_ctx rcl ps1 ps2 (fun s1 s2 => get_q_pre (rcl p1 p2) s1 s2 /\
                                                  get_L(rcl p1 p2) s1 s2 = true)
           (get_q_post (rcl p1 p2)) (ps_init_1 p1) (CCall p2)) /\
     (forall p1 p2 ps1 ps2,
-        quadruple_ctx_2 rcl ps1 ps2 (fun s1 s2 => get_q_pre (rcl p1 p2) s1 s2 /\
+        quadruple_ctx rcl ps1 ps2 (fun s1 s2 => get_q_pre (rcl p1 p2) s1 s2 /\
                                                  get_R(rcl p1 p2) s1 s2 = true)
           (get_q_post (rcl p1 p2)) (CCall p1) (ps_init_2 p2)) /\
     (forall p1 p2 s1 s2,  get_q_pre (rcl p1 p2) s1 s2 ->
@@ -553,8 +565,8 @@ Definition quadruple_proc_ctx_2 (rcl : Q_Phi.phi) (ps_init_1 ps_init_2 :Psi.psi)
                        get_L(rcl p1 p2) s1 s2 = true \/ get_R(rcl p1 p2) s1 s2 = true)).
 
 Lemma ext_q_recursive_proc ps1 ps2 rcl:
-  quadruple_proc_ctx_2 rcl ps1 ps2 ->
-  (forall p1 p2, quadruple_2 (get_q_pre (rcl p1 p2))
+  quadruple_proc_ctx rcl ps1 ps2 ->
+  (forall p1 p2, quadruple (get_q_pre (rcl p1 p2))
               (get_q_post (rcl p1 p2)) (CCall p1) (CCall p2) ps1 ps2).
 Proof.
   intros.
@@ -576,7 +588,7 @@ Proof.
   destruct m.
   inversion Heval2;subst.
   apply ceval_inf_loop in H1; now auto.
-  unfold quadruple_proc_ctx_2 in H.
+  unfold quadruple_proc_ctx in H.
   decompose [and] H; clear H.
   specialize (H4 p1 p2 s1 s2 HPre).
   destruct H4.
@@ -609,18 +621,11 @@ Proof.
         apply Heval2.
 Qed.
 
-Definition quadruple_ctx (rcl:Q_Phi.phi) (ps: Psi.psi)
-  (P: q_precondition) (Q : q_postcondition) (c1 c2:  com) :=
-  quadruple_ctx_2 rcl ps ps P Q c1 c2.
-
-Definition quadruple_proc_ctx (rcl : Q_Phi.phi) (ps_init :Psi.psi):=
-  quadruple_proc_ctx_2 rcl ps_init ps_init.
-
 Theorem recursion_quadruple :
-  forall P Q p1 p2 ps rcl,
-    quadruple_proc_ctx rcl ps  ->
-    quadruple_ctx rcl ps P Q p1 p2 ->
-    quadruple P Q p1 p2 ps.
+  forall P Q p1 p2 ps1 ps2 rcl,
+    quadruple_proc_ctx rcl ps1 ps2  ->
+    quadruple_ctx rcl ps1 ps2 P Q p1 p2 ->
+    quadruple P Q p1 p2 ps1 ps2.
 Proof.
   intros.
   apply H0.
@@ -681,9 +686,9 @@ Module While_Proc.
     else Q_Phi.empty_phi f1' f2'.
 
   Lemma ext_q_recursive_proc_1_2:
-  quadruple_proc_ctx_2 rcl ps ps ->
-  quadruple_2 (get_q_pre (rcl 1 2))
-              (get_q_post (rcl 1 2)) (CCall 1) (CCall 2) ps ps.
+    quadruple_proc_ctx rcl ps ps ->
+    quadruple (get_q_pre (rcl 1 2))
+      (get_q_post (rcl 1 2)) (CCall 1) (CCall 2) ps ps.
   Proof.
     intros.
     specialize (ext_q_recursive_proc ps ps rcl H 1 2).
@@ -692,16 +697,16 @@ Module While_Proc.
 
   Lemma inv_proc :
     (forall ps1 ps2,
-        quadruple_2 (fun s1 s2 => invar s1 s2 /\ beval s1 b1 = true /\ beval s2 b2 = true /\
+        quadruple (fun s1 s2 => invar s1 s2 /\ beval s1 b1 = true /\ beval s2 b2 = true /\
                                  L s1 s2 = false /\ R s1 s2 = false)
           (fun s1' s2' _ _ => invar s1' s2')
           c1 c2 ps1 ps2) ->
     (forall ps1 ps2,
-        quadruple_2 (fun s1 s2 => invar s1 s2 /\ beval s1 b1 = true  /\ L s1 s2 = true )
+        quadruple (fun s1 s2 => invar s1 s2 /\ beval s1 b1 = true  /\ L s1 s2 = true )
           (fun s1' s2' _ _ => invar s1' s2' )
           c1 CSkip ps1 ps2) ->
     (forall ps1 ps2,
-        quadruple_2 (fun s1 s2 => invar s1 s2 /\ beval s2 b2 = true  /\ R s1 s2 = true)
+        quadruple (fun s1 s2 => invar s1 s2 /\ beval s2 b2 = true  /\ R s1 s2 = true)
           (fun s1' s2' _ _ => invar s1' s2')
           CSkip c2 ps1 ps2) ->
     (forall s1 s2, invar s1 s2 ->
@@ -709,14 +714,14 @@ Module While_Proc.
                 (beval s1 b1 = true /\ L s1 s2 = true ) \/
                 (beval s2 b2 = true /\ R s1 s2 = true)) ->
     quadruple (get_q_pre (rcl 1 2))
-      (get_q_post (rcl 1 2)) (CCall 1) (CCall 2) ps.
+      (get_q_post (rcl 1 2)) (CCall 1) (CCall 2) ps ps.
   Proof.
     intros.
     apply ext_q_recursive_proc_1_2.
     unfold rcl, ps, q_pre, q_post.
-    unfold quadruple_proc_ctx_2.
+    unfold quadruple_proc_ctx.
     split.
-    + unfold quadruple_ctx_2.
+    + unfold quadruple_ctx.
       intros.
       destruct (p1 =? 1) eqn: He1.
       destruct (p2 =? 2) eqn: He2.
@@ -760,7 +765,7 @@ Module While_Proc.
       intros s1 s2 s1' s2' HPre Heval1 Heval2.
       unfold empty_q_postcondition; auto.
     + split.
-      - unfold quadruple_ctx_2.
+      - unfold quadruple_ctx.
         intros.
         destruct (p1 =? 1) eqn: He1.
         destruct (p2 =? 2) eqn: He2.
@@ -791,7 +796,7 @@ Module While_Proc.
         intros s1 s2 s1' s2' HPre Heval1 Heval2.
         unfold empty_q_postcondition; auto.
       - split.
-        * unfold quadruple_ctx_2.
+        * unfold quadruple_ctx.
           intros.
           destruct (p1 =? 1) eqn: He1.
           destruct (p2 =? 2) eqn: He2.
