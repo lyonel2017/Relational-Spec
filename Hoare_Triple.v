@@ -126,6 +126,8 @@ Definition clause : Type := precondition * postcondition.
 
 Definition empty_clause : clause := (empty_precondition, empty_postcondition).
 
+Definition trial_clause : clause := (fun _ => True, empty_postcondition).
+
 Definition get_pre (an:clause) :=
   let (pre,post) := an in
   pre.
@@ -142,10 +144,21 @@ Module Phi.
 
   Definition empty_phi: phi := fun _ => empty_clause.
 
+  Definition trial_phi: phi := fun _ =>  trial_clause.
+
 End Phi.
 
-Lemma empty_hoare p c ps:
-  hoare_triple (get_pre (Phi.empty_phi p))
+Lemma empty_hoare P p c ps:
+  hoare_triple P
+    (get_post (Phi.empty_phi p)) c ps.
+Proof.
+  intros s s' HPre He.
+  simpl.
+  unfold empty_postcondition;auto.
+Qed.
+
+Lemma trivial_hoare P p c ps:
+  hoare_triple P
     (get_post (Phi.empty_phi p)) c ps.
 Proof.
   intros s s' HPre He.

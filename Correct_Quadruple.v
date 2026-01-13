@@ -22,13 +22,13 @@ Lemma qcorrect_c :
           (forall m1 m2,
               P m1 m2 -> qtr qcl ps1 ps2 ->
               qtc' p1 p2  m1 m2 h1 h2
-                (phi_call Phi.empty_phi ps1)
-                (phi_call Phi.empty_phi ps2))
+                (phi_call Phi.trial_phi ps1)
+                (phi_call Phi.trial_phi ps2))
           /\
             (forall m1 m2,
                 P m1 m2 -> qtr qcl ps1 ps2 ->
                 qtc p1 p2 m1 m2 h1 h2
-                  (phi_call Phi.empty_phi ps1) (phi_call Phi.empty_phi ps2)
+                  (phi_call Phi.trial_phi ps1) (phi_call Phi.trial_phi ps2)
                   (fun m1' m2' _ _ => Q m1' m2' m1 m2))) ->
     quadruple_ctx qcl ps1 ps2 P Q p1 p2.
 Proof.
@@ -40,7 +40,7 @@ Proof.
   revert H3.
   revert H1.
   revert s2 s2'.
-  eapply (correct_c p2 (phi_call Phi.empty_phi ps2) ps2 h2).
+  eapply (correct_c p2 (phi_call Phi.trial_phi ps2) ps2 h2).
   - intros m HPre.
     specialize (H s1 m HPre (qtr_relational_prop _ _ _ Hproc)).
     apply H.
@@ -48,7 +48,7 @@ Proof.
     revert H2.
     revert HPre.
     revert s1 s1'.
-    eapply (correct_c p1 (phi_call Phi.empty_phi ps1) ps1 h1).
+    eapply (correct_c p1 (phi_call Phi.trial_phi ps1) ps1 h1).
     + intros m HPre.
       specialize (H m s2 HPre (qtr_relational_prop _ _ _ Hproc)).
       apply H.
@@ -57,10 +57,10 @@ Proof.
       apply H0.
     + apply phi_call_hoare.
       intros p.
-      apply empty_hoare.
+      apply (trivial_hoare _ p).
   - apply phi_call_hoare.
     intros p.
-    apply empty_hoare.
+    apply (trivial_hoare _ p).
 Qed.
 
 (** Proof that one can use a verification condition
@@ -146,13 +146,13 @@ Theorem qcorrect :
           (forall m1 m2,
               P m1 m2 -> qtr qcl ps1 ps2 ->
               qtc' p1 p2  m1 m2 h1 h2
-                (phi_call Phi.empty_phi ps1)
-                (phi_call Phi.empty_phi ps2))
+                (phi_call Phi.trial_phi ps1)
+                (phi_call Phi.trial_phi ps2))
           /\
             (forall m1 m2,
                 P m1 m2 -> qtr qcl ps1 ps2 ->
                 qtc p1 p2 m1 m2 h1 h2
-                  (phi_call Phi.empty_phi ps1) (phi_call Phi.empty_phi ps2)
+                  (phi_call Phi.trial_phi ps1) (phi_call Phi.trial_phi ps2)
                   (fun m1' m2' _ _ => Q m1' m2' m1 m2))) ->
       quadruple P Q p1 p2 ps1 ps2.
 Proof.

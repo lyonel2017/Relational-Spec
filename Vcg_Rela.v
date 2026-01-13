@@ -216,7 +216,7 @@ Proof.
   auto.
 Qed.
 
-Lemma rtc_p_empty_psi : rtc_p Psi.empty_psi R_Phi.empty_phi.
+Lemma rtc_p_empty_psi : forall psi, rtc_p psi R_Phi.empty_phi.
 Proof.
   unfold rtc_p.
   intros.

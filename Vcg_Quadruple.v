@@ -177,8 +177,8 @@ Definition qtc_p (ps1 ps2: Psi.psi) (qcl: Q_Phi.phi): Prop :=
   forall f1 f2 ps1' ps2',
     let c1 := ps1 f1 in
     let c2 := ps2 f2 in
-    let cl1 := (phi_call Phi.empty_phi ps1') in
-    let cl2 := (phi_call Phi.empty_phi ps2') in
+    let cl1 := (phi_call Phi.trial_phi ps1') in
+    let cl2 := (phi_call Phi.trial_phi ps2') in
     (forall m1 m2,
         get_q_pre (qcl f1 f2) m1 m2 /\
           qtr qcl ps1' ps2' /\

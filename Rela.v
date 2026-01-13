@@ -111,8 +111,7 @@ Module R_Phi.
 
   Definition phi : Type := list Proc.t -> r_clause.
 
-  Definition empty_phi: phi :=
-    fun _ => ( empty_r_precondition, empty_r_postcondition).
+  Definition empty_phi: phi :=  fun _ => empty_r_clause.
 
 End R_Phi.
 
