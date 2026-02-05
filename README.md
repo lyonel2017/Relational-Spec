@@ -6,7 +6,13 @@ This repository contains a [Coq](https://coq.inria.fr/) formalization and proof 
 * a method for verifying relational properties using a verification condition generator, without relying on code transformation (such as
   self-composition) or making additional separation hypotheses in case of aliasing;
 
-This project was developed and tested with Coq version 8.13.0.
+This project was developed and tested with Rocq version 9.1.0 and OCaml 5.2.0.
+
+The project require crrently a modified version of the
+[semantics package]{https://github.com/rocq-community/semantics},
+which is available [here]{https://github.com/lyonel2017/semantics/tree/generalize-ifthenelse_continous}
+
+
 To run the whole proof, run
 
  ` make`
@@ -24,9 +30,12 @@ for example, `coqide Hoare_Triple.v`
 * **Proc.v**: definition of procedure names.
 * **Aexp.v**: definition of arithmetic expressions.
 * **Bexp.v**: definition of boolean expressions.
-* **Com.v**: definition of commands and proof of useful property.
+* **Com.v**: definition of commands.
+* **Sem.v**: definition of operation and denotational semantics, and useful properties
 * **Inliner.v**: definintion of inliner for procedures and proof of useful property.
+* **Sem_Prop.v**: Relation between operation and denotational semantics
 * **Hoare_Triple.v**: definintion of Hoare Triples and proof of useful property.
+* **Total.v**: definition of total correctness.
 * **Vcg.v** and **Vcg_Opt.v**: definition of respectively a naive verification condition genrator and a optimized version and proof of useful property.
 * **Correct.v**: proof that Hoare Triples can be verified using verification condition generator.
 * **Rela.v**: definition of relational properties and proof of useful property.
