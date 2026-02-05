@@ -6,7 +6,7 @@ Import BexpNotations.
 From Rela Require Import Proc.
 From Rela Require Import Sigma.
 From Rela Require Import Com.
-From Rela Require Import function_cpo constructs.
+From Semantics Require Import function_cpo constructs.
 
 (** Evaluation command as a relation **)
 
@@ -91,7 +91,9 @@ Qed.
 
 (** Evaluation command as a function **)
 
-(* https://github.com/rocq-community/semantics *)
+(* Part of the Semantics and proofs are taken form
+   https://github.com/rocq-community/semantics and are extended to
+   support the case of the call *)
 
 Definition bind (A B:Type)(v:option A)(f:A->option B) : option B :=
   match v with Some x => f x | None => None end.

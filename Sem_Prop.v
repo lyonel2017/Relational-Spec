@@ -8,7 +8,11 @@ From Rela Require Import Sigma.
 From Rela Require Import Com.
 From Rela Require Import Sem.
 From Rela Require Import Inliner.
-From Rela Require Import function_cpo constructs.
+From Semantics Require Import function_cpo constructs.
+
+(* Part of the proofs are taken form
+   https://github.com/rocq-community/semantics and are extended to
+   support the case of the call *)
 
 Theorem ds_sn :  forall i l l' ps, denot i l ps = Some l' -> ceval i l ps l'.
   induction i.

@@ -5,8 +5,6 @@ Aexp.v
 Bexp.v
 Proc.v
 Com.v
-function_cpo.v
-constructs.v
 Sem.v
 Inliner.v
 Sem_Prop.v

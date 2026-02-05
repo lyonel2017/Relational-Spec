@@ -5,7 +5,7 @@ From Rela Require Import Aexp.
 From Rela Require Import Bexp.
 From Rela Require Import Proc.
 From Rela Require Import Sigma.
-From Rela Require Import function_cpo.
+From Semantics Require Import function_cpo.
 From Stdlib Require Import Lia.
 
 Import Arith.
