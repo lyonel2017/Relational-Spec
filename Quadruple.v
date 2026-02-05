@@ -38,7 +38,7 @@ Section Classical.
     Context {A : Type}.
     Context (R: A -> A -> A -> A -> Prop).
 
-    Inductive relation : A -> A -> option A -> option A -> Prop :=
+    Variant relation : A -> A -> option A -> option A -> Prop :=
       relation_bot : forall x1 x2:A, relation x1 x2 None None
     | relation_r :
       forall x1 x2 x3 x4: A, R x3 x4 x1 x2 -> relation x1 x2 (Some x3) (Some x4).
@@ -446,6 +446,598 @@ Proof.
            assumption.  assumption.
            rewrite H6 in H; now auto.
 Qed.
+
+Module Easycrypt.
+
+  Lemma relation_id {A} x1 x2 s1 s2 s1' s2' (f:  A -> A -> Prop) :
+    relation (fun a b _ _ => f a b) x1 x2 s1' s2' ->
+    relation (fun a b _ _ => f a b) s1 s2 s1' s2'.
+  Proof.
+    intros H.
+    inversion H.
+    - apply relation_bot.
+    - now apply relation_r.
+  Qed.
+
+
+  Lemma inv_b_eq_true_l {inv:Prop} {b1 b2 : bool} :
+    inv ->  b1 = b2 -> b1 = true ->
+    inv /\ b1 = true /\ b2 = true.
+  Proof.
+    intros ?? <-;auto.
+  Qed.
+
+  Lemma inv_b_eq_true_r {inv:Prop} {b1 b2 : bool} :
+    inv ->  b1 = b2 -> b2 = true ->
+    inv /\ b1 = true /\ b2 = true.
+  Proof.
+    intros ?? ->;auto.
+  Qed.
+
+Lemma while_quadruple (inv: q_assertion) b1 b2 c1 c2 id1 id2 ps1 ps2:
+  classical_quadruple (fun s1 s2 => inv s1 s2 /\ beval s1 b1 = true /\ beval s2 b2 =  true)
+    (fun s1' s2' _ _ => inv s1' s2' /\ beval s1' b1 = beval s2' b2 ) c1 c2 ps1 ps2 ->
+  classical_quadruple ( fun s1 s2 => inv s1 s2 /\ beval s1 b1 = beval s2 b2 )
+    ( fun s1' s2' _ _ => inv s1' s2' /\ beval s1' b1 = false /\ beval s2' b2 = false )
+    (CWhile b1 c1 (fun _=> True) (fun _ => 0) id1)
+    (CWhile b2 c2 (fun _ => True) (fun _ => 0) id2) ps1 ps2.
+Proof.
+  intros H s1 s2 HPre; unfold denot; simpl.
+  case_eq (W_phi.phi (fun l' : sigma => Some (beval l' b1)) (ds (F_phi.phi ps1) c1) s1).
+  - intros s1' [n1 H1]%W_phi.phi_terminates_n; revert H1.
+    generalize dependent s1.
+    revert s2.
+    induction n1;intros s2 s1 [Hinv Hb].
+    + intros H1;discriminate H1.
+    + simpl.
+      unfold W_phi.F_phi at 1;  simpl.
+      case_eq
+        (W_phi.phi (fun l' : sigma => Some (beval l' b2)) (ds (F_phi.phi ps2) c2) s2).
+      * intros s2' <-.
+        rewrite <- W_phi.fix_phi.
+        unfold W_phi.F_phi at 2;  simpl.
+        rewrite <- Hb.
+        case_eq (beval s1 b1); intros Hb'.
+        -- unfold bind.
+           specialize (H s1 s2 (inv_b_eq_true_l Hinv Hb Hb')).
+           inversion H.
+           ++ revert H3. unfold denot; now intros <-.
+           ++ revert H0 H3. unfold denot. intros <- <- ?.
+              now apply (relation_id x3 x4), IHn1.
+        -- now injection 1 as <-; apply relation_r; rewrite <- Hb.
+      * rewrite <- W_phi.fix_phi.
+        unfold W_phi.F_phi at 1;  simpl.
+        rewrite <- Hb.
+        case_eq (beval s1 b1); intros Hb'.
+        -- unfold bind.
+           specialize (H s1 s2 (inv_b_eq_true_l Hinv Hb Hb')).
+           inversion H.
+           ++ revert H3. unfold denot; now intros <-.
+           ++ revert H0 H3. unfold denot. intros <- <- ??.
+              rewrite <- H0. apply (relation_id x3 x4), IHn1;auto.
+        -- now auto.
+  - case_eq (W_phi.phi (fun l' : sigma => Some (beval l' b2)) (ds (F_phi.phi ps2) c2) s2).
+    + intros s2' [n2 H2]%W_phi.phi_terminates_n; revert H2.
+      generalize dependent s2.
+      revert s1.
+      induction n2; intros s1 s2 [Hinv Hb].
+      * intros H2; discriminate H2.
+      * simpl.
+        rewrite <- W_phi.fix_phi.
+        unfold W_phi.F_phi at 1 3;  simpl.
+        rewrite Hb.
+        case_eq (beval s2 b2); intros Hb'.
+        -- unfold bind.
+           specialize (H s1 s2 (inv_b_eq_true_r Hinv Hb Hb')).
+           inversion H.
+           ++ revert H4. unfold denot; now intros <-.
+           ++ revert H0 H3. unfold denot. intros <- <- ??.
+              now apply (relation_id x3 x4), IHn2.
+        -- now auto.
+   + intros _ _ ; apply relation_bot.
+Qed.
+
+  Lemma inv_b2_eq_true_l {inv A :Prop} {b1 b2 : bool} :
+    inv ->  b1 = true -> b2 = true -> A ->
+    inv /\ b1 = true /\ b2 = true /\ A .
+  Proof. auto. Qed.
+
+  Lemma inv_b_true_l {inv A :Prop} {b1 : bool} :
+    inv ->  b1 = true -> A ->
+    inv /\ b1 = true /\ A .
+  Proof. auto. Qed.
+
+  Lemma inv_2b2_true_l {inv A B :Prop} {b1 b2: bool} :
+    inv ->  b1 = true ->  b2 = true -> A -> B ->
+    inv /\ b1 = true /\ b2 = true /\ A /\ B.
+  Proof. auto. Qed.
+
+  Lemma iter_Sn_n n s s' b c ps :
+    function_cpo.iter (sigma -> option sigma)
+      (fun (g : sigma -> option sigma) (r : sigma) =>
+       if beval r b then bind (ds (F_phi.phi ps) c r) g else Some r)
+      n (fun _ : sigma => None) s =
+      Some s' ->
+    forall m, n <= m ->
+      function_cpo.iter (sigma -> option sigma)
+      (fun (g : sigma -> option sigma) (r : sigma) =>
+       if beval r b then bind (ds (F_phi.phi ps) c r) g else Some r)
+      m (fun _ : sigma => None) s =
+    Some s'.
+  Proof.
+    generalize dependent s.
+    induction n; intros s.
+    - intros H; inversion H.
+    - intros H m Hm.
+      destruct m;[inversion Hm|].
+      revert H.  simpl.
+      case (beval s b).
+      case_eq (ds (F_phi.phi ps) c s);[|now idtac].
+      + simpl. intros s'' H'' H.
+         apply IHn;auto. lia.
+      + now idtac.
+  Qed.
+
+Lemma while_skedule_co_quadruple
+  (inv : q_assertion) (L R : q_cond) b1 b2 c1 c2 id1 id2 ps1 ps2:
+  classical_quadruple (fun s1 s2 => inv s1 s2 /\ beval s1 b1 = true /\ beval s2 b2 = true /\
+                         L s1 s2 = false /\ R s1 s2 = false)
+    (fun s1' s2' _ _ => inv s1' s2')
+    c1 c2 ps1 ps2 ->
+  classical_quadruple (fun s1 s2 => inv s1 s2 /\ beval s1 b1 = true  /\ L s1 s2 = true )
+    (fun s1' s2' _ _ => inv s1' s2' )
+    c1 CSkip ps1 ps2 ->
+  classical_quadruple (fun s1 s2 => inv s1 s2 /\ beval s2 b2 = true  /\ R s1 s2 = true)
+    (fun s1' s2' _ _ => inv s1' s2')
+    CSkip c2 ps1 ps2 ->
+  (forall s2, Total.total (fun s1 => inv s1 s2 /\ beval s1 b1 = true  /\ L s1 s2 = true )
+    (fun _  _ => True)
+    (CWhile b1 c1 (fun _=> True) (fun _ => 0) id1) ps1) ->
+  (forall s1, Total.total (fun s2 => inv s1 s2 /\ beval s2 b2 = true  /\ R s1 s2 = true)
+    (fun _ _ => True)
+    (CWhile b2 c2 (fun _=> True) (fun _ => 0) id2) ps2) ->
+  (forall s1 s2, inv s1 s2 ->
+            beval s1 b1 = beval s2 b2 \/
+              (beval s1 b1 = true /\ L s1 s2 = true ) \/
+              (beval s2 b2 = true /\ R s1 s2 = true)) ->
+  classical_quadruple inv
+    ( fun s1' s2' _ _ => inv s1' s2' /\ beval s1' b1 = false /\ beval s2' b2 = false )
+    (CWhile b1 c1 (fun _=> True) (fun _ => 0) id1)
+    (CWhile b2 c2 (fun _ => True) (fun _ => 0) id2) ps1 ps2.
+Proof.
+  intros Hinv1 Hinv2 Hinv3 Ht1 Ht2 Hinvs s1 s2 HPre; unfold denot; simpl.
+  case_eq (W_phi.phi (fun l' : sigma => Some (beval l' b1)) (ds (F_phi.phi ps1) c1) s1).
+  - intros s1' [n1 H1]%W_phi.phi_terminates_n.
+    case_eq (W_phi.phi (fun l' : sigma => Some (beval l' b2)) (ds (F_phi.phi ps2) c2) s2).
+    + intros s2' [n2 H2]%W_phi.phi_terminates_n.
+      remember (n1 + n2) as n eqn: Hn.
+      revert Hn HPre H2 H1.
+      revert n1 n2 s1 s2.
+      induction n;intros n1 n2 s1 s2 Hn HPre.
+      * symmetry in Hn.
+        apply Nat.eq_add_0 in Hn as [_ ->].
+        intros H;inversion H.
+      * destruct n2;[ now idtac |].
+        destruct n1;[ now idtac |].
+        specialize (Hinvs s1 s2 HPre) as H%simpl_side_condition.
+        destruct H as [[Hb1 [Hb2 Hb]] | H].
+        -- inversion Hn.
+           unfold W_phi.F_phi at 1 2; simpl.
+           rewrite Hb1, Hb2.
+           unfold bind at 1 3.
+           case_eq (ds (F_phi.phi ps1) c1 s1);[|now idtac].
+           case_eq (ds (F_phi.phi ps2) c2 s2);[|now idtac].
+           intros s2'' h2'  s1'' h1' h2 h1.
+           apply (relation_id s1'' s2''), (IHn n1 (S n2));auto.
+           ++ specialize (Hinv1 s1 s2 (inv_b2_eq_true_l HPre Hb1 Hb2 Hb)).
+              inversion Hinv1; subst.
+              ** now revert H3; unfold denot; rewrite h1'.
+              ** revert H H3; unfold denot; rewrite h1', h2'.
+                 now injection 1 as <-;injection 1 as <-.
+           ++ apply iter_Sn_n with (n:= n2);auto.
+        -- destruct H as [[Hb1 Hb2] | H].
+           ++ unfold W_phi.F_phi at 1 2; simpl.
+              rewrite Hb1, Hb2.
+              injection 1 as <-;injection 1 as <-.
+              now apply relation_r.
+           ++ destruct H as [[Hb Hl]| [Hb HR]].
+              ** intros h2.
+                 inversion Hn.
+                 unfold W_phi.F_phi; simpl.
+                 rewrite Hb.
+                 case_eq (ds (F_phi.phi ps1) c1 s1);[|now idtac].
+                 intros s1'' h1'' h1.
+                 apply (relation_id s1'' s2), (IHn n1 (S n2));auto.
+                 specialize (Hinv2 s1 s2 (inv_b_true_l HPre Hb Hl)).
+                 inversion Hinv2;subst.
+                 now revert H; unfold denot;rewrite h1'';injection 1 as <-.
+              ** intros h2 h1; revert h2.
+                 rewrite Nat.add_comm in Hn.
+                 inversion Hn.
+                 rewrite Nat.add_comm in H0.
+                 unfold W_phi.F_phi; simpl.
+                 rewrite Hb.
+                 case_eq (ds (F_phi.phi ps2) c2 s2);[|now idtac].
+                 intros s2'' h2'' h2.
+                 apply (relation_id s1 s2''), (IHn (S n1) n2);auto.
+                 specialize (Hinv3 s1 s2 (inv_b_true_l HPre Hb HR)).
+                 inversion Hinv3;subst.
+                 now revert H3; unfold denot;rewrite h2'';injection 1 as <-.
+    + generalize dependent s1.
+      generalize dependent s2.
+      induction n1.
+      * now idtac.
+      * intros s2 s1 HPre.
+        specialize (Hinvs s1 s2 HPre) as H%simpl_side_condition.
+        destruct H as [[Hb1 [Hb2 Hb]] | H].
+        -- rewrite <- W_phi.fix_phi.
+           unfold W_phi.F_phi at 1 2; simpl.
+           rewrite Hb1, Hb2.
+           unfold bind at 1 3.
+           specialize (Hinv1 s1 s2 (inv_b2_eq_true_l HPre Hb1 Hb2 Hb)).
+           inversion Hinv1;subst.
+           ++ revert H2. unfold denot; now intros <-.
+           ++ revert H H2. unfold denot. intros <- <- ??.
+              now apply (relation_id x3 x4), IHn1.
+        -- destruct H as [[Hb1 Hb2] | H].
+           ++ rewrite <- W_phi.fix_phi.
+              unfold W_phi.F_phi at 1 2; simpl.
+              now rewrite Hb1, Hb2.
+           ++ destruct H as [[Hb Hl]| [Hb HR]].
+              ** unfold W_phi.F_phi; simpl.
+                 rewrite Hb.
+                 case_eq (ds (F_phi.phi ps1) c1 s1);[|now idtac].
+                 intros s1'' h1'' h1 h2.
+                 apply (relation_id s1'' s2), IHn1;auto.
+                 specialize (Hinv2 s1 s2 (inv_b_true_l HPre Hb Hl)).
+                 inversion Hinv2;subst.
+                 now revert H; unfold denot;rewrite h1'';injection 1 as <-.
+              ** specialize (Ht2 s1 s2 (inv_b_true_l HPre Hb HR)) as
+                   [s2' [He2%sn_ds _]].
+                 revert He2. unfold denot. simpl.
+                 now intros ->.
+  - case_eq (W_phi.phi (fun l' : sigma => Some (beval l' b2)) (ds (F_phi.phi ps2) c2) s2).
+    + intros s2' [n2 H2]%W_phi.phi_terminates_n.
+      generalize dependent s2.
+      generalize dependent s1.
+      induction n2.
+      * now idtac.
+      * intros s1 s2 HPre.
+        specialize (Hinvs s1 s2 HPre) as H%simpl_side_condition.
+        destruct H as [[Hb1 [Hb2 Hb]] | H].
+        -- rewrite <- W_phi.fix_phi.
+           unfold W_phi.F_phi at 1 2; simpl.
+           rewrite Hb1, Hb2.
+           unfold bind at 1 3.
+           specialize (Hinv1 s1 s2 (inv_b2_eq_true_l HPre Hb1 Hb2 Hb)).
+           inversion Hinv1;subst.
+           ++ revert H3. unfold denot; now intros <-.
+           ++ revert H H2. unfold denot. intros <- <- ??.
+              now apply (relation_id x3 x4), IHn2.
+        -- destruct H as [[Hb1 Hb2] | H].
+           ++ rewrite <- W_phi.fix_phi.
+              unfold W_phi.F_phi at 1 2; simpl.
+              now rewrite Hb1, Hb2.
+           ++ destruct H as [[Hb Hl]| [Hb HR]].
+              ** specialize (Ht1 s2 s1 (inv_b_true_l HPre Hb Hl)) as
+                   [s1' [He1%sn_ds _]].
+                 revert He1. unfold denot. simpl.
+                 now intros ->.
+              ** unfold W_phi.F_phi; simpl.
+                 rewrite Hb.
+                 case_eq (ds (F_phi.phi ps2) c2 s2);[|now idtac].
+                 intros s2'' h2'' h2 h1.
+                 apply (relation_id s1 s2''), IHn2;auto.
+                 specialize (Hinv3 s1 s2 (inv_b_true_l HPre Hb HR)).
+                 inversion Hinv3;subst.
+                 now revert H2; unfold denot;rewrite h2'';injection 1 as <-.
+  + intros _ _; apply relation_bot.
+Qed.
+
+Lemma while_b_b_b b b' c ps n s s':
+  function_cpo.iter (sigma -> option sigma)
+    (W_phi.F_phi sigma (fun l' : sigma => Some (beval l' b)) (ds (F_phi.phi ps) c))
+    n (fun _ : sigma => None) s =
+    Some s' ->
+  exists n' s',
+    function_cpo.iter (sigma -> option sigma)
+      (W_phi.F_phi sigma (fun l' : sigma => Some (beval l' (BAnd b b')))
+         (ds (F_phi.phi ps) c))
+      n' (fun _ : sigma => None) s = Some s'.
+Proof.
+  revert s.
+  induction n;intros s.
+  - now idtac.
+  - simpl.
+    unfold W_phi.F_phi; simpl.
+    case_eq (beval s b).
+    + unfold bind at 1.
+      case_eq (ds (F_phi.phi ps) c s);[|now idtac].
+      intros s'' H' Hb [n' [s0 H]]%IHn.
+      exists (S n'); simpl.
+      rewrite Hb;simpl.
+      case (beval s b');[|now exists s].
+      unfold bind at 1.
+      rewrite H'.
+      now exists s0.
+    + intros Hb _.
+      exists 1;simpl.
+      rewrite Hb;simpl.
+      now exists s.
+Qed.
+
+Lemma while_split b b' c ps n s s' s'':
+  beval s (BAnd b b') = true ->
+  W_phi.phi (fun l' : sigma => Some (beval l' (BAnd b b'))) (ds (F_phi.phi ps) c) s = Some s'' ->
+  function_cpo.iter (sigma -> option sigma)
+    (W_phi.F_phi sigma (fun l' : sigma => Some (beval l' b)) (ds (F_phi.phi ps) c))
+    n (fun _ : sigma => None) s =  Some s' ->
+    exists n',
+      n' < n /\
+  function_cpo.iter (sigma -> option sigma)
+    (W_phi.F_phi sigma (fun l' : sigma => Some (beval l' b)) (ds (F_phi.phi ps) c))
+    n' (fun _ : sigma => None) s'' =
+    Some s' .
+Proof.
+  generalize dependent s.
+  induction n;intros s.
+  - now idtac.
+  - rewrite <- W_phi.fix_phi.
+    unfold W_phi.F_phi at 1 2; simpl.
+    intros [<- <-]%eq_sym%Bool.andb_true_eq. simpl.
+    unfold bind at 1 2.
+    case_eq (ds (F_phi.phi ps) c s);[|now idtac].
+    intros s0 H1.
+    case_eq (beval s0 (BAnd b b')).
+    + intros Hb He1 He2.
+      specialize (IHn s0 Hb He1 He2) as [n' [Hn' He']].
+      exists n';split; auto.
+    + rewrite <- W_phi.fix_phi.
+      destruct n;[now idtac|].
+      unfold W_phi.F_phi at 1; simpl.
+      intros [Hb |Hb]%Bool.andb_false_iff.
+      -- rewrite Hb; simpl.
+         exists (S n); simpl; split; auto.
+         unfold W_phi.F_phi; simpl.
+         inversion H;subst.
+         now rewrite Hb.
+      -- rewrite Hb,Bool.andb_false_r;simpl.
+         injection 1 as <-.
+         exists (S n);split;auto.
+Qed.
+
+Lemma while_split' b b' c ps s s' :
+  W_phi.phi (fun l' : sigma => Some (beval l' (BAnd b b'))) (ds (F_phi.phi ps) c) s = Some s' ->
+  W_phi.phi (fun l' : sigma => Some (beval l' b )) (ds (F_phi.phi ps) c) s =  None ->
+  W_phi.phi (fun l' : sigma => Some (beval l' b )) (ds (F_phi.phi ps) c) s' =  None.
+Proof.
+  intros [n H]%W_phi.phi_terminates_n.
+  generalize dependent s.
+  induction n;intros s.
+  - now idtac.
+  - simpl.
+    rewrite <- W_phi.fix_phi.
+    unfold W_phi.F_phi at 1 3; simpl.
+    case_eq (beval s (BAnd b b'));simpl.
+    +  intros [<- <-]%eq_sym%Bool.andb_true_eq. simpl.
+       unfold bind at 1 2.
+       case_eq (ds (F_phi.phi ps) c s);[|now idtac].
+       intros s0 H1 He1 He2.
+       rewrite  W_phi.fix_phi.
+       apply (IHn s0);auto.
+    + intros [Hb |Hb]%Bool.andb_false_iff.
+      * now rewrite Hb.
+      * now rewrite Hb,Bool.andb_false_r;simpl; injection 1 as <-.
+Qed.
+
+Lemma simpl_side_condition b1 b2 L R s1 s2 (f1 f2: nat -> bexp) k1 k2:
+  ((beval s1 b1 = beval s2 b2 /\
+      ( L s1 s2 = false -> R s1 s2 = false ->
+          beval s1 (f1 k1) = true /\ beval s2 (f2 k2) = true))\/
+     (beval s1 b1 = true /\ L s1 s2 = true ) \/
+     (beval s2 b2 = true /\ R s1 s2 = true)) ->
+  ((beval s1 (BAnd b1 (f1 k1)) = true /\ beval s2 (BAnd b2 (f2 k2)) = true /\
+      L s1 s2 = false /\ R s1 s2 = false) \/
+     (beval s1 b1 = false /\ beval s2 b2 = false) \/  (beval s1 b1 = true /\ L s1 s2 = true ) \/
+     (beval s2 b2 = true /\ R s1 s2 = true)).
+Proof.
+  intros H.
+  destruct H as [[H  Hf] | H].
+  - destruct (beval s1 b1) eqn: Hb1.
+    + destruct (L s1 s2) eqn: HL.
+      * auto.
+      * destruct (R s1 s2) eqn: HR.
+        -- rewrite <- H. auto.
+        -- simpl.
+           specialize (Hf eq_refl eq_refl) as [-> ->].
+           rewrite Hb1; rewrite <- H;auto.
+    +  auto.
+  - destruct H.
+    + destruct H. rewrite H,H0. auto.
+    + destruct H. rewrite H,H0. auto.
+Qed.
+
+Lemma while_skedule_quadruple_e
+  (inv : q_assertion) (k1 k2: nat) (f1 f2: nat -> bexp) (L R : q_cond) b1 b2 c1 c2 id1 id2 ps1 ps2:
+  classical_quadruple (fun s1 s2 => inv s1 s2
+                                    /\ beval s1 (BAnd b1 (f1 k1)) = true
+                                    /\ beval s2 (BAnd b2 (f2 k2)) = true /\
+                         L s1 s2 = false /\ R s1 s2 = false)
+    (fun s1' s2' _ _ => inv s1' s2')
+    (CWhile (BAnd b1 (f1 k1)) c1 (fun _=> True) (fun _ => 0) id1)
+    (CWhile (BAnd b2 (f2 k2)) c2 (fun _=> True) (fun _ => 0) id2) ps1 ps2 ->
+  classical_quadruple (fun s1 s2 => inv s1 s2 /\ beval s1 b1 = true  /\ L s1 s2 = true )
+    (fun s1' s2' _ _ => inv s1' s2' )
+    c1 CSkip ps1 ps2 ->
+  classical_quadruple (fun s1 s2 => inv s1 s2 /\ beval s2 b2 = true  /\ R s1 s2 = true)
+    (fun s1' s2' _ _ => inv s1' s2')
+    CSkip c2 ps1 ps2 ->
+  (forall s2, Total.total (fun s1 => inv s1 s2 /\ beval s1 b1 = true  /\ L s1 s2 = true )
+    (fun _  _ => True)
+    (CWhile b1 c1 (fun _=> True) (fun _ => 0) id1) ps1) ->
+  (forall s1, Total.total (fun s2 => inv s1 s2 /\ beval s2 b2 = true  /\ R s1 s2 = true)
+    (fun _ _ => True)
+    (CWhile b2 c2 (fun _=> True) (fun _ => 0) id2) ps2) ->
+  (forall s1 s2, inv s1 s2 ->
+                 (beval s1 b1 = beval s2 b2 /\
+                    ( L s1 s2 = false -> R s1 s2 = false ->
+                        beval s1 (f1 k1) = true /\ beval s2 (f2 k2) = true)
+                 )
+                 \/
+              (beval s1 b1 = true /\ L s1 s2 = true ) \/
+              (beval s2 b2 = true /\ R s1 s2 = true)) ->
+  classical_quadruple inv
+    ( fun s1' s2' _ _ => inv s1' s2' /\ beval s1' b1 = false /\ beval s2' b2 = false )
+    (CWhile b1 c1 (fun _=> True) (fun _ => 0) id1)
+    (CWhile b2 c2 (fun _ => True) (fun _ => 0) id2) ps1 ps2.
+Proof.
+  intros Hinv1 (* Hwt1 Hwt2 *) Hinv2 Hinv3 Ht1 Ht2 Hinvs s1 s2 HPre ; unfold denot; simpl.
+  case_eq (W_phi.phi (fun l' : sigma => Some (beval l' b1)) (ds (F_phi.phi ps1) c1) s1).
+  - intros s1' [n1 H1]%W_phi.phi_terminates_n.
+    case_eq (W_phi.phi (fun l' : sigma => Some (beval l' b2)) (ds (F_phi.phi ps2) c2) s2).
+    + intros s2' [n2 H2]%W_phi.phi_terminates_n.
+      remember (n1 + n2) as n eqn: Hn.
+      symmetry in Hn.
+      apply Nat.eq_le_incl in Hn.
+      revert Hn HPre H2 H1.
+      revert n1 n2 s1 s2.
+      induction n;intros n1 n2 s1 s2 Hn HPre.
+      * apply Nat.add_nonpos_cases in Hn.
+        now destruct Hn as [H | H]; inversion H.
+      * destruct n2;[ now idtac |].
+        destruct n1;[ now idtac |].
+        specialize (Hinvs s1 s2 HPre) as H%simpl_side_condition.
+        destruct H as [[Hb1 [Hb2 Hb]] | H].
+        -- specialize (Hinv1 s1 s2 (inv_b2_eq_true_l HPre Hb1 Hb2 Hb)).
+           inversion Hinv1;subst.
+           ++ intros [n' [s' H]]%(while_b_b_b _ (f2 k2)).
+              unfold denot in H3. simpl in H3.
+              specialize (W_phi.iter_phi sigma sigma (fun f => f)
+                            (fun l' : sigma => Some (beval l' (BAnd b2 (f2 k2))))
+                            (fun _ => (ds (F_phi.phi ps2) c2))
+                            n' s' 0 s2 H).
+             now  simpl; rewrite <- H3.
+           ++ symmetry in H2.
+              unfold denot in H2. simpl in H2.
+              intros [n2' [Hn2 He2']]%(while_split _ (f2 k2) _ _ _ _ _ _ Hb2 H2).
+              symmetry in H.
+              unfold denot in H. simpl in H.
+              intros [n1' [Hn1 He1']]%(while_split _ (f1 k1) _ _ _ _ _ _ Hb1 H).
+              apply (relation_id x3 x4), (IHn n1' n2');auto.
+              revert Hn Hn2 Hn1. clear.
+              lia.
+        -- destruct H as [[Hb1 Hb2] | H].
+           ++ unfold W_phi.F_phi at 1 2; simpl.
+              rewrite Hb1, Hb2.
+              injection 1 as <-;injection 1 as <-.
+              now apply relation_r.
+           ++ destruct H as [[Hb Hl]| [Hb HR]].
+              ** intros h2.
+                 unfold W_phi.F_phi; simpl.
+                 rewrite Hb.
+                 case_eq (ds (F_phi.phi ps1) c1 s1);[|now idtac].
+                 intros s1'' h1'' h1.
+                 apply (relation_id s1'' s2), (IHn n1 (S n2));auto;[lia|].
+                 specialize (Hinv2 s1 s2 (inv_b_true_l HPre Hb Hl)).
+                 inversion Hinv2;subst.
+                 now revert H; unfold denot;rewrite h1'';injection 1 as <-.
+              ** intros h2 h1; revert h2.
+                 unfold W_phi.F_phi; simpl.
+                 rewrite Hb.
+                 case_eq (ds (F_phi.phi ps2) c2 s2);[|now idtac].
+                 intros s2'' h2'' h2.
+                 apply (relation_id s1 s2''), (IHn (S n1) n2);auto;[lia|].
+                 specialize (Hinv3 s1 s2 (inv_b_true_l HPre Hb HR)).
+                 inversion Hinv3;subst.
+                 now revert H2; unfold denot;rewrite h2'';injection 1 as <-.
+    + generalize dependent s1.
+      generalize dependent s2.
+      induction n1.
+      * now idtac.
+      * intros s2 s1 HPre.
+        specialize (Hinvs s1 s2 HPre) as H%simpl_side_condition.
+        destruct H as [[Hb1 [Hb2 Hb]] | H].
+        -- specialize (Hinv1 s1 s2 (inv_b2_eq_true_l HPre Hb1 Hb2 Hb)).
+           inversion Hinv1;subst.
+           ++ intros [n' [s' H]]%(while_b_b_b _ (f1 k1)).
+              unfold denot in H2. simpl in H2.
+              specialize (W_phi.iter_phi sigma sigma (fun f => f)
+                            (fun l' : sigma => Some (beval l' (BAnd b1 (f1 k1))))
+                            (fun _ => (ds (F_phi.phi ps1) c1))
+                            n' s' 0 s1 H).
+             now  simpl; rewrite <- H2.
+           ++ symmetry in H.
+              unfold denot in H. simpl in H.
+              intros [n1' [Hn1 He1']]%(while_split _ (f1 k1) _ _ _ _ _ _ Hb1 H).
+              symmetry in H2.
+              unfold denot in H2. simpl in H2.
+              intros He2'%(while_split' _ _ _ _ _ _ H2).
+              apply (relation_id x3 x4), IHn1;auto.
+              apply iter_Sn_n with (n := n1');auto. lia.
+        -- destruct H as [[Hb1 Hb2] | H].
+           ++ rewrite <- W_phi.fix_phi.
+              unfold W_phi.F_phi at 2; simpl.
+              now rewrite Hb2.
+            ++ destruct H as [[Hb Hl]| [Hb HR]].
+              ** unfold W_phi.F_phi; simpl.
+                 rewrite Hb.
+                 case_eq (ds (F_phi.phi ps1) c1 s1);[|now idtac].
+                 intros s1'' h1'' h1 h2.
+                 apply (relation_id s1'' s2), IHn1;auto.
+                 specialize (Hinv2 s1 s2 (inv_b_true_l HPre Hb Hl)).
+                 inversion Hinv2;subst.
+                 now revert H; unfold denot;rewrite h1'';injection 1 as <-.
+              ** specialize (Ht2 s1 s2 (inv_b_true_l HPre Hb HR)) as
+                   [s2' [He2%sn_ds _]].
+                 revert He2. unfold denot. simpl.
+                 now intros ->.
+  - case_eq (W_phi.phi (fun l' : sigma => Some (beval l' b2)) (ds (F_phi.phi ps2) c2) s2).
+    + intros s2' [n2 H2]%W_phi.phi_terminates_n.
+      generalize dependent s1.
+      generalize dependent s2.
+      induction n2.
+      * now idtac.
+      * intros s2 He2 s1 HPre. revert He2.
+        specialize (Hinvs s1 s2 HPre) as H%simpl_side_condition.
+        destruct H as [[Hb1 [Hb2 Hb]] | H].
+        -- specialize (Hinv1 s1 s2 (inv_b2_eq_true_l HPre Hb1 Hb2 Hb)).
+           inversion Hinv1;subst.
+           ++ intros [n' [s' H]]%(while_b_b_b _ (f2 k2)).
+              unfold denot in H3. simpl in H3.
+              specialize (W_phi.iter_phi sigma sigma (fun f => f)
+                            (fun l' : sigma => Some (beval l' (BAnd b2 (f2 k2))))
+                            (fun _ => (ds (F_phi.phi ps2) c2))
+                            n' s' 0 s2 H).
+             now  simpl; rewrite <- H3.
+           ++ symmetry in H2.
+              unfold denot in H2. simpl in H2.
+              intros [n2' [Hn2 He2']]%(while_split _ (f2 k2) _ _ _ _ _ _ Hb2 H2).
+              symmetry in H.
+              unfold denot in H. simpl in H.
+              intros He1'%(while_split' _ _ _ _ _ _ H).
+              apply (relation_id x3 x4), IHn2;auto.
+              apply iter_Sn_n with (n := n2');auto. lia.
+        -- destruct H as [[Hb1 Hb2] | H].
+           ++ rewrite <- W_phi.fix_phi.
+              unfold W_phi.F_phi at 2; simpl.
+              now rewrite Hb1.
+            ++ destruct H as [[Hb Hl]| [Hb HR]].
+              ** specialize (Ht1 s2 s1 (inv_b_true_l HPre Hb Hl)) as
+                   [s1' [He1%sn_ds _]].
+                 revert He1. unfold denot. simpl.
+                 now intros ->.
+              ** unfold W_phi.F_phi; simpl.
+                 rewrite Hb.
+                 case_eq (ds (F_phi.phi ps2) c2 s2);[|now idtac].
+                 intros s2'' h2'' h2 h1.
+                 apply (relation_id s1 s2''), IHn2;auto.
+                 specialize (Hinv3 s1 s2 (inv_b_true_l HPre Hb HR)).
+                 inversion Hinv3;subst.
+                 now revert H2; unfold denot;rewrite h2'';injection 1 as <-.
+    + intros??. apply relation_bot.
+Qed.
+
+End Easycrypt.
 
 (** Definition of a quadruple contract **)
 
