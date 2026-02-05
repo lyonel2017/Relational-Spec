@@ -9,8 +9,8 @@ This repository contains a [Coq](https://coq.inria.fr/) formalization and proof 
 This project is developed and tested with Rocq version 9.1.0 and OCaml 5.2.0.
 
 This project require currently a modified version of the
-[semantics package]{https://github.com/rocq-community/semantics},
-which is available [here]{https://github.com/lyonel2017/semantics/tree/generalize-ifthenelse_continous}
+[semantics package](https://github.com/rocq-community/semantics),
+which is available [here](https://github.com/lyonel2017/semantics/tree/generalize-ifthenelse_continous)
 
 
 To run the whole proof, run
