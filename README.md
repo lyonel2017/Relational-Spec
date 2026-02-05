@@ -6,9 +6,9 @@ This repository contains a [Coq](https://coq.inria.fr/) formalization and proof 
 * a method for verifying relational properties using a verification condition generator, without relying on code transformation (such as
   self-composition) or making additional separation hypotheses in case of aliasing;
 
-This project was developed and tested with Rocq version 9.1.0 and OCaml 5.2.0.
+This project is developed and tested with Rocq version 9.1.0 and OCaml 5.2.0.
 
-The project require crrently a modified version of the
+This project require currently a modified version of the
 [semantics package]{https://github.com/rocq-community/semantics},
 which is available [here]{https://github.com/lyonel2017/semantics/tree/generalize-ifthenelse_continous}
 
@@ -16,12 +16,6 @@ which is available [here]{https://github.com/lyonel2017/semantics/tree/generaliz
 To run the whole proof, run
 
  ` make`
-
-Then, to observe the proof step-by-step for some file, run
-
-  `coqide <filename.v>`
-
-for example, `coqide Hoare_Triple.v`
 
 ## The project structure
 
