@@ -857,15 +857,23 @@ Proof.
     + destruct H. rewrite H,H0. auto.
 Qed.
 
+Lemma inv_b2_eq_true_l_e {inv A :Prop} {b1 b2 : bool} {T:Type} (x y : T):
+  inv ->  b1 = true -> b2 = true -> A ->
+  inv /\ x = x /\ y = y /\ b1 = true /\ b2 = true /\ A .
+Proof. now idtac. Qed.
+
 Lemma while_skedule_quadruple_e
-  (inv : q_assertion) (k1 k2: nat) (f1 f2: nat -> bexp) (L R : q_cond) b1 b2 c1 c2 id1 id2 ps1 ps2:
-  classical_quadruple (fun s1 s2 => inv s1 s2
-                                    /\ beval s1 (BAnd b1 (f1 k1)) = true
-                                    /\ beval s2 (BAnd b2 (f2 k2)) = true /\
+  (inv : q_assertion) (k1 k2: (sigma -> sigma -> nat))
+  (f1 f2: nat -> bexp) (L R : q_cond) b1 b2 c1 c2 id1 id2 ps1 ps2:
+  (forall v1 v2,
+      classical_quadruple (fun s1 s2 => inv s1 s2
+                                    /\ v1 = k1 s1 s2 /\ v2 = k2 s1 s2
+                                    /\ beval s1 (BAnd b1 (f1 v1)) = true
+                                    /\ beval s2 (BAnd b2 (f2 v2)) = true /\
                          L s1 s2 = false /\ R s1 s2 = false)
     (fun s1' s2' _ _ => inv s1' s2')
-    (CWhile (BAnd b1 (f1 k1)) c1 (fun _=> True) (fun _ => 0) id1)
-    (CWhile (BAnd b2 (f2 k2)) c2 (fun _=> True) (fun _ => 0) id2) ps1 ps2 ->
+    (CWhile (BAnd b1 (f1 v1)) c1 (fun _=> True) (fun _ => 0) id1)
+    (CWhile (BAnd b2 (f2 v2)) c2 (fun _=> True) (fun _ => 0) id2) ps1 ps2) ->
   classical_quadruple (fun s1 s2 => inv s1 s2 /\ beval s1 b1 = true  /\ L s1 s2 = true )
     (fun s1' s2' _ _ => inv s1' s2' )
     c1 CSkip ps1 ps2 ->
@@ -881,7 +889,7 @@ Lemma while_skedule_quadruple_e
   (forall s1 s2, inv s1 s2 ->
                  (beval s1 b1 = beval s2 b2 /\
                     ( L s1 s2 = false -> R s1 s2 = false ->
-                        beval s1 (f1 k1) = true /\ beval s2 (f2 k2) = true)
+                        beval s1 (f1 (k1 s1 s2)) = true /\ beval s2 (f2 (k2 s1 s2)) = true)
                  )
                  \/
               (beval s1 b1 = true /\ L s1 s2 = true ) \/
@@ -908,21 +916,21 @@ Proof.
         destruct n1;[ now idtac |].
         specialize (Hinvs s1 s2 HPre) as H%simpl_side_condition.
         destruct H as [[Hb1 [Hb2 Hb]] | H].
-        -- specialize (Hinv1 s1 s2 (inv_b2_eq_true_l HPre Hb1 Hb2 Hb)).
+        -- specialize (Hinv1 _ _ s1 s2 (inv_b2_eq_true_l_e (k1 s1 s2) (k2 s1 s2) HPre Hb1 Hb2 Hb)).
            inversion Hinv1;subst.
-           ++ intros [n' [s' H]]%(while_b_b_b _ (f2 k2)).
+           ++ intros [n' [s' H]]%(while_b_b_b _ (f2 (k2 s1 s2))).
               unfold denot in H3. simpl in H3.
               specialize (W_phi.iter_phi sigma sigma (fun f => f)
-                            (fun l' : sigma => Some (beval l' (BAnd b2 (f2 k2))))
+                            (fun l' : sigma => Some (beval l' (BAnd b2 (f2 (k2 s1 s2)))))
                             (fun _ => (ds (F_phi.phi ps2) c2))
                             n' s' 0 s2 H).
              now  simpl; rewrite <- H3.
            ++ symmetry in H2.
               unfold denot in H2. simpl in H2.
-              intros [n2' [Hn2 He2']]%(while_split _ (f2 k2) _ _ _ _ _ _ Hb2 H2).
+              intros [n2' [Hn2 He2']]%(while_split _ (f2 (k2 s1 s2)) _ _ _ _ _ _ Hb2 H2).
               symmetry in H.
               unfold denot in H. simpl in H.
-              intros [n1' [Hn1 He1']]%(while_split _ (f1 k1) _ _ _ _ _ _ Hb1 H).
+              intros [n1' [Hn1 He1']]%(while_split _ (f1 (k1 s1 s2)) _ _ _ _ _ _ Hb1 H).
               apply (relation_id x3 x4), (IHn n1' n2');auto.
               revert Hn Hn2 Hn1. clear.
               lia.
@@ -957,18 +965,18 @@ Proof.
       * intros s2 s1 HPre.
         specialize (Hinvs s1 s2 HPre) as H%simpl_side_condition.
         destruct H as [[Hb1 [Hb2 Hb]] | H].
-        -- specialize (Hinv1 s1 s2 (inv_b2_eq_true_l HPre Hb1 Hb2 Hb)).
+        -- specialize (Hinv1 _ _ s1 s2 (inv_b2_eq_true_l_e (k1 s1 s2) (k2 s1 s2) HPre Hb1 Hb2 Hb)).
            inversion Hinv1;subst.
-           ++ intros [n' [s' H]]%(while_b_b_b _ (f1 k1)).
+           ++ intros [n' [s' H]]%(while_b_b_b _ (f1 (k1 s1 s2))).
               unfold denot in H2. simpl in H2.
               specialize (W_phi.iter_phi sigma sigma (fun f => f)
-                            (fun l' : sigma => Some (beval l' (BAnd b1 (f1 k1))))
+                            (fun l' : sigma => Some (beval l' (BAnd b1 (f1 (k1 s1 s2)))))
                             (fun _ => (ds (F_phi.phi ps1) c1))
                             n' s' 0 s1 H).
              now  simpl; rewrite <- H2.
            ++ symmetry in H.
               unfold denot in H. simpl in H.
-              intros [n1' [Hn1 He1']]%(while_split _ (f1 k1) _ _ _ _ _ _ Hb1 H).
+              intros [n1' [Hn1 He1']]%(while_split _ (f1 (k1 s1 s2)) _ _ _ _ _ _ Hb1 H).
               symmetry in H2.
               unfold denot in H2. simpl in H2.
               intros He2'%(while_split' _ _ _ _ _ _ H2).
@@ -1000,18 +1008,18 @@ Proof.
       * intros s2 He2 s1 HPre. revert He2.
         specialize (Hinvs s1 s2 HPre) as H%simpl_side_condition.
         destruct H as [[Hb1 [Hb2 Hb]] | H].
-        -- specialize (Hinv1 s1 s2 (inv_b2_eq_true_l HPre Hb1 Hb2 Hb)).
+        -- specialize (Hinv1 _ _ s1 s2 (inv_b2_eq_true_l_e (k1 s1 s2) (k2 s1 s2) HPre Hb1 Hb2 Hb)).
            inversion Hinv1;subst.
-           ++ intros [n' [s' H]]%(while_b_b_b _ (f2 k2)).
+           ++ intros [n' [s' H]]%(while_b_b_b _ (f2 (k2 s1 s2))).
               unfold denot in H3. simpl in H3.
               specialize (W_phi.iter_phi sigma sigma (fun f => f)
-                            (fun l' : sigma => Some (beval l' (BAnd b2 (f2 k2))))
+                            (fun l' : sigma => Some (beval l' (BAnd b2 (f2 (k2 s1 s2)))))
                             (fun _ => (ds (F_phi.phi ps2) c2))
                             n' s' 0 s2 H).
              now  simpl; rewrite <- H3.
            ++ symmetry in H2.
               unfold denot in H2. simpl in H2.
-              intros [n2' [Hn2 He2']]%(while_split _ (f2 k2) _ _ _ _ _ _ Hb2 H2).
+              intros [n2' [Hn2 He2']]%(while_split _ (f2 (k2 s1 s2)) _ _ _ _ _ _ Hb2 H2).
               symmetry in H.
               unfold denot in H. simpl in H.
               intros He1'%(while_split' _ _ _ _ _ _ H).
